@@ -1,6 +1,7 @@
 # Root reference documents & specifications
 /*.pdf
 /*.docx
+/*.xlsx
 /*.md
 !/README.md
 

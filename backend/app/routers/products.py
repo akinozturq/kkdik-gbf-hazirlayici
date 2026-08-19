@@ -23,6 +23,7 @@ from app.schemas.validation import ValidationResult
 from app.schemas.reference import AutoFillHResponse
 from app.services.product_service import product_service
 from app.services.validator_service import validator_service
+from app.services.reference_service import reference_service
 from app.services.docx_export_service import DocxExportService
 from app.services.pdf_export_service import PdfExportService
 
@@ -455,4 +456,52 @@ def calculate_preview(req: CalculatePreviewRequest):
         parlama_noktasi=req.parlama_noktasi,
         kaynama_noktasi=req.kaynama_noktasi
     )
+
+
+@router.post(
+    "/{product_id}/auto-fill-exposure-limits",
+    summary="Bölüm 3 Bileşenlerinden Bölüm 8.1 Maruziyet Limitlerini Otomatik Doldur"
+)
+def auto_fill_exposure_limits(
+    product_id: int,
+    save_to_sds: bool = Query(False, description="Bulunan limitleri doğrudan Bölüm 8.1'e kaydet"),
+    db: Session = Depends(get_db)
+):
+    """
+    Bölüm 3'teki bileşenleri tarar ve Kimyasal Maddelerle Çalışmalarda Sağlık ve Güvenlik Önlemleri
+    Yönetmeliği Ek-1 Mesleki Maruziyet Sınır Değerleri tablosuyla eşleştirip Bölüm 8.1'i otomatik doldurur.
+    """
+    product = product_service.get_product(db, product_id)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{product_id} numaralı ürün bulunamadı."
+        )
+
+    sds = copy.deepcopy(product.sds_data or {})
+    matched_limits = reference_service.auto_match_exposure_limits_from_sds(sds)
+
+    if save_to_sds:
+        if "b8_maruz_kalma_kontrolu" not in sds:
+            sds["b8_maruz_kalma_kontrolu"] = {}
+        sds["b8_maruz_kalma_kontrolu"]["b8_1_kontrol_parametreleri"] = matched_limits
+        updated = product_service.update_product(db, product_id, {"sds_data": sds})
+        val_res = validator_service.validate_sds(updated.sds_data or {})
+        return {
+            "product_id": product_id,
+            "matched_limits": matched_limits,
+            "saved": True,
+            "product": {
+                "id": updated.id,
+                "sds_data": updated.sds_data,
+                "tamamlanma_yuzdesi": val_res.overall_completion_percentage
+            }
+        }
+
+    return {
+        "product_id": product_id,
+        "matched_limits": matched_limits,
+        "saved": False
+    }
+
 

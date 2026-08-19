@@ -182,6 +182,12 @@ export const api = {
 
   getPictograms: () => request('/references/pictograms'),
 
+  getExposureLimits: (search = null) => {
+    const query = new URLSearchParams();
+    if (search) query.set('search', search);
+    return request(`/references/exposure-limits?${query.toString()}`);
+  },
+
   // ==========================================
   // SEA KARIŞIM HESAPLAMA & H -> P HARİTALAMA
   // ==========================================
@@ -206,5 +212,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // ==========================================
+  // BÖLÜM 8.1 MARUZİYET SINIR DEĞERLERİ OTOMASYONU
+  // ==========================================
+  autoFillExposureLimits: (id, saveToSds = false) =>
+    request(`/products/${id}/auto-fill-exposure-limits?save_to_sds=${saveToSds}`, {
+      method: 'POST',
+    }),
 };
+
 

@@ -95,3 +95,18 @@ def get_pictogram_by_code(code: str):
             detail=f"'{code}' kodlu piktogram bulunamadı."
         )
     return item
+
+
+@router.get(
+    "/exposure-limits",
+    summary="Mesleki Maruziyet Sınır Değerleri Tablosu (311 Madde)"
+)
+def get_exposure_limits(
+    search: Optional[str] = Query(None, description="Madde adı, CAS no veya EC no arama terimi")
+):
+    """
+    Kimyasal Maddelerle Çalışmalarda Sağlık ve Güvenlik Önlemleri Hakkında Yönetmelik
+    Ek-1 Mesleki Maruziyet Sınır Değerleri tablosunu döner.
+    """
+    return reference_service.get_all_exposure_limits(search=search)
+
