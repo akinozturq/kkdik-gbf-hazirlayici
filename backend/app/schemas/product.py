@@ -15,6 +15,7 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
+    kategori: str = Field(..., min_length=1, max_length=100, description="Ürün ailesi / kategorisi (Zorunlu)")
     sds_data: Optional[SDSModel] = Field(default_factory=SDSModel, description="Ürüne ait 16 bölümlük SDS verisi")
 
 

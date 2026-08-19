@@ -72,6 +72,18 @@ def list_products(
 
 
 @router.get(
+    "/categories",
+    response_model=List[str],
+    summary="Tüm benzersiz ürün aileleri / kategorileri listesi"
+)
+def get_categories(db: Session = Depends(get_db)):
+    """
+    Kayıtlı tüm ürün ailelerini ve hazır önerileri döner.
+    """
+    return product_service.get_categories(db)
+
+
+@router.get(
     "/{product_id}",
     response_model=ProductResponse,
     summary="Ürün detayı ve 16 bölümlük SDS verisi"

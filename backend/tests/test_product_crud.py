@@ -24,6 +24,32 @@ def test_create_product(client, sample_valid_sds_dict):
     assert data["sds_data"]["b1_kimlik"]["b1_1"]["madde_karisim_adi"] == "Polyester Reçine Solüsyonu"
 
 
+def test_create_product_missing_kategori_fails(client, sample_valid_sds_dict):
+    """Kategori/Ürün ailesi olmadan ürün oluşturulamamalıdır (422 Unprocessable Entity)"""
+    payload = {
+        "urun_adi": "Kategorisiz Ürün",
+        "ticari_kod": "KAT-001",
+        "sds_data": sample_valid_sds_dict
+    }
+    response = client.post("/api/products", json=payload)
+    assert response.status_code == 422
+
+
+def test_get_product_categories(client, sample_valid_sds_dict):
+    """Ürün aileleri ve kategorileri listesi testi (GET /api/products/categories)"""
+    client.post("/api/products", json={
+        "urun_adi": "Epoksi Astar Gri",
+        "ticari_kod": "EP-GR-01",
+        "kategori": "Özel Epoksiler",
+        "sds_data": sample_valid_sds_dict
+    })
+    res = client.get("/api/products/categories")
+    assert res.status_code == 200
+    cats = res.json()
+    assert "Özel Epoksiler" in cats
+    assert "Solventler & Tinerler" in cats
+
+
 def test_list_products_and_search(client, sample_valid_sds_dict):
     """Ürün listeleme, arama ve filtreleme testi (GET /api/products)"""
     # 2 ürün oluşturalım
@@ -85,6 +111,7 @@ def test_update_product(client, sample_valid_sds_dict):
     create_res = client.post("/api/products", json={
         "urun_adi": "Eski Ürün Adı",
         "ticari_kod": "OLD-001",
+        "kategori": "Genel Reçineler",
         "sds_data": sample_valid_sds_dict
     })
     product_id = create_res.json()["id"]
@@ -113,7 +140,8 @@ def test_delete_product(client):
     """Ürün silme testi (DELETE /api/products/{id})"""
     create_res = client.post("/api/products", json={
         "urun_adi": "Silinecek Ürün",
-        "ticari_kod": "DEL-001"
+        "ticari_kod": "DEL-001",
+        "kategori": "Silinecekler"
     })
     product_id = create_res.json()["id"]
 
@@ -152,6 +180,7 @@ def test_validate_product_api(client, sample_valid_sds_dict):
     create_res = client.post("/api/products", json={
         "urun_adi": "Test Ürünü",
         "ticari_kod": "TST-01",
+        "kategori": "Test Ailesi",
         "sds_data": sample_valid_sds_dict
     })
     product_id = create_res.json()["id"]
@@ -169,6 +198,7 @@ def test_auto_fill_h_codes_api(client, sample_valid_sds_dict):
     create_res = client.post("/api/products", json={
         "urun_adi": "H-Kod Test Ürünü",
         "ticari_kod": "HK-01",
+        "kategori": "Solventler",
         "sds_data": sample_valid_sds_dict
     })
     product_id = create_res.json()["id"]
@@ -202,6 +232,7 @@ def test_calculate_and_apply_hazards_api(client, sample_valid_sds_dict):
     create_res = client.post("/api/products", json={
         "urun_adi": "Karışım Hesaplama Test Ürünü",
         "ticari_kod": "CALC-01",
+        "kategori": "Test Karışımlar",
         "sds_data": sample_valid_sds_dict
     })
     product_id = create_res.json()["id"]

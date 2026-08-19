@@ -135,6 +135,25 @@ class ProductService:
             items=items
         )
 
+    def get_categories(self, db: Session) -> List[str]:
+        """Veritabanında kayıtlı tüm benzersiz ürün ailelerini / kategorilerini döner."""
+        records = (
+            db.query(Product.kategori)
+            .filter(Product.kategori.isnot(None), Product.kategori != "")
+            .distinct()
+            .all()
+        )
+        cats = sorted([r[0].strip() for r in records if r[0] and r[0].strip()])
+        defaults = [
+            "Solventler & Tinerler",
+            "Poliüretan Sistemler & Sertleştiriciler",
+            "Endüstriyel Boyalar & Astarlar",
+            "Su Bazlı Sistemler & Emülsiyonlar",
+            "Reçineler & Polimerler",
+            "Epoksi Sistemler",
+        ]
+        return list(dict.fromkeys(cats + [d for d in defaults if d not in cats]))
+
     def update_product(self, db: Session, product_id: int, product_in: Any) -> Optional[Product]:
         product = self.get_product(db, product_id)
         if not product:

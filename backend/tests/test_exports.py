@@ -34,6 +34,7 @@ def test_export_pdf_endpoint(client: TestClient):
     create_res = client.post("/api/products", json={
         "urun_adi": "Selülozik Tiner Extra",
         "ticari_kod": "G.TN.20.00",
+        "kategori": "Solventler & Tinerler",
         "sds_data": {
             "meta": {"hazirlama_tarihi": "18.08.2026"},
             "b1_kimlik": {
@@ -57,6 +58,7 @@ def test_preview_html_endpoint(client: TestClient):
     create_res = client.post("/api/products", json={
         "urun_adi": "Epoksi Astar",
         "ticari_kod": "AYP-EPX-01",
+        "kategori": "Epoksi Sistemler",
         "sds_data": {}
     })
     prod_id = create_res.json()["id"]

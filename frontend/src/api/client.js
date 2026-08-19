@@ -65,6 +65,9 @@ export const api = {
   // Ürün Detayı & 16 Bölüm SDS
   getProduct: (id) => request(`/products/${id}`),
 
+  // Ürün Aileleri / Kategorileri Listesi
+  getProductCategories: () => request('/products/categories'),
+
   // Yeni Ürün Oluştur
   createProduct: (data) =>
     request('/products', {
