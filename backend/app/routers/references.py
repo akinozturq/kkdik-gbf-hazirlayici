@@ -110,3 +110,34 @@ def get_exposure_limits(
     """
     return reference_service.get_all_exposure_limits(search=search)
 
+
+@router.get(
+    "/raw-materials",
+    summary="Hammadde Kütüphanesi Listesi"
+)
+def get_raw_materials(
+    search: Optional[str] = Query(None, description="Hammadde adı, ticari kod veya CAS no arama terimi")
+):
+    """
+    Hammadde kütüphanesindeki kimyasal maddeleri (Aseton, Toluen vb.) döner.
+    """
+    return reference_service.get_all_raw_materials(search=search)
+
+
+@router.get(
+    "/raw-materials/{id_or_cas}",
+    summary="Hammadde Detayı"
+)
+def get_raw_material_by_id(id_or_cas: str):
+    """
+    Belirli bir hammaddenin tüm teknik ve mevzuat özelliklerini getirir.
+    """
+    item = reference_service.get_raw_material_by_id(id_or_cas)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"'{id_or_cas}' kimlikli hammadde bulunamadı."
+        )
+    return item
+
+

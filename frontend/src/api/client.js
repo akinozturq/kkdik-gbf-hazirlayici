@@ -220,6 +220,18 @@ export const api = {
     request(`/products/${id}/auto-fill-exposure-limits?save_to_sds=${saveToSds}`, {
       method: 'POST',
     }),
+
+  // ==========================================
+  // HAMMADDE KÜTÜPHANESİ (RAW MATERIALS)
+  // ==========================================
+  getRawMaterials: (search = null) => {
+    const query = new URLSearchParams();
+    if (search) query.set('search', search);
+    return request(`/references/raw-materials?${query.toString()}`);
+  },
+
+  getRawMaterialById: (idOrCas) => request(`/references/raw-materials/${idOrCas}`),
 };
+
 
 

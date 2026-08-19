@@ -18,6 +18,7 @@ class ReferenceService:
         self._p_statements: Dict[str, Dict[str, Any]] = {}
         self._pictograms: Dict[str, Dict[str, Any]] = {}
         self._exposure_limits: List[Dict[str, Any]] = []
+        self._raw_materials: List[Dict[str, Any]] = []
         self._load_data()
 
     def _load_data(self):
@@ -25,6 +26,7 @@ class ReferenceService:
         p_path = os.path.join(DATA_DIR, "p_statements.json")
         pic_path = os.path.join(DATA_DIR, "pictograms.json")
         exp_path = os.path.join(DATA_DIR, "exposure_limits.json")
+        raw_path = os.path.join(DATA_DIR, "raw_materials.json")
 
         if os.path.exists(h_path):
             with open(h_path, "r", encoding="utf-8") as f:
@@ -41,6 +43,10 @@ class ReferenceService:
         if os.path.exists(exp_path):
             with open(exp_path, "r", encoding="utf-8") as f:
                 self._exposure_limits = json.load(f)
+
+        if os.path.exists(raw_path):
+            with open(raw_path, "r", encoding="utf-8") as f:
+                self._raw_materials = json.load(f)
 
     def get_all_h_statements(self, category: Optional[str] = None, search: Optional[str] = None) -> List[HStatementItem]:
         results = []
@@ -306,6 +312,36 @@ class ReferenceService:
             else:
                 formatted.append(f"{code_upper}: [Metin sözlükte tanımlı değil]")
         return formatted
+
+    def get_all_raw_materials(self, search: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Hammadde Kütüphanesindeki kimyasal maddeleri döner.
+        """
+        if not search:
+            return self._raw_materials
+
+        query = search.lower().strip()
+        matched = []
+        for item in self._raw_materials:
+            if (
+                query in item.get("ad", "").lower()
+                or query in item.get("ticari_ad", "").lower()
+                or query in item.get("cas_no", "").lower()
+                or query in item.get("ec_no", "").lower()
+                or query in item.get("kategori", "").lower()
+            ):
+                matched.append(item)
+        return matched
+
+    def get_raw_material_by_id(self, id_or_cas: str) -> Optional[Dict[str, Any]]:
+        """
+        ID veya CAS numarasına göre hammadde detayını döner.
+        """
+        clean = id_or_cas.strip().lower()
+        for item in self._raw_materials:
+            if item.get("id", "").lower() == clean or item.get("cas_no", "").lower() == clean:
+                return item
+        return None
 
 
 reference_service = ReferenceService()

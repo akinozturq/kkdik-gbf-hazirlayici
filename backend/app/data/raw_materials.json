@@ -1,0 +1,111 @@
+[
+  {
+    "id": "raw-aseton",
+    "ad": "Aseton",
+    "ticari_ad": "Aseton (Dimetil keton)",
+    "iupac_adi": "Propan-2-on",
+    "cas_no": "67-64-1",
+    "ec_no": "200-662-2",
+    "kayit_no": "01-2119471330-49-XXXX",
+    "molekul_formulu": "C3H6O",
+    "molekul_agirligi": "58.08 g/mol",
+    "kategori": "Solventler / Ketonlar",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik koku)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, STOT SE 3 H336, EUH066",
+    "h_kodlari": ["H225", "H319", "H336", "EUH066"],
+    "piktogramlar": ["GHS02", "GHS07"],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "500",
+      "twa_mg_m3": "1210",
+      "stel_ppm": "",
+      "stel_mg_m3": "",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "-20 °C (Kapalı kap)",
+      "kaynama_noktasi": "56.05 °C",
+      "erime_noktasi": "-94.7 °C",
+      "yogunluk": "0.791 g/cm³ (20 °C)",
+      "buhar_basinci": "24.5 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%2.5 - %12.8 (Hacimce)",
+      "kendiliginden_tutusma": "465 °C",
+      "cozunurluk": "Suda tamamen karışır (20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "5800 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 15800 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "76 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Ciddi göz tahrişine yol açar (Kategori 2). Tekrarlı maruz kalmada ciltte kuruluğa veya çatlaklara yol açabilir (EUH066).",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
+    },
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 5540 mg/L (Oncorhynchus mykiss)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 8800 mg/L (Daphnia magna)",
+      "biyobirikim": "Biyobirikim potansiyeli düşüktür (log Kow = -0.24)",
+      "kalicilik": "Kolay biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1090",
+      "uygun_tasima_adi": "ASETON",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG II (Orta derecede tehlike)"
+    }
+  },
+  {
+    "id": "raw-toluen",
+    "ad": "Toluen",
+    "ticari_ad": "Toluen (Metilbenzen / Toluol)",
+    "iupac_adi": "Metilbenzen",
+    "cas_no": "108-88-3",
+    "ec_no": "203-625-9",
+    "kayit_no": "01-2119471310-51-XXXX",
+    "molekul_formulu": "C7H8",
+    "molekul_agirligi": "92.14 g/mol",
+    "kategori": "Solventler / Aromatik Hidrokarbonlar",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik aromatik koku)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Skin Irrit. 2 H315, Repr. 2 H361d, STOT SE 3 H336, STOT RE 2 H373, Asp. Tox. 1 H304",
+    "h_kodlari": ["H225", "H304", "H315", "H336", "H361d", "H373"],
+    "piktogramlar": ["GHS02", "GHS07", "GHS08"],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "50",
+      "twa_mg_m3": "192",
+      "stel_ppm": "100",
+      "stel_mg_m3": "384",
+      "notes": "Deri"
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "4 °C (Kapalı kap)",
+      "kaynama_noktasi": "110.6 °C",
+      "erime_noktasi": "-95 °C",
+      "yogunluk": "0.867 g/cm³ (20 °C)",
+      "buhar_basinci": "2.9 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%1.1 - %7.1 (Hacimce)",
+      "kendiliginden_tutusma": "480 °C",
+      "cozunurluk": "Suda pratik olarak çözünmez (0.5 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "5580 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 5000 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "28.1 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Cilt tahrişine yol açar (Kategori 2, H315).",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336).",
+      "stot_re": "Uzun süreli veya tekrarlı maruz kalma sonucu merkezi sinir sistemine zarar verebilir (STOT RE 2, H373).",
+      "cmr": "Doğmamış çocukta hasara yol açma şüphesi var (Repr. 2, H361d).",
+      "aspirasyon": "Solunum yoluna nüfuzu ve yutulması halinde öldürücüdür (Asp. Tox. 1, H304)."
+    },
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 5.5 mg/L (Oncorhynchus kisutch)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 3.78 mg/L (Ceriodaphnia dubia)",
+      "biyobirikim": "Düşük / orta biyobirikim potansiyeli (log Kow = 2.73, BCF = 90)",
+      "kalicilik": "Biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1294",
+      "uygun_tasima_adi": "TOLUEN",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG II (Orta derecede tehlike)"
+    }
+  }
+]

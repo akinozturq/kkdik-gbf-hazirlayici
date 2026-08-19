@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import FieldHelper from '../../Common/FieldHelper';
 import HazardCalculationModal from '../HazardCalculationModal';
-import { Plus, Trash2, Layers, Atom, Calculator } from 'lucide-react';
+import RawMaterialPickerModal from '../../Common/RawMaterialPickerModal';
+import { Plus, Trash2, Layers, Atom, Calculator, Package } from 'lucide-react';
 
 export default function Step3_Bilesim() {
   const { sdsData, updateSdsField } = useApp();
   const [isHazardModalOpen, setIsHazardModalOpen] = useState(false);
+  const [isRawPickerOpen, setIsRawPickerOpen] = useState(false);
 
   const b3 = sdsData?.b3_bilesim || {};
   const tip = b3.tip || 'karisim';
@@ -19,7 +21,7 @@ export default function Step3_Bilesim() {
     updateSdsField(['b3_bilesim', 'tip'], newTip);
   };
 
-  // Add Component Row
+  // Add Component Row manually
   const addComponentRow = () => {
     const updated = [
       ...bilesenler,
@@ -46,6 +48,20 @@ export default function Step3_Bilesim() {
     const updated = [...bilesenler];
     updated[index] = { ...updated[index], [field]: value };
     updateSdsField(['b3_bilesim', 'karisim', 'bilesenler'], updated);
+  };
+
+  // Select Raw Material from library
+  const handleSelectRawMaterial = (mat) => {
+    const newComponent = {
+      ad: mat.ad,
+      cas_no: mat.cas_no,
+      ec_no: mat.ec_no,
+      kayit_no: mat.kayit_no,
+      konsantrasyon: '',
+      siniflandirma: mat.siniflandirma_str,
+    };
+    updateSdsField(['b3_bilesim', 'karisim', 'bilesenler'], [...bilesenler, newComponent]);
+    setIsRawPickerOpen(false);
   };
 
   return (
@@ -217,9 +233,9 @@ export default function Step3_Bilesim() {
       {/* 3.2 Karışım Formu */}
       {tip === 'karisim' && (
         <div style={{ marginTop: '24px' }}>
-          <div className="section-group-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="section-group-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
             <span>3.2. Karışımı Oluşturan Tehlikeli Bileşenler</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
@@ -237,9 +253,19 @@ export default function Step3_Bilesim() {
                 ⚡ Bu Karışımla Bölüm 2'yi Hesapla
               </button>
 
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setIsRawPickerOpen(true)}
+                style={{ borderColor: '#0284c7', color: '#0284c7', fontWeight: 600 }}
+              >
+                <Package size={14} />
+                📦 Hammadde Kütüphanesinden Ekle
+              </button>
+
               <button type="button" className="btn btn-outline btn-sm" onClick={addComponentRow}>
                 <Plus size={14} />
-                Bileşen Satırı Ekle
+                Manuel Satır Ekle
               </button>
             </div>
           </div>
@@ -264,7 +290,7 @@ export default function Step3_Bilesim() {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="ör. Ksilen"
+                        placeholder="ör. Ksilen / Aseton"
                         value={row.ad || ''}
                         onChange={(e) => updateComponentField(idx, 'ad', e.target.value)}
                       />
@@ -328,7 +354,7 @@ export default function Step3_Bilesim() {
                 {bilesenler.length === 0 && (
                   <tr>
                     <td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
-                      Henüz bileşen eklenmedi. Yukarıdaki "Bileşen Satırı Ekle" butonuna tıklayınız.
+                      Henüz bileşen eklenmedi. Yukarıdaki <b>"📦 Hammadde Kütüphanesinden Ekle"</b> butonuna tıklayarak Aseton veya Toluen'i tek tıkla ekleyebilirsiniz.
                     </td>
                   </tr>
                 )}
@@ -345,6 +371,13 @@ export default function Step3_Bilesim() {
           <HazardCalculationModal
             isOpen={isHazardModalOpen}
             onClose={() => setIsHazardModalOpen(false)}
+          />
+
+          {/* Hammadde Kütüphanesi Seçici Modalı */}
+          <RawMaterialPickerModal
+            isOpen={isRawPickerOpen}
+            onClose={() => setIsRawPickerOpen(false)}
+            onSelect={handleSelectRawMaterial}
           />
         </div>
       )}
