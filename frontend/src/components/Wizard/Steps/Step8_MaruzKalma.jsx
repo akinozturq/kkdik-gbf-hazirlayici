@@ -135,11 +135,10 @@ export default function Step8_MaruzKalma() {
         <table className="custom-table">
           <thead>
             <tr>
-              <th style={{ width: '28%' }}>Madde / Bileşen</th>
-              <th style={{ width: '36%' }}>Sınır Değeri (TWA / STEL / Not)</th>
-              <th style={{ width: '12%' }}>Birim</th>
+              <th style={{ width: '35%' }}>Madde / Bileşen</th>
+              <th style={{ width: '40%' }}>Mesleki Maruziyet Sınır Değeri (TWA / STEL / Not)</th>
               <th style={{ width: '20%' }}>Yasal Dayanak / Standart</th>
-              <th style={{ width: '4%', textAlign: 'center' }}>Sil</th>
+              <th style={{ width: '5%', textAlign: 'center' }}>Sil</th>
             </tr>
           </thead>
           <tbody>
@@ -167,15 +166,6 @@ export default function Step8_MaruzKalma() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="mg/m³ / ppm"
-                    value={row.birim || ''}
-                    onChange={(e) => updateExposureRow(idx, 'birim', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="form-control"
                     placeholder="Kimyasal Maddelerle Çalışmalarda Sağlık ve Güvenlik Önlemleri Hakkında Yönetmelik"
                     value={row.yasal_dayanak || ''}
                     onChange={(e) => updateExposureRow(idx, 'yasal_dayanak', e.target.value)}
@@ -194,7 +184,7 @@ export default function Step8_MaruzKalma() {
             ))}
             {b8_1.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
+                <td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
                   Henüz sınır değer girilmedi. Yukarıdaki <b>"⚡ Bölüm 3.2 Karışımından Otomatik Getir"</b> butonuna basarak formülasyondaki solvent ve kimyasalların sınır değerlerini tek tıkla çekebilirsiniz.
                 </td>
               </tr>

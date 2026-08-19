@@ -408,9 +408,9 @@ class DocxExportService:
 
         cls._add_subsection_title(doc, "8.1. Kontrol Parametreleri")
         if b8_1:
-            tbl = doc.add_table(rows=len(b8_1)+1, cols=4)
+            tbl = doc.add_table(rows=len(b8_1)+1, cols=3)
             tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
-            headers = ["Madde / Bileşen", "Sınır Değeri", "Birim", "Yasal Dayanak"]
+            headers = ["Madde / Bileşen", "Mesleki Maruziyet Sınır Değeri", "Yasal Dayanak"]
             for i, h in enumerate(headers):
                 cell = tbl.cell(0, i)
                 set_cell_borders(cell, color="444444", sz="4")
@@ -424,7 +424,7 @@ class DocxExportService:
 
             for r_idx, exp in enumerate(b8_1, start=1):
                 row = tbl.rows[r_idx]
-                vals = [exp.get("madde", ""), exp.get("sinir_degeri", ""), exp.get("birim", ""), exp.get("yasal_dayanak", "")]
+                vals = [exp.get("madde", ""), exp.get("sinir_degeri", ""), exp.get("yasal_dayanak", "")]
                 for c_idx, val in enumerate(vals):
                     c = row.cells[c_idx]
                     set_cell_borders(c, color="444444", sz="4")
