@@ -135,21 +135,32 @@ class ProductService:
             items=items
         )
 
-    def update_product(self, db: Session, product_id: int, product_in: ProductUpdate) -> Optional[Product]:
+    def update_product(self, db: Session, product_id: int, product_in: Any) -> Optional[Product]:
         product = self.get_product(db, product_id)
         if not product:
             return None
 
-        if product_in.urun_adi is not None:
-            product.urun_adi = product_in.urun_adi.strip()
-        if product_in.ticari_kod is not None:
-            product.ticari_kod = product_in.ticari_kod.strip()
-        if product_in.kategori is not None:
-            product.kategori = product_in.kategori.strip()
+        if isinstance(product_in, dict):
+            urun_adi = product_in.get("urun_adi")
+            ticari_kod = product_in.get("ticari_kod")
+            kategori = product_in.get("kategori")
+            sds_data = product_in.get("sds_data")
+        else:
+            urun_adi = product_in.urun_adi
+            ticari_kod = product_in.ticari_kod
+            kategori = product_in.kategori
+            sds_data = product_in.sds_data
 
-        if product_in.sds_data is not None:
+        if urun_adi is not None:
+            product.urun_adi = urun_adi.strip()
+        if ticari_kod is not None:
+            product.ticari_kod = ticari_kod.strip()
+        if kategori is not None:
+            product.kategori = kategori.strip()
+
+        if sds_data is not None:
             current_sds = dict(product.sds_data or {})
-            updated_sds = _deep_merge_dict(current_sds, product_in.sds_data)
+            updated_sds = _deep_merge_dict(current_sds, sds_data)
             product.sds_data = updated_sds
             flag_modified(product, "sds_data")
 

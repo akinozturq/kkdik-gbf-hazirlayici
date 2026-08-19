@@ -4,6 +4,7 @@
 
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
+import copy
 import urllib.parse
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -389,7 +390,7 @@ def apply_calculated_hazards(product_id: int, db: Session = Depends(get_db)):
             detail=f"{product_id} numaralı ürün bulunamadı."
         )
 
-    sds = product.sds_data or {}
+    sds = copy.deepcopy(product.sds_data or {})
     bilesenler = sds.get("b3_bilesim", {}).get("karisim", {}).get("bilesenler", [])
 
     b9 = sds.get("b9_fiziksel_kimyasal_ozellikler", {}).get("b9_1", {})
@@ -419,7 +420,20 @@ def apply_calculated_hazards(product_id: int, db: Session = Depends(get_db)):
     sds["b2_zarar_tanimi"]["b2_2"]["p_ifadeleri"] = result["p_ifadeleri"]
 
     updated = product_service.update_product(db, product_id, {"sds_data": sds})
-    return {"status": "success", "product": updated, "calculation_result": result}
+    val_res = validator_service.validate_sds(updated.sds_data or {})
+
+    product_dict = {
+        "id": updated.id,
+        "urun_adi": updated.urun_adi,
+        "ticari_kod": updated.ticari_kod,
+        "kategori": updated.kategori,
+        "sds_data": updated.sds_data,
+        "olusturma_tarihi": updated.olusturma_tarihi.isoformat() if updated.olusturma_tarihi else None,
+        "son_guncelleme": updated.son_guncelleme.isoformat() if updated.son_guncelleme else None,
+        "tamamlanma_yuzdesi": val_res.overall_completion_percentage
+    }
+
+    return {"status": "success", "product": product_dict, "calculation_result": result}
 
 
 @router.post(

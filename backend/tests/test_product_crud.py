@@ -195,3 +195,36 @@ def test_validate_raw_sds_endpoint(client, sample_valid_sds_dict):
     data = res.json()
     assert data["is_valid_for_export"] is True
     assert data["total_errors"] == 0
+
+
+def test_calculate_and_apply_hazards_api(client, sample_valid_sds_dict):
+    """Zararlılık hesaplama ve Bölüm 2'ye aktarma API testi"""
+    create_res = client.post("/api/products", json={
+        "urun_adi": "Karışım Hesaplama Test Ürünü",
+        "ticari_kod": "CALC-01",
+        "sds_data": sample_valid_sds_dict
+    })
+    product_id = create_res.json()["id"]
+
+    # 1. Calculate endpoint
+    calc_res = client.post(f"/api/products/{product_id}/calculate-hazards")
+    assert calc_res.status_code == 200
+    calc_data = calc_res.json()
+    assert "h_ifadeleri" in calc_data
+    assert "p_ifadeleri" in calc_data
+    assert "uyari_kelimesi" in calc_data
+
+    # 2. Apply endpoint
+    apply_res = client.post(f"/api/products/{product_id}/apply-calculated-hazards")
+    assert apply_res.status_code == 200
+    apply_data = apply_res.json()
+    assert apply_data["status"] == "success"
+    assert "product" in apply_data
+    assert apply_data["product"]["id"] == product_id
+
+    # Verify SDS was updated in database
+    product_res = client.get(f"/api/products/{product_id}")
+    b2 = product_res.json()["sds_data"]["b2_zarar_tanimi"]
+    assert b2["b2_2"]["uyari_kelimesi"] == calc_data["uyari_kelimesi"]
+    assert len(b2["b2_2"]["h_ifadeleri"]) > 0
+
