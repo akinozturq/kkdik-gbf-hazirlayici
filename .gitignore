@@ -1,3 +1,9 @@
+# Root reference documents & specifications
+/*.pdf
+/*.docx
+/*.md
+!/README.md
+
 # Dependencies
 node_modules/
 frontend/node_modules/
@@ -32,7 +38,6 @@ scratch_*.py
 temp_*
 *.tmp
 agy --*.txt
-*.sqlite
 
 # OS files
 .DS_Store
