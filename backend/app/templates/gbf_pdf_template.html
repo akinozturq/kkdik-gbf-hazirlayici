@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ product.urun_adi }} - Güvenlik Bilgi Formu (GBF)</title>
+  <style>
+    @page {
+      size: a4 portrait;
+      @frame header_frame {
+        -pdf-frame-content: header_content;
+        left: 32pt; width: 531pt; top: 20pt; height: 68pt;
+      }
+      @frame content_frame {
+        left: 32pt; width: 531pt; top: 92pt; height: 686pt;
+      }
+      @frame footer_frame {
+        -pdf-frame-content: footer_content;
+        left: 32pt; width: 531pt; top: 785pt; height: 42pt;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: GoogleSans, sans-serif;
+    }
+
+    body {
+      font-family: GoogleSans, sans-serif;
+      font-size: 10pt;
+      color: #000000;
+      line-height: 1.35;
+      background: none;
+    }
+
+    /* Fixed Header Table */
+    .header-tbl {
+      width: 100%;
+      border-bottom: 1.2pt solid #000000;
+      padding-bottom: 3pt;
+      background: none;
+    }
+    .header-tbl td {
+      vertical-align: middle;
+      border: none;
+      padding: 1pt 2pt;
+      background: none;
+    }
+
+    .doc-title {
+      font-family: GoogleSans-Bold, GoogleSans, sans-serif;
+      font-size: 12pt;
+      font-weight: bold;
+      color: #000000;
+      letter-spacing: 0.5pt;
+    }
+    .doc-subtitle {
+      font-size: 7pt;
+      color: #333333;
+      line-height: 1.2;
+      margin-top: 2pt;
+    }
+
+    .meta-box {
+      font-size: 7.5pt;
+      background: none;
+      border: 0.6pt solid #333333;
+      padding: 2pt 4pt;
+      text-align: right;
+    }
+    .meta-box b {
+      font-family: GoogleSans-Bold, GoogleSans, sans-serif;
+      font-weight: bold;
+      color: #000000;
+    }
+
+    /* Fixed Footer Table */
+    .footer-tbl {
+      width: 100%;
+      border-top: 0.8pt solid #333333;
+      padding-top: 2pt;
+      font-size: 7.5pt;
+      color: #333333;
+      text-align: center;
+      background: none;
+    }
+    .footer-tbl td {
+      vertical-align: middle;
+      border: none;
+      padding: 0;
+      text-align: center;
+      background: none;
+    }
+
+    /* Main Headings (1-16) - 12pt Bold */
+    .section-banner {
+      background: none !important;
+      color: #000000;
+      font-family: GoogleSans-Bold, GoogleSans, sans-serif;
+      font-weight: bold;
+      font-size: 12pt;
+      padding: 6pt 0 2pt 0;
+      border-bottom: 1pt solid #000000;
+      margin-top: 10pt;
+      margin-bottom: 5pt;
+    }
+
+    /* Subsections (1.1, 1.2, ...) - 11pt Bold */
+    .subsection-title {
+      background: none !important;
+      font-family: GoogleSans-Bold, GoogleSans, sans-serif;
+      font-weight: bold;
+      font-size: 11pt;
+      color: #000000;
+      margin-top: 6pt;
+      margin-bottom: 3pt;
+    }
+
+    /* Regular Body Text / Key-Value Lines - 10pt */
+    .kv-line {
+      font-size: 10pt;
+      line-height: 1.35;
+      margin-bottom: 2.5pt;
+      color: #000000;
+    }
+    .kv-title {
+      font-family: GoogleSans-Bold, GoogleSans, sans-serif;
+      font-weight: bold;
+      font-size: 10pt;
+      color: #000000;
+    }
+    .kv-text {
+      font-family: GoogleSans, sans-serif;
+      font-size: 10pt;
+      color: #111111;
+    }
+
+    /* Specific Tables (3.2 and 8.1) - Header 10pt Bold, Content 8pt Regular */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4pt;
+      margin-bottom: 6pt;
+      background: none;
+    }
+
+    table.data-table th {
+      background: none !important;
+      background-color: transparent !important;
+      color: #000000;
+      font-family: GoogleSans-Bold, GoogleSans, sans-serif;
+      font-weight: bold;
+      text-align: left;
+      padding: 3.5pt 5pt;
+      border: 0.8pt solid #333333;
+      font-size: 10pt;
+    }
+
+    table.data-table td {
+      background: none !important;
+      background-color: transparent !important;
+      padding: 3pt 5pt;
+      border: 0.8pt solid #333333;
+      vertical-align: top;
+      font-size: 8pt;
+      color: #000000;
+      line-height: 1.25;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- RUNNING HEADER CONTENT -->
+  <div id="header_content">
+    <table class="header-tbl">
+      <tr>
+        <td style="width: 25%; text-align: left;">
+          {% if logo_header %}
+          <img src="data:image/png;base64,{{ logo_header }}" style="height: 32pt; width: 96pt;" alt="Logo" />
+          {% else %}
+          <div style="font-family: GoogleSans-Bold; font-weight: bold; font-size: 11pt; color: #000000;">AYPOL - POLCHEM</div>
+          {% endif %}
+        </td>
+        <td style="width: 50%; text-align: center;">
+          <div class="doc-title">GÜVENLİK BİLGİ FORMU</div>
+          <div class="doc-subtitle">
+            23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete KKDİK Yönetmeliği uyarınca hazırlanmıştır.
+          </div>
+        </td>
+        <td style="width: 25%;">
+          <div class="meta-box">
+            <div><b>Hazırlama:</b> {{ sds.meta.hazirlama_tarihi or '01.01.2026' }}</div>
+            <div><b>Revizyon No:</b> {{ sds.meta.revizyon_no or '00' }}</div>
+            <div><b>Rev. Tarihi:</b> {{ sds.meta.revizyon_tarihi or sds.meta.hazirlama_tarihi or '01.01.2026' }}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- RUNNING FOOTER CONTENT -->
+  <div id="footer_content">
+    <table class="footer-tbl">
+      <tr>
+        <td style="width: 28%; text-align: left;">
+          <b>POLCHEM</b> | www.polchem.com.tr
+        </td>
+        <td style="width: 28%; text-align: center;">
+          <b>AYPOL</b> | www.aypol.com.tr
+        </td>
+        <td style="width: 28%; text-align: center;">
+          <b>GÖKAY</b> | www.gokayboya.com.tr
+        </td>
+        <td style="width: 16%; text-align: right; font-family: GoogleSans-Bold; font-weight: bold; font-size: 7.5pt; color: #000000;">
+          Sayfa <pdf:pageNumber/> / <pdf:pageCount/>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 16 SECTIONS BODY -->
+
+  <!-- 1. BÖLÜM -->
+  <div class="section-banner">1. MADDENİN / KARIŞIMIN VE ŞİRKETİN / DAĞITICININ KİMLİĞİ</div>
+  <div class="subsection-title">1.1. Madde / Karışım Kimliği</div>
+  <div class="kv-line"><span class="kv-title">Madde / Karışım Adı:</span> <span class="kv-text">{{ sds.b1_kimlik.b1_1.madde_karisim_adi or product.urun_adi }}</span></div>
+  <div class="kv-line"><span class="kv-title">Ticari Kod / Stok Kodu:</span> <span class="kv-text">{{ product.ticari_kod }}</span></div>
+  <div class="kv-line"><span class="kv-title">Kayıt Numarası:</span> <span class="kv-text">{{ sds.b1_kimlik.b1_1.kayit_numarasi or 'Kayıttan muaftır / Uygulanabilir değildir.' }}</span></div>
+
+  <div class="subsection-title">1.2. Madde veya Karışımın Belirlenmiş Kullanımları ve Tavsiye Edilmeyen Kullanımları</div>
+  <div class="kv-line"><span class="kv-title">Belirlenmiş Kullanımlar:</span> <span class="kv-text">{{ (sds.b1_kimlik.b1_2.tanimlanmis_kullanimlar or []) | join(', ') or 'Sanayi / Endüstriyel kullanım' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Tavsiye Edilmeyen Kullanımlar:</span> <span class="kv-text">{{ (sds.b1_kimlik.b1_2.tavsiye_edilmeyen_kullanimlar or []) | join(', ') or 'Tavsiye edilen kullanımların dışında kullanılmamalıdır.' }}</span></div>
+
+  <div class="subsection-title">1.3. Güvenlik Bilgi Formu Tedarikçisinin Bilgileri</div>
+  <div class="kv-line"><span class="kv-title">Tedarikçi / İmalatçı Adı:</span> <span class="kv-text">{{ sds.b1_kimlik.b1_3.tedarikci_adi or 'Aypol Kimya Sanayi ve Ticaret A.Ş.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Adres:</span> <span class="kv-text">{{ sds.b1_kimlik.b1_3.adres or 'İstanbul / Türkiye' }}</span></div>
+  <div class="kv-line"><span class="kv-title">İletişim:</span> <span class="kv-text">Tel: {{ sds.b1_kimlik.b1_3.telefon or '—' }} | E-Posta: {{ sds.b1_kimlik.b1_3.eposta or '—' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Yetkili Kişi (KDU):</span> <span class="kv-text">{{ sds.b1_kimlik.b1_3.yetkili_kisi or '—' }}</span></div>
+
+  <div class="subsection-title">1.4. Acil Durum Telefon Numarası</div>
+  <div class="kv-line"><span class="kv-title">Acil Durum Telefonu:</span> <span class="kv-text">{{ sds.b1_kimlik.b1_4.acil_telefon or '114 (UZEM - Ulusal Zehir Danışma Merkezi)' }}</span></div>
+
+  <!-- 2. BÖLÜM -->
+  <div class="section-banner">2. ZARARLILIK TANIMI</div>
+  <div class="subsection-title">2.1. Maddenin veya Karışımın Sınıflandırılması</div>
+  {% if sds.b2_zarar_tanimi.b2_1.siniflandirmalar and sds.b2_zarar_tanimi.b2_1.siniflandirmalar | length > 0 %}
+    {% for s in sds.b2_zarar_tanimi.b2_1.siniflandirmalar %}
+    <div class="kv-line">• <span class="kv-title">{{ s.zararlilik_sinifi }} ({{ s.kategori }}):</span> <span class="kv-text">{{ s.h_kodu }}</span></div>
+    {% endfor %}
+  {% else %}
+    <div class="kv-line"><span class="kv-text">{{ sds.b2_zarar_tanimi.b2_1.siniflandirilmama_gerekcesi or 'SEA Yönetmeliği kriterlerine göre zararlı olarak sınıflandırılmamıştır.' }}</span></div>
+  {% endif %}
+
+  <div class="subsection-title">2.2. Etiket Unsurları</div>
+  <div class="kv-line" style="margin-top: 3pt; margin-bottom: 5pt;">
+    <span class="kv-title">Piktogramlar:</span>
+    {% if pictogram_images and pictogram_images | length > 0 %}
+      <div style="margin-top: 4pt; margin-bottom: 4pt;">
+        {% for pic in pictogram_images %}
+          <img src="{{ pic.src }}" style="width: 46pt; height: 46pt; margin-right: 8pt; vertical-align: middle;" />
+        {% endfor %}
+      </div>
+    {% else %}
+      <span class="kv-text">{{ (sds.b2_zarar_tanimi.b2_2.piktogramlar or []) | join(', ') or 'GHS Piktogramı Yok' }}</span>
+    {% endif %}
+  </div>
+  <div class="kv-line"><span class="kv-title">Uyarı Kelimesi:</span> <span class="kv-text">{{ sds.b2_zarar_tanimi.b2_2.uyari_kelimesi or 'Yok' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Zararlılık İfadeleri (H):</span> <span class="kv-text">{{ (sds.b2_zarar_tanimi.b2_2.h_ifadeleri or []) | join(', ') or '—' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Önlem İfadeleri (P):</span> <span class="kv-text">{{ (sds.b2_zarar_tanimi.b2_2.p_ifadeleri or []) | join(', ') or '—' }}</span></div>
+
+  <div class="subsection-title">2.3. Diğer Zararlar</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b2_zarar_tanimi.b2_3.pbt_vpvb_degerlendirme or 'PBT/vPvB kriterlerini karşılamaz.' }}</span></div>
+
+  <!-- 3. BÖLÜM -->
+  <div class="section-banner">3. BİLEŞİMİ / İÇİNDEKİLER HAKKINDA BİLGİ</div>
+  {% if sds.b3_bilesim.tip == 'madde' %}
+  <div class="subsection-title">3.1. Maddeler</div>
+  <div class="kv-line"><span class="kv-title">Kimyasal Kimliği:</span> <span class="kv-text">{{ sds.b3_bilesim.madde.kimyasal_kimlik or '—' }}</span></div>
+  <div class="kv-line"><span class="kv-title">CAS & EC No:</span> <span class="kv-text">CAS: {{ sds.b3_bilesim.madde.cas_no or '—' }} | EC: {{ sds.b3_bilesim.madde.ec_no or '—' }}</span></div>
+  {% else %}
+  <div class="subsection-title">3.2. Karışımlar</div>
+  {% if sds.b3_bilesim.karisim.bilesenler and sds.b3_bilesim.karisim.bilesenler | length > 0 %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Bileşen Adı</th>
+        <th style="width: 15%;">CAS No</th>
+        <th style="width: 15%;">EC No</th>
+        <th style="width: 15%;">Kayıt No</th>
+        <th style="width: 12%;">Konsantrasyon</th>
+        <th style="width: 18%;">Sınıflandırma</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in sds.b3_bilesim.karisim.bilesenler %}
+      <tr>
+        <td>{{ b.ad }}</td>
+        <td>{{ b.cas_no or '—' }}</td>
+        <td>{{ b.ec_no or '—' }}</td>
+        <td>{{ b.kayit_no or '—' }}</td>
+        <td>{{ b.konsantrasyon or '—' }}</td>
+        <td>{{ b.siniflandirma or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="kv-line"><span class="kv-text">Zararlı sınır değerini aşan bileşen bildirilmemiştir.</span></div>
+  {% endif %}
+  {% endif %}
+
+  <!-- 4. BÖLÜM -->
+  <div class="section-banner">4. İLK YARDIM ÖNLEMLERİ</div>
+  <div class="subsection-title">4.1. İlk Yardım Önlemlerinin Açıklanması</div>
+  <div class="kv-line"><span class="kv-title">Solunması Halinde:</span> <span class="kv-text">{{ sds.b4_ilk_yardim.b4_1.soluma or 'Kazazedeyi temiz havaya çıkarın.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Cilt ile Teması Halinde:</span> <span class="kv-text">{{ sds.b4_ilk_yardim.b4_1.cilt_temasi or 'Bol su ve sabunla yıkayınız.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Göz ile Teması Halinde:</span> <span class="kv-text">{{ sds.b4_ilk_yardim.b4_1.goz_temasi or 'Bol suyla en az 15 dakika yıkayınız.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Yutulması Halinde:</span> <span class="kv-text">{{ sds.b4_ilk_yardim.b4_1.yutma or 'Ağzı suyla çalkalayınız. Kusturmayınız.' }}</span></div>
+
+  <div class="subsection-title">4.2. Akut ve Sonradan Görülen En Önemli Belirtiler ve Etkiler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b4_ilk_yardim.b4_2_belirtiler_etkiler or 'Önemli belirti bildirilmemiştir.' }}</span></div>
+
+  <div class="subsection-title">4.3. Tıbbi Müdahale ve Özel Tedavi Gereği İçin İlk İşaretler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b4_ilk_yardim.b4_3_acil_tibbi_mudahale or 'Semptomatik tedavi uygulayınız.' }}</span></div>
+
+  <!-- 5. BÖLÜM -->
+  <div class="section-banner">5. YANGINLA MÜCADELE ÖNLEMLERİ</div>
+  <div class="subsection-title">5.1. Yangın Söndürücüler</div>
+  <div class="kv-line"><span class="kv-title">Uygun Yangın Söndürücüler:</span> <span class="kv-text">{{ sds.b5_yangin_mucadele.b5_1.uygun_sondurucu or 'Köpük, kuru kimyevi toz, CO2, su sisi.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Uygun Olmayan Yangın Söndürücüler:</span> <span class="kv-text">{{ sds.b5_yangin_mucadele.b5_1.uygun_olmayan_sondurucu or 'Yüksek basınçlı tam su jeti.' }}</span></div>
+
+  <div class="subsection-title">5.2. Madde veya Karışımdan Kaynaklanan Özel Zararlar</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b5_yangin_mucadele.b5_2_ozel_zararlar or 'Yanma halinde toksik karbon oksitler açığa çıkar.' }}</span></div>
+
+  <div class="subsection-title">5.3. Yangın Söndürme Ekipleri İçin Tavsiyeler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b5_yangin_mucadele.b5_3_sondurme_ekibi_tavsiyeleri or 'Tam koruyucu elbise ve solunum cihazı kullanınız.' }}</span></div>
+
+  <!-- 6. BÖLÜM -->
+  <div class="section-banner">6. KAZA SONUCU YAYILMAYA KARŞI ÖNLEMLER</div>
+  <div class="subsection-title">6.1. Kişisel Önlemler, Koruyucu Donanım ve Acil Durum Prosedürleri</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b6_kaza_sonucu_yayilma.b6_1.kisisel_onlemler_acil_olmayan or 'Alanı havalandırın. Ateş kaynaklarını uzaklaştırın.' }}</span></div>
+
+  <div class="subsection-title">6.2. Çevresel Önlemler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b6_kaza_sonucu_yayilma.b6_2_cevresel_onlemler or 'Kanalizasyon ve su yollarına karışmasını önleyiniz.' }}</span></div>
+
+  <div class="subsection-title">6.3. Muhafaza Etme ve Temizleme İçin Yöntemler ve Materyaller</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b6_kaza_sonucu_yayilma.b6_3_kontrol_temizleme_yontemleri or 'İnert emici materyal ile toplayınız.' }}</span></div>
+
+  <div class="subsection-title">6.4. Diğer Bölümlere Atıflar</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b6_kaza_sonucu_yayilma.b6_4_diger_bolumlere_atif or "Kişisel korunma için Bölüm 8'e, bertaraf için Bölüm 13'e bakınız." }}</span></div>
+
+  <!-- 7. BÖLÜM -->
+  <div class="section-banner">7. ELLEÇLEME VE DEPOLAMA</div>
+  <div class="subsection-title">7.1. Güvenli Elleçleme İçin Önlemler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b7_ellecme_depolama.b7_1_guvenli_ellecleme or 'İyi havalandırılan yerlerde kullanın. Temastan kaçının.' }}</span></div>
+
+  <div class="subsection-title">7.2. Uyuşmazlıkları da İçeren Güvenli Depolama Koşulları</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b7_ellecme_depolama.b7_2.guvenli_depolama_kosullari or 'Serin, kuru, iyi havalandırılan yerde saklayınız.' }}</span></div>
+
+  <div class="subsection-title">7.3. Belirli Son Kullanımlar</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b7_ellecme_depolama.b7_3_belirli_son_kullanimlar or "Bölüm 1.2'de belirtilen alanlar içindir." }}</span></div>
+
+  <!-- 8. BÖLÜM -->
+  <div class="section-banner">8. MARUZ KALMA KONTROLLERİ / KİŞİSEL KORUNMA</div>
+  <div class="subsection-title">8.1. Kontrol Parametreleri</div>
+  {% if sds.b8_maruz_kalma_kontrolu.b8_1_kontrol_parametreleri and sds.b8_maruz_kalma_kontrolu.b8_1_kontrol_parametreleri | length > 0 %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 30%;">Madde / Bileşen</th>
+        <th style="width: 30%;">Sınır Değeri</th>
+        <th style="width: 15%;">Birim</th>
+        <th style="width: 25%;">Yasal Dayanak</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for exp in sds.b8_maruz_kalma_kontrolu.b8_1_kontrol_parametreleri %}
+      <tr>
+        <td>{{ exp.madde }}</td>
+        <td>{{ exp.sinir_degeri }}</td>
+        <td>{{ exp.birim }}</td>
+        <td>{{ exp.yasal_dayanak }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="kv-line"><span class="kv-text">Tanımlı mesleki maruziyet sınır değeri bulunmamaktadır.</span></div>
+  {% endif %}
+
+  <div class="subsection-title">8.2. Maruz Kalma Kontrolleri</div>
+  <div class="kv-line"><span class="kv-title">Uygun Mühendislik Kontrolleri:</span> <span class="kv-text">{{ sds.b8_maruz_kalma_kontrolu.b8_2.muhendislik_kontrolleri or 'Yeterli havalandırma sağlayınız.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Göz / Yüz Koruması:</span> <span class="kv-text">{{ sds.b8_maruz_kalma_kontrolu.b8_2.kkd.goz_yuz or 'EN 166 uyumlu koruyucu gözlük.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Ellerin Korunması:</span> <span class="kv-text">{{ sds.b8_maruz_kalma_kontrolu.b8_2.kkd.cilt_el or 'EN 374 uyumlu koruyucu eldiven.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Solunum Sisteminin Korunması:</span> <span class="kv-text">{{ sds.b8_maruz_kalma_kontrolu.b8_2.kkd.solunum or 'Gerekli hallerde A tipi filtreli solunum maskesi.' }}</span></div>
+
+  <!-- 9. BÖLÜM -->
+  <div class="section-banner">9. FİZİKSEL VE KİMYASAL ÖZELLİKLER</div>
+  <div class="subsection-title">9.1. Temel Fiziksel ve Kimyasal Özellikler Hakkında Bilgi</div>
+  <div class="kv-line"><span class="kv-title">a) Görünüm (Fiziksel hal, renk):</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.gorunum or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">b) Koku:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.koku or 'Karakteristik' }}</span></div>
+  <div class="kv-line"><span class="kv-title">c) Koku Eşiği:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.koku_esigi or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">ç) pH:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.ph or 'Uygulanamaz' }}</span></div>
+  <div class="kv-line"><span class="kv-title">d) Erime / Donma Noktası:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.erime_noktasi or '—' }}</span></div>
+  <div class="kv-line"><span class="kv-title">e) İlk Kaynama Noktası ve Kaynama Aralığı:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.kaynama_noktasi or '—' }}</span></div>
+  <div class="kv-line"><span class="kv-title">f) Parlama Noktası:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.parlama_noktasi or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">g) Buharlaşma Hızı:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.buharlasma_hizi or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">ğ) Alevlenirlik (Katı, Gaz):</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.alevlenirlik or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">h) Üst / Alt Alevlenirlik veya Patlayıcı Limitleri:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.ust_alt_limitler or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">ı) Buhar Basıncı:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.buhar_basinci or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">i) Buhar Yoğunluğu:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.buhar_yogunlugu or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">j) Bağıl Yoğunluk:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.bagil_yogunluk or '—' }}</span></div>
+  <div class="kv-line"><span class="kv-title">k) Çözünürlük:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.cozunurluk or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">l) Dağılım Katsayısı (n-oktanol/su):</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.dagilim_katsayisi_log_kow or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">m) Kendiliğinden Tutuşma Sıcaklığı:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.kendiliginden_tutusma_sicakligi or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">n) Bozunma Sıcaklığı:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.bozunma_sicakligi or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">o) Akışkanlık (Viskozite):</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.akiskanlik or 'Belirlenmemiştir' }}</span></div>
+  <div class="kv-line"><span class="kv-title">ö) Patlayıcı Özellikler:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.patlayici_ozellikler or 'Patlayıcı değildir.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">p) Oksitleyici Özellikler:</span> <span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_1.oksitleyici_ozellikler or 'Oksitleyici değildir.' }}</span></div>
+
+  <div class="subsection-title">9.2. Diğer Bilgiler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b9_fiziksel_kimyasal_ozellikler.b9_2_diger_bilgiler or 'Ek bilgi bulunmamaktadır.' }}</span></div>
+
+  <!-- 10. BÖLÜM -->
+  <div class="section-banner">10. KARARLILIK VE TEPKİME</div>
+  <div class="subsection-title">10.1. Tepkime</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b10_kararlilik_tepkime.b10_1_tepkime or 'Normal koşullarda tehlikeli tepkime vermez.' }}</span></div>
+
+  <div class="subsection-title">10.2. Kimyasal Kararlılık</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b10_kararlilik_tepkime.b10_2_kimyasal_kararlilik or 'Normal depolama ve kullanım koşullarında kararlıdır.' }}</span></div>
+
+  <div class="subsection-title">10.3. Zararlı Tepkime Olasılığı</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b10_kararlilik_tepkime.b10_3_zararli_reaksiyon_olasiligi or 'Tehlikeli reaksiyon beklenmez.' }}</span></div>
+
+  <div class="subsection-title">10.4. Kaçınılması Gereken Durumlar</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b10_kararlilik_tepkime.b10_4_kacinilmasi_gereken_durumlar or 'Aşırı ısı, kıvılcım, açık alev.' }}</span></div>
+
+  <div class="subsection-title">10.5. Kaçınılması Gereken Maddeler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b10_kararlilik_tepkime.b10_5_kacinilmasi_gereken_maddeler or 'Kuvvetli asitler, bazlar ve oksitleyiciler.' }}</span></div>
+
+  <div class="subsection-title">10.6. Zararlı Bozunma Ürünleri</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b10_kararlilik_tepkime.b10_6_zararli_bozunma_urunleri or 'Normal depolamada ayrışmaz. Yangında toksik gazlar açığa çıkar.' }}</span></div>
+
+  <!-- 11. BÖLÜM -->
+  <div class="section-banner">11. TOKSİKOLOJİK BİLGİLER</div>
+  <div class="subsection-title">11.1. Toksik Etkiler Hakkında Bilgi</div>
+  <div class="kv-line"><span class="kv-title">a) Akut Toksisite:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.akut_toksisite or 'Kriterleri karşılamamaktadır.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">b) Cilt Aşınması / Tahrişi:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.cilt_asinmasi_tahrisi or 'Mevcut bilgilere göre sınıflandırılmaz.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">c) Ciddi Göz Hasarları / Tahrişi:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.goz_hasari or 'Mevcut bilgilere göre sınıflandırılmaz.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">ç) Solunum Yolları veya Cilt Hassaslaşması:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.solunum_cilt_hassasiyeti or 'Hassaslaştırıcı etkisi bildirilmemiştir.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">d) Eşey Hücre Mutajenitesi:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.mutajenite or 'Mutajenik olarak sınıflandırılmaz.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">e) Kanserojenite:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.kanserojenite or 'Kanserojen madde içermez.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">f) Üreme Toksisitesi:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.ureme_toksisitesi or 'Üreme için toksik değildir.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">g) Belirli Hedef Organ Toksisitesi (BHOT) - Tek Maruz Kalma:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.bhot_tek_maruz or 'Kriterleri karşılamaz.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">ğ) Belirli Hedef Organ Toksisitesi (BHOT) - Tekrarlı Maruz Kalma:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.bhot_tekrarli or 'Organ hasarı beklenmez.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">h) Aspirasyon Zararı:</span> <span class="kv-text">{{ sds.b11_toksikolojik.b11_1.aspirasyon_zarari or 'Aspirasyon tehlikesi oluşturmaz.' }}</span></div>
+
+  <!-- 12. BÖLÜM -->
+  <div class="section-banner">12. EKOLOJİK BİLGİLER</div>
+  <div class="subsection-title">12.1. Toksisite</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b12_ekolojik.b12_1_toksisite or 'Sucul organizmalar için zararlı olarak sınıflandırılmamıştır.' }}</span></div>
+
+  <div class="subsection-title">12.2. Kalıcılık ve Bozunabilirlik</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b12_ekolojik.b12_2_kalicilik_bozunabilirlik or 'Bileşenleri biyolojik olarak ayrışabilir.' }}</span></div>
+
+  <div class="subsection-title">12.3. Biyobirikim Potansiyeli</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b12_ekolojik.b12_3_biyobirikim or 'Biyobirikim potansiyeli düşüktür.' }}</span></div>
+
+  <div class="subsection-title">12.4. Toprakta Hareketlilik</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b12_ekolojik.b12_4_topraktaki_hareketlilik or 'Topraktaki hareketliliği çözünürlüğe bağlıdır.' }}</span></div>
+
+  <div class="subsection-title">12.5. PBT ve vPvB Değerlendirmesinin Sonuçları</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b12_ekolojik.b12_5_pbt_vpvb_sonuclari or 'PBT/vPvB kriterlerini karşılamaz.' }}</span></div>
+
+  <div class="subsection-title">12.6. Diğer Olumsuz Etkiler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b12_ekolojik.b12_6_diger_olumsuz_etkiler or 'Bilinen başka bir olumsuz etkisi yoktur.' }}</span></div>
+
+  <!-- 13. BÖLÜM -->
+  <div class="section-banner">13. BERTARAF ETME BİLGİLERİ</div>
+  <div class="subsection-title">13.1. Atık İşleme Yöntemleri</div>
+  <div class="kv-line"><span class="kv-title">Atık İşleme:</span> <span class="kv-text">{{ sds.b13_bertaraf.b13_1_atik_isleme_yontemleri or 'Ulusal mevzuata uygun olarak lisanslı atık tesislerine verilmelidir.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Ambalaj Atıkları:</span> <span class="kv-text">{{ sds.b13_bertaraf.b13_1_ambalaj_atik_isleme or 'Boş ambalajlar lisanslı geri kazanım tesislerine teslim edilmelidir.' }}</span></div>
+  <div class="kv-line"><span class="kv-title">Kanalizasyon Uyarısı:</span> <span class="kv-text">{{ sds.b13_bertaraf.b13_1_kanalizasyon_uyarisi or 'Kanalizasyona ve su kaynaklarına dökülmemelidir.' }}</span></div>
+
+  <!-- 14. BÖLÜM -->
+  <div class="section-banner">14. TAŞIMACILIK BİLGİSİ</div>
+  <div class="subsection-title">14.1. UN Numarası</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_1_un_numarasi or 'Taşımacılıkta tehlikeli madde değildir.' }}</span></div>
+
+  <div class="subsection-title">14.2. Uygun UN Taşımacılık Adı</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_2_un_tasimacilik_adi or 'Uygulanabilir değildir.' }}</span></div>
+
+  <div class="subsection-title">14.3. Taşımacılık Zararlılık Sınıf(lar)ı</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_3_tasimacilik_sinifi or '—' }}</span></div>
+
+  <div class="subsection-title">14.4. Ambalajlama Grubu</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_4_ambalajlama_grubu or '—' }}</span></div>
+
+  <div class="subsection-title">14.5. Çevresel Zararlar</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_5_cevresel_zararlar or 'Deniz Kirletici değildir.' }}</span></div>
+
+  <div class="subsection-title">14.6. Kullanıcı İçin Özel Önlemler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_6_kullanici_ozel_onlemler or 'Taşımada devrilme ve hasara karşı emniyete alınız.' }}</span></div>
+
+  <div class="subsection-title">14.7. MARPOL 73/78 Ek II ve IBC Koduna Göre Dökme Taşımacılık</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b14_tasimacilik.b14_7_marpol_ibc or 'Uygulanabilir değildir (Ambalajlı sevkiyat).' }}</span></div>
+
+  <!-- 15. BÖLÜM -->
+  <div class="section-banner">15. MEVZUAT BİLGİSİ</div>
+  <div class="subsection-title">15.1. Madde veya Karışıma Özel Güvenlik, Sağlık ve Çevre Mevzuatı</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b15_mevzuat.b15_1_ozel_mevzuat_hukumleri or 'KKDİK Yönetmeliği (RG: 30105), SEA Yönetmeliği (RG: 28848).' }}</span></div>
+
+  <div class="subsection-title">15.2. Kimyasal Güvenlik Değerlendirmesi</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b15_mevzuat.b15_2_kimyasal_guvenlik_degerlendirmesi or 'Kimyasal Güvenlik Değerlendirmesi (KGD) yapılmamıştır.' }}</span></div>
+
+  <!-- 16. BÖLÜM -->
+  <div class="section-banner">16. DİĞER BİLGİLER</div>
+  <div class="subsection-title">16.1. Değişiklikler ve Revizyon Bilgisi</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b16_diger_bilgiler.revizyon_aciklamasi or 'İlk versiyon. KKDİK Ek-2 uyumlu olarak hazırlanmıştır.' }}</span></div>
+
+  <div class="subsection-title">16.2. Kısaltmalar ve Akronimler</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b16_diger_bilgiler.kisaltmalar_anahtari or 'ADR: Tehlikeli Maddelerin Karayolu ile Taşınması; CAS: Kimyasal Kuramlar Servisi; TWA: Zaman Ağırlıklı Ortalama; STEL: Kısa Süreli Maruziyet Sınırı.' }}</span></div>
+
+  <div class="subsection-title">16.3. Önemli Literatür Referansları ve Bilgi Kaynakları</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b16_diger_bilgiler.literatur_referanslari or 'ECHA Kimyasal Veritabanı, T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı Mevzuatı.' }}</span></div>
+
+  <div class="subsection-title">16.4. Zararlılık (H) İfadelerinin Tam Metinleri</div>
+  {% for h_text in sds.b16_diger_bilgiler.tam_h_ifadeleri or [] %}
+    <div class="kv-line">• <span class="kv-text">{{ h_text }}</span></div>
+  {% else %}
+    <div class="kv-line"><span class="kv-text">H-ifadesi bulunmamaktadır.</span></div>
+  {% endfor %}
+
+  <div class="subsection-title">16.5. Eğitim Tavsiyeleri</div>
+  <div class="kv-line"><span class="kv-text">{{ sds.b16_diger_bilgiler.egitim_tavsiyeleri or 'Çalışanlar kimyasal maddelerin güvenli elleçlenmesi ve KKD kullanımı konusunda eğitilmelidir.' }}</span></div>
+
+</body>
+</html>

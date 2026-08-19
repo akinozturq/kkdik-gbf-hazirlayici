@@ -1,0 +1,56 @@
+{
+  "GHS01": {
+    "code": "GHS01",
+    "name": "Patlayıcı",
+    "symbol": "Patlayan Bomba",
+    "description": "Kararsız patlayıcılar, Kendiliğinden tepkimeye giren maddeler, Organik peroksitler"
+  },
+  "GHS02": {
+    "code": "GHS02",
+    "name": "Alevlenir",
+    "symbol": "Alev",
+    "description": "Alevlenir gazlar, sıvılar, katılar, kendiliğinden tutuşan maddeler"
+  },
+  "GHS03": {
+    "code": "GHS03",
+    "name": "Oksitleyici",
+    "symbol": "Daire üzerinde alev",
+    "description": "Oksitleyici gazlar, sıvılar, katılar"
+  },
+  "GHS04": {
+    "code": "GHS04",
+    "name": "Basınç Altındaki Gazlar",
+    "symbol": "Gaz tüpü",
+    "description": "Sıkıştırılmış, sıvılaştırılmış, çözünmüş gazlar"
+  },
+  "GHS05": {
+    "code": "GHS05",
+    "name": "Aşındırıcı (Korozif)",
+    "symbol": "Aşınma",
+    "description": "Cilt aşınması, Ciddi göz hasarı, Metalleri aşındırıcı"
+  },
+  "GHS06": {
+    "code": "GHS06",
+    "name": "Akut Toksisite (Ölümcül)",
+    "symbol": "Kuru kafa ve çapraz kemikler",
+    "description": "Akut toksisite (Ağız, Cilt, Solunum Kategori 1, 2, 3)"
+  },
+  "GHS07": {
+    "code": "GHS07",
+    "name": "Zararlı / Tahriş Edici",
+    "symbol": "Ünlem işareti",
+    "description": "Akut toksisite Kat 4, Cilt/Göz tahrişi, Cilt hassaslaştırma, BHOT Tek 3"
+  },
+  "GHS08": {
+    "code": "GHS08",
+    "name": "Sağlık Zararı",
+    "symbol": "Sağlık zararı",
+    "description": "Solunum hassaslaştırma, Mutajenite, Kanserojenite, Üreme toksisitesi, BHOT 1-2, Aspirasyon"
+  },
+  "GHS09": {
+    "code": "GHS09",
+    "name": "Çevre Zararı",
+    "symbol": "Çevre",
+    "description": "Sucul ortama zararlı (Akut 1, Kronik 1, 2)"
+  }
+}
