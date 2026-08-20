@@ -11,10 +11,12 @@ import {
   ShieldCheck,
   Download,
   Eye,
+  Globe,
 } from 'lucide-react';
 
 export default function ExportModal({ isOpen, onClose }) {
   const { product, validationReport } = useApp();
+  const [selectedLang, setSelectedLang] = useState('tr');
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -30,8 +32,9 @@ export default function ExportModal({ isOpen, onClose }) {
     setDownloadingDocx(true);
     setErrorMessage(null);
     try {
-      const filename = `${product.ticari_kod || 'GBF'}_Guvenlik_Bilgi_Formu.docx`;
-      await api.downloadDocx(product.id, filename);
+      const suffix = selectedLang === 'en' ? 'Safety_Data_Sheet' : 'Guvenlik_Bilgi_Formu';
+      const filename = `${product.ticari_kod || 'GBF'}_${suffix}.docx`;
+      await api.downloadDocx(product.id, filename, selectedLang);
     } catch (err) {
       console.error('Word indirme hatası:', err);
       setErrorMessage('Word belgesi indirilirken bir hata oluştu: ' + err.message);
@@ -44,8 +47,9 @@ export default function ExportModal({ isOpen, onClose }) {
     setDownloadingPdf(true);
     setErrorMessage(null);
     try {
-      const filename = `${product.ticari_kod || 'GBF'}_Guvenlik_Bilgi_Formu.pdf`;
-      await api.downloadPdf(product.id, filename);
+      const suffix = selectedLang === 'en' ? 'Safety_Data_Sheet' : 'Guvenlik_Bilgi_Formu';
+      const filename = `${product.ticari_kod || 'GBF'}_${suffix}.pdf`;
+      await api.downloadPdf(product.id, filename, selectedLang);
     } catch (err) {
       console.error('PDF indirme hatası:', err);
       setErrorMessage('PDF belgesi indirilirken bir hata oluştu: ' + err.message);
@@ -55,7 +59,7 @@ export default function ExportModal({ isOpen, onClose }) {
   };
 
   const handleOpenPreview = () => {
-    window.open(api.getPreviewHtmlUrl(product.id), '_blank');
+    window.open(api.getPreviewHtmlUrl(product.id, selectedLang), '_blank');
   };
 
   return (
@@ -151,6 +155,67 @@ export default function ExportModal({ isOpen, onClose }) {
                 ? 'Tüm KKDİK Ek-2 zorunlu alt bölümleri ve kuralları eksiksiz karşılanmıştır.'
                 : 'Formda bazı zorunlu alanlar doldurulmamış olsa da taslak doküman olarak Word veya PDF formatında indirebilirsiniz.'}
             </p>
+          </div>
+
+          {/* Language Selector */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <Globe size={15} color="#2563eb" />
+              GBF / SDS Dili & Mevzuat Şablonu:
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedLang('tr')}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: selectedLang === 'tr' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                  background: selectedLang === 'tr' ? '#eff6ff' : '#ffffff',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <span style={{ fontSize: '1.4rem' }}>🇹🇷</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: selectedLang === 'tr' ? '#1e40af' : '#1e293b' }}>
+                    Türkçe (KKDİK)
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    KKDİK Yönetmeliği Ek-2
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedLang('en')}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: selectedLang === 'en' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                  background: selectedLang === 'en' ? '#eff6ff' : '#ffffff',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <span style={{ fontSize: '1.4rem' }}>🇬🇧</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: selectedLang === 'en' ? '#1e40af' : '#1e293b' }}>
+                    English (SDS)
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    REACH Annex II & CLP
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Export Action Cards */}

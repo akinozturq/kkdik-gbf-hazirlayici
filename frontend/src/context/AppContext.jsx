@@ -5,9 +5,15 @@ import { SECTOR_PRESETS } from '../data/sectorPresets';
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-  // Navigation
+  // Navigation & Language
   const [currentView, setCurrentView] = useState('list'); // 'list' | 'wizard'
   const [activeStep, setActiveStep] = useState(1); // 1 to 16
+  const [uiLang, setUiLang] = useState(() => localStorage.getItem('gbf_ui_lang') || 'tr');
+
+  const setLanguage = (lang) => {
+    setUiLang(lang);
+    localStorage.setItem('gbf_ui_lang', lang);
+  };
 
   // Active Product & Form State
   const [activeProductId, setActiveProductId] = useState(null);
@@ -266,6 +272,8 @@ export function AppProvider({ children }) {
         hStatements,
         pStatements,
         pictograms,
+        uiLang,
+        setLanguage,
         openProduct,
         goToList,
         saveNow,

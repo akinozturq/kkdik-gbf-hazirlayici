@@ -90,10 +90,14 @@ def to_safe_dict(obj):
         return [to_safe_dict(x) for x in obj]
     return obj
 
+from app.services.translation_service import translation_service
+from app.services.reference_service import reference_service
+
+
 class PdfExportService:
     """
-    Renders 16-section KKDİK compliant HTML & PDF documents
-    with clean monochrome design (no background fills), Google Sans typography,
+    Renders 16-section KKDİK / REACH Annex II compliant HTML & PDF documents
+    with clean monochrome design, Google Sans typography,
     and precise font scaling (12pt main, 11pt sub, 10pt th, 8pt td).
     """
 
@@ -130,7 +134,7 @@ class PdfExportService:
         return ""
 
     @classmethod
-    def render_html(cls, product_dict: dict) -> str:
+    def render_html(cls, product_dict: dict, lang: str = "tr") -> str:
         env = Environment(
             loader=FileSystemLoader(TEMPLATE_DIR),
             auto_reload=True,
@@ -139,6 +143,8 @@ class PdfExportService:
         template = env.get_template("gbf_pdf_template.html")
 
         safe_sds = to_safe_dict(product_dict.get("sds_data") or {})
+        lang_clean = (lang or "tr").lower()
+        t = translation_service.get_sections(lang_clean)
 
         # Load GHS Pictogram images
         raw_piks = []
@@ -154,9 +160,24 @@ class PdfExportService:
                 if src:
                     pictogram_images.append({"code": pcode.strip().upper(), "src": src})
 
+        # Signal word translation
+        raw_signal = safe_sds.get("b2_zarar_tanimi", {}).get("b2_2", {}).get("uyari_kelimesi") or ""
+        translated_signal = translation_service.translate_signal_word(str(raw_signal), lang_clean)
+
+        # Section 16 H-statements in requested language
+        if lang_clean == "en":
+            found_h_codes = reference_service.extract_h_codes_from_sds(product_dict.get("sds_data") or {})
+            translated_h_full = translation_service.format_h_statements(found_h_codes, lang="en")
+        else:
+            translated_h_full = safe_sds.get("b16_diger_bilgiler", {}).get("tam_h_ifadeleri", [])
+
         context = {
             "product": product_dict,
             "sds": safe_sds,
+            "lang": lang_clean,
+            "t": t,
+            "translated_signal": translated_signal,
+            "translated_h_full": translated_h_full,
             "pictogram_images": pictogram_images,
             "logo_header": cls._load_base64_logo("image1.png"),
             "logo_footer_polchem": cls._load_base64_logo("image2.png"),
@@ -167,10 +188,10 @@ class PdfExportService:
         return template.render(context)
 
     @classmethod
-    def generate_pdf(cls, product_dict: dict) -> io.BytesIO:
+    def generate_pdf(cls, product_dict: dict, lang: str = "tr") -> io.BytesIO:
         _register_fonts()
         rl_config.allowTableBoundsErrors = 3
-        html_content = cls.render_html(product_dict)
+        html_content = cls.render_html(product_dict, lang=lang)
         pdf_stream = io.BytesIO()
 
         pisa_status = pisa.CreatePDF(html_content, dest=pdf_stream, encoding='utf-8')
@@ -179,3 +200,4 @@ class PdfExportService:
 
         pdf_stream.seek(0)
         return pdf_stream
+

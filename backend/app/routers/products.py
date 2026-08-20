@@ -262,7 +262,11 @@ def validate_raw_sds(sds_in: SDSModel):
     "/{product_id}/export/docx",
     summary="16 Bölümlük Kurumsal Antetli Word (.docx) GBF İndir"
 )
-def export_docx(product_id: int, db: Session = Depends(get_db)):
+def export_docx(
+    product_id: int,
+    lang: Optional[str] = Query("tr", description="Dil seçeneği: 'tr' (KKDİK) veya 'en' (REACH Annex II)"),
+    db: Session = Depends(get_db)
+):
     """
     GBF ANTET.docx şablonunu ve kurumsal tasarımı kullanarak 16 bölümlük resmi Word belgesi üretir.
     """
@@ -282,8 +286,10 @@ def export_docx(product_id: int, db: Session = Depends(get_db)):
     }
 
     try:
-        docx_stream = DocxExportService.generate_docx(product_dict)
-        filename = f"{product.ticari_kod or 'GBF'}_Guvenlik_Bilgi_Formu.docx"
+        lang_clean = (lang or "tr").lower()
+        docx_stream = DocxExportService.generate_docx(product_dict, lang=lang_clean)
+        suffix = "Safety_Data_Sheet" if lang_clean == "en" else "Guvenlik_Bilgi_Formu"
+        filename = f"{product.ticari_kod or 'GBF'}_{suffix}.docx"
         encoded_filename = urllib.parse.quote(filename)
 
         return Response(
@@ -306,7 +312,11 @@ def export_docx(product_id: int, db: Session = Depends(get_db)):
     "/{product_id}/export/pdf",
     summary="16 Bölümlük Kurumsal Antetli PDF GBF İndir"
 )
-def export_pdf(product_id: int, db: Session = Depends(get_db)):
+def export_pdf(
+    product_id: int,
+    lang: Optional[str] = Query("tr", description="Dil seçeneği: 'tr' (KKDİK) veya 'en' (REACH Annex II)"),
+    db: Session = Depends(get_db)
+):
     """
     Kurumsal antet tasarımı ve 16 bölüm mevzuat tabloları içeren resmi PDF belgesi üretir.
     """
@@ -326,8 +336,10 @@ def export_pdf(product_id: int, db: Session = Depends(get_db)):
     }
 
     try:
-        pdf_stream = PdfExportService.generate_pdf(product_dict)
-        filename = f"{product.ticari_kod or 'GBF'}_Guvenlik_Bilgi_Formu.pdf"
+        lang_clean = (lang or "tr").lower()
+        pdf_stream = PdfExportService.generate_pdf(product_dict, lang=lang_clean)
+        suffix = "Safety_Data_Sheet" if lang_clean == "en" else "Guvenlik_Bilgi_Formu"
+        filename = f"{product.ticari_kod or 'GBF'}_{suffix}.pdf"
         encoded_filename = urllib.parse.quote(filename)
 
         return Response(
@@ -351,7 +363,11 @@ def export_pdf(product_id: int, db: Session = Depends(get_db)):
     response_class=HTMLResponse,
     summary="16 Bölümlük GBF HTML Canlı Önizleme"
 )
-def preview_html(product_id: int, db: Session = Depends(get_db)):
+def preview_html(
+    product_id: int,
+    lang: Optional[str] = Query("tr", description="Dil seçeneği: 'tr' (KKDİK) veya 'en' (REACH Annex II)"),
+    db: Session = Depends(get_db)
+):
     """
     Belgenin tarayıcıda doğrudan önizlenebilmesi için derlenmiş HTML çıktısını döner.
     """
@@ -371,7 +387,8 @@ def preview_html(product_id: int, db: Session = Depends(get_db)):
     }
 
     try:
-        return PdfExportService.render_html(product_dict)
+        lang_clean = (lang or "tr").lower()
+        return PdfExportService.render_html(product_dict, lang=lang_clean)
     except Exception as e:
         err_msg = f"HTML Önizleme Hatası: {str(e)}\n{traceback.format_exc()}"
         print(err_msg)

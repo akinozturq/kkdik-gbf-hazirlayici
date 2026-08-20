@@ -69,6 +69,42 @@ def test_preview_html_endpoint(client: TestClient):
     assert "GÜVENLİK BİLGİ FORMU" in html_res.text
     assert "Epoksi Astar" in html_res.text
 
+    # Test English HTML Preview (REACH Annex II)
+    html_en_res = client.get(f"/api/products/{prod_id}/export/preview-html?lang=en")
+    assert html_en_res.status_code == 200
+    assert "SAFETY DATA SHEET" in html_en_res.text
+    assert "Identification of the substance/mixture" in html_en_res.text
+    assert "Hazards identification" in html_en_res.text
+
+
+def test_export_english_docx_and_pdf(client: TestClient):
+    create_res = client.post("/api/products", json={
+        "urun_adi": "Industrial Solvent Blend",
+        "ticari_kod": "SOL-200",
+        "kategori": "Solvents",
+        "sds_data": {
+            "meta": {"hazirlama_tarihi": "20.08.2026", "revizyon_no": "02"},
+            "b1_kimlik": {
+                "b1_1": {"madde_karisim_adi": "Industrial Solvent Blend"},
+                "b1_3": {"tedarikci_adi": "Aypol Chemicals"},
+                "b1_4": {"acil_telefon": "112"}
+            }
+        }
+    })
+    prod_id = create_res.json()["id"]
+
+    # English DOCX
+    docx_en_res = client.get(f"/api/products/{prod_id}/export/docx?lang=en")
+    assert docx_en_res.status_code == 200
+    assert len(docx_en_res.content) > 1000
+
+    # English PDF
+    pdf_en_res = client.get(f"/api/products/{prod_id}/export/pdf?lang=en")
+    assert pdf_en_res.status_code == 200
+    assert pdf_en_res.content.startswith(b"%PDF")
+    assert len(pdf_en_res.content) > 1000
+
+
 def test_export_404_for_missing_product(client: TestClient):
     res = client.get("/api/products/99999/export/docx")
     assert res.status_code == 404

@@ -24,6 +24,8 @@ export default function Header() {
     setIsValidationOpen,
     setIsPresetModalOpen,
     goToList,
+    uiLang,
+    setLanguage,
   } = useApp();
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -151,10 +153,60 @@ export default function Header() {
                 }}
               >
                 <FileDown size={15} />
-                Dışa Aktar (GBF)
+                {uiLang === 'en' ? 'Export (SDS)' : 'Dışa Aktar (GBF)'}
               </button>
             </>
           )}
+
+          {/* Language Switcher Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '20px',
+              padding: '2px',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              marginLeft: '6px',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setLanguage('tr')}
+              title="Türkçe (KKDİK)"
+              style={{
+                border: 'none',
+                background: uiLang === 'tr' ? '#2563eb' : 'transparent',
+                color: uiLang === 'tr' ? '#ffffff' : '#cbd5e1',
+                padding: '3px 8px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🇹🇷 TR
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              title="English (REACH Annex II)"
+              style={{
+                border: 'none',
+                background: uiLang === 'en' ? '#2563eb' : 'transparent',
+                color: uiLang === 'en' ? '#ffffff' : '#cbd5e1',
+                padding: '3px 8px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🇬🇧 EN
+            </button>
+          </div>
         </div>
       </header>
 

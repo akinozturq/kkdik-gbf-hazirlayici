@@ -33,22 +33,22 @@ import {
 } from 'lucide-react';
 
 const SECTIONS = [
-  { num: 1, title: 'Madde / Karışım ve Şirket Kimliği', code: 'B1', legal: 'KKDİK Ek-2 md. 1' },
-  { num: 2, title: 'Zararlılık Tanımı', code: 'B2', legal: 'KKDİK Ek-2 md. 2' },
-  { num: 3, title: 'Bileşimi / İçindekiler Hakkında Bilgi', code: 'B3', legal: 'KKDİK Ek-2 md. 3' },
-  { num: 4, title: 'İlk Yardım Önlemleri', code: 'B4', legal: 'KKDİK Ek-2 md. 4' },
-  { num: 5, title: 'Yangınla Mücadele Önlemleri', code: 'B5', legal: 'KKDİK Ek-2 md. 5' },
-  { num: 6, title: 'Kaza Sonucu Yayılmaya Karşı Önlemler', code: 'B6', legal: 'KKDİK Ek-2 md. 6' },
-  { num: 7, title: 'Elleçleme ve Depolama', code: 'B7', legal: 'KKDİK Ek-2 md. 7' },
-  { num: 8, title: 'Maruz Kalma Kontrolleri / Kişisel Korunma', code: 'B8', legal: 'KKDİK Ek-2 md. 8' },
-  { num: 9, title: 'Fiziksel ve Kimyasal Özellikler', code: 'B9', legal: 'KKDİK Ek-2 md. 9' },
-  { num: 10, title: 'Kararlılık ve Tepkime', code: 'B10', legal: 'KKDİK Ek-2 md. 10' },
-  { num: 11, title: 'Toksikolojik Bilgiler', code: 'B11', legal: 'KKDİK Ek-2 md. 11' },
-  { num: 12, title: 'Ekolojik Bilgiler', code: 'B12', legal: 'KKDİK Ek-2 md. 12' },
-  { num: 13, title: 'Bertaraf Etme Bilgileri', code: 'B13', legal: 'KKDİK Ek-2 md. 13' },
-  { num: 14, title: 'Taşımacılık Bilgisi', code: 'B14', legal: 'KKDİK Ek-2 md. 14' },
-  { num: 15, title: 'Mevzuat Bilgisi', code: 'B15', legal: 'KKDİK Ek-2 md. 15' },
-  { num: 16, title: 'Diğer Bilgiler', code: 'B16', legal: 'KKDİK Ek-2 md. 16' },
+  { num: 1, title: 'Madde / Karışım ve Şirket Kimliği', title_en: 'Identification of the substance/mixture and of the company/undertaking', code: 'B1', legal: 'KKDİK Ek-2 md. 1', legal_en: 'REACH Annex II Sec. 1' },
+  { num: 2, title: 'Zararlılık Tanımı', title_en: 'Hazards identification', code: 'B2', legal: 'KKDİK Ek-2 md. 2', legal_en: 'REACH Annex II Sec. 2' },
+  { num: 3, title: 'Bileşimi / İçindekiler Hakkında Bilgi', title_en: 'Composition/information on ingredients', code: 'B3', legal: 'KKDİK Ek-2 md. 3', legal_en: 'REACH Annex II Sec. 3' },
+  { num: 4, title: 'İlk Yardım Önlemleri', title_en: 'First aid measures', code: 'B4', legal: 'KKDİK Ek-2 md. 4', legal_en: 'REACH Annex II Sec. 4' },
+  { num: 5, title: 'Yangınla Mücadele Önlemleri', title_en: 'Firefighting measures', code: 'B5', legal: 'KKDİK Ek-2 md. 5', legal_en: 'REACH Annex II Sec. 5' },
+  { num: 6, title: 'Kaza Sonucu Yayılmaya Karşı Önlemler', title_en: 'Accidental release measures', code: 'B6', legal: 'KKDİK Ek-2 md. 6', legal_en: 'REACH Annex II Sec. 6' },
+  { num: 7, title: 'Elleçleme ve Depolama', title_en: 'Handling and storage', code: 'B7', legal: 'KKDİK Ek-2 md. 7', legal_en: 'REACH Annex II Sec. 7' },
+  { num: 8, title: 'Maruz Kalma Kontrolleri / Kişisel Korunma', title_en: 'Exposure controls/personal protection', code: 'B8', legal: 'KKDİK Ek-2 md. 8', legal_en: 'REACH Annex II Sec. 8' },
+  { num: 9, title: 'Fiziksel ve Kimyasal Özellikler', title_en: 'Physical and chemical properties', code: 'B9', legal: 'KKDİK Ek-2 md. 9', legal_en: 'REACH Annex II Sec. 9' },
+  { num: 10, title: 'Kararlılık ve Tepkime', title_en: 'Stability and reactivity', code: 'B10', legal: 'KKDİK Ek-2 md. 10', legal_en: 'REACH Annex II Sec. 10' },
+  { num: 11, title: 'Toksikolojik Bilgiler', title_en: 'Toxicological information', code: 'B11', legal: 'KKDİK Ek-2 md. 11', legal_en: 'REACH Annex II Sec. 11' },
+  { num: 12, title: 'Ekolojik Bilgiler', title_en: 'Ecological information', code: 'B12', legal: 'KKDİK Ek-2 md. 12', legal_en: 'REACH Annex II Sec. 12' },
+  { num: 13, title: 'Bertaraf Etme Bilgileri', title_en: 'Disposal considerations', code: 'B13', legal: 'KKDİK Ek-2 md. 13', legal_en: 'REACH Annex II Sec. 13' },
+  { num: 14, title: 'Taşımacılık Bilgisi', title_en: 'Transport information', code: 'B14', legal: 'KKDİK Ek-2 md. 14', legal_en: 'REACH Annex II Sec. 14' },
+  { num: 15, title: 'Mevzuat Bilgisi', title_en: 'Regulatory information', code: 'B15', legal: 'KKDİK Ek-2 md. 15', legal_en: 'REACH Annex II Sec. 15' },
+  { num: 16, title: 'Diğer Bilgiler', title_en: 'Other information', code: 'B16', legal: 'KKDİK Ek-2 md. 16', legal_en: 'REACH Annex II Sec. 16' },
 ];
 
 export default function WizardLayout() {
@@ -62,6 +62,7 @@ export default function WizardLayout() {
     setIsPresetModalOpen,
     saveNow,
     autosaveStatus,
+    uiLang,
   } = useApp();
 
   const currentSection = SECTIONS.find((s) => s.num === activeStep) || SECTIONS[0];
@@ -151,16 +152,16 @@ export default function WizardLayout() {
               >
                 <div className="step-nav-left">
                   <div className="step-num-bubble">{sec.num}</div>
-                  <div className="step-nav-title" title={sec.title}>
-                    {sec.title}
+                  <div className="step-nav-title" title={uiLang === 'en' ? sec.title_en : sec.title}>
+                    {uiLang === 'en' ? sec.title_en : sec.title}
                   </div>
                 </div>
 
                 <div className="step-nav-right">
                   {hasError ? (
-                    <AlertOctagon size={14} color="#dc2626" title="Bu bölümde eksik zorunlu alan var" />
+                    <AlertOctagon size={14} color="#dc2626" title={uiLang === 'en' ? "Missing required fields" : "Bu bölümde eksik zorunlu alan var"} />
                   ) : isFull ? (
-                    <CheckCircle2 size={14} color="#059669" title="Bölüm eksiksiz" />
+                    <CheckCircle2 size={14} color="#059669" title={uiLang === 'en' ? "Section completed" : "Bölüm eksiksiz"} />
                   ) : (
                     <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
                       %{progress?.completion_percentage || 0}
@@ -179,7 +180,7 @@ export default function WizardLayout() {
           <div className="step-header">
             <div className="step-badge-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="badge badge-neutral" style={{ fontSize: '0.78rem' }}>
-                BÖLÜM {currentSection.num} / 16
+                {uiLang === 'en' ? `SECTION ${currentSection.num} / 16` : `BÖLÜM ${currentSection.num} / 16`}
               </span>
 
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -196,10 +197,10 @@ export default function WizardLayout() {
                     gap: '5px',
                   }}
                   onClick={() => setIsPresetModalOpen(true)}
-                  title="Boya, Tiner ve Sertleştiriciler için hazır KKDİK metinlerini uygula"
+                  title={uiLang === 'en' ? "Apply industry presets for paint, thinner & hardeners" : "Boya, Tiner ve Sertleştiriciler için hazır KKDİK metinlerini uygula"}
                 >
                   <Sparkles size={14} color="#2563eb" />
-                  ⚡ Sektörel Şablon Doldur
+                  {uiLang === 'en' ? '⚡ Apply Presets' : '⚡ Sektörel Şablon Doldur'}
                 </button>
 
                 <button
@@ -208,18 +209,22 @@ export default function WizardLayout() {
                   onClick={() => setIsValidationOpen(true)}
                 >
                   <FileCheck2 size={14} />
-                  Doğrulama Çekmecesi
+                  {uiLang === 'en' ? 'Validation Drawer' : 'Doğrulama Çekmecesi'}
                 </button>
               </div>
             </div>
 
             <h2 className="step-title">
-              {currentSection.num}. {currentSection.title}
+              {currentSection.num}. {uiLang === 'en' ? currentSection.title_en : currentSection.title}
             </h2>
 
             <div className="step-legal-ref">
               <FileText size={14} />
-              <span>{currentSection.legal} — Resmi Gazete No: 30105</span>
+              <span>
+                {uiLang === 'en'
+                  ? `${currentSection.legal_en} — Regulation (EC) No 1907/2006 (REACH)`
+                  : `${currentSection.legal} — Resmi Gazete No: 30105`}
+              </span>
             </div>
           </div>
 

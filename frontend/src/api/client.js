@@ -130,12 +130,12 @@ export const api = {
   // ==========================================
   // FAZ 3: DIŞA AKTARMA (EXPORT) BAĞLANTILARI
   // ==========================================
-  getDocxExportUrl: (id) => `${API_BASE}/products/${id}/export/docx`,
-  getPdfExportUrl: (id) => `${API_BASE}/products/${id}/export/pdf`,
-  getPreviewHtmlUrl: (id) => `${API_BASE}/products/${id}/export/preview-html`,
+  getDocxExportUrl: (id, lang = 'tr') => `${API_BASE}/products/${id}/export/docx?lang=${lang}`,
+  getPdfExportUrl: (id, lang = 'tr') => `${API_BASE}/products/${id}/export/pdf?lang=${lang}`,
+  getPreviewHtmlUrl: (id, lang = 'tr') => `${API_BASE}/products/${id}/export/preview-html?lang=${lang}`,
 
-  downloadDocx: async (id, filename) => {
-    const res = await fetch(`${API_BASE}/products/${id}/export/docx`);
+  downloadDocx: async (id, filename, lang = 'tr') => {
+    const res = await fetch(`${API_BASE}/products/${id}/export/docx?lang=${lang}`);
     if (!res.ok) {
       const text = await res.text();
       let errText = text;
@@ -149,7 +149,7 @@ export const api = {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename || `GBF_${id}.docx`;
+    link.download = filename || `GBF_${id}_${lang}.docx`;
     document.body.appendChild(link);
     link.click();
     setTimeout(() => {
@@ -158,8 +158,8 @@ export const api = {
     }, 200);
   },
 
-  downloadPdf: async (id, filename) => {
-    const res = await fetch(`${API_BASE}/products/${id}/export/pdf`);
+  downloadPdf: async (id, filename, lang = 'tr') => {
+    const res = await fetch(`${API_BASE}/products/${id}/export/pdf?lang=${lang}`);
     if (!res.ok) {
       const text = await res.text();
       let errText = text;
@@ -173,7 +173,7 @@ export const api = {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename || `GBF_${id}.pdf`;
+    link.download = filename || `GBF_${id}_${lang}.pdf`;
     document.body.appendChild(link);
     link.click();
     setTimeout(() => {
