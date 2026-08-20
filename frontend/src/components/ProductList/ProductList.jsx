@@ -3,6 +3,7 @@ import { api } from '../../api/client';
 import { useApp } from '../../context/AppContext';
 import NewProductModal from './NewProductModal';
 import DuplicateProductModal from './DuplicateProductModal';
+import ManageCategoriesModal from './ManageCategoriesModal';
 import ExportModal from '../Wizard/ExportModal';
 import {
   Search,
@@ -17,6 +18,7 @@ import {
   AlertOctagon,
   Clock,
   FileDown,
+  Layers,
 } from 'lucide-react';
 
 export default function ProductList() {
@@ -30,6 +32,7 @@ export default function ProductList() {
 
   // Modals
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
   const [duplicateTarget, setDuplicateTarget] = useState(null);
   const [exportTarget, setExportTarget] = useState(null);
 
@@ -45,9 +48,10 @@ export default function ProductList() {
       setProducts(res.items || []);
       setTotal(res.total || 0);
 
-      // Extract unique categories
-      const cats = Array.from(new Set((res.items || []).map((p) => p.kategori).filter(Boolean)));
-      setCategories(cats);
+      // Load active categories from API
+      const catData = await api.getProductCategories();
+      const catNames = (catData || []).map((c) => (typeof c === 'string' ? c : c.name));
+      setCategories(catNames);
     } catch (err) {
       console.error('Ürün listesi yüklenemedi:', err);
     } finally {
@@ -70,7 +74,7 @@ export default function ProductList() {
       await api.deleteProduct(id);
       loadProducts();
     } catch (err) {
-      alert('Silme işlemi başarısız: ' + err.message);
+      alert('Ürün silinirken hata: ' + err.message);
     }
   };
 
@@ -82,7 +86,7 @@ export default function ProductList() {
   return (
     <div style={{ padding: '32px 40px', maxWidth: '1240px', margin: '0 auto', width: '100%' }}>
       {/* Top Banner / Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
             Kimyasal Ürün Yönetimi
@@ -92,10 +96,21 @@ export default function ProductList() {
           </p>
         </div>
 
-        <button className="btn btn-primary" onClick={() => setIsNewModalOpen(true)}>
-          <Plus size={16} />
-          Yeni Ürün Oluştur
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-outline"
+            onClick={() => setIsManageCategoriesOpen(true)}
+            style={{ borderColor: '#6366f1', color: '#4f46e5', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Layers size={16} />
+            Ürün Ailelerini Yönet
+          </button>
+
+          <button className="btn btn-primary" onClick={() => setIsNewModalOpen(true)}>
+            <Plus size={16} />
+            Yeni Ürün Oluştur
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
@@ -317,6 +332,12 @@ export default function ProductList() {
         onCreated={loadProducts}
       />
 
+      <ManageCategoriesModal
+        isOpen={isManageCategoriesOpen}
+        onClose={() => setIsManageCategoriesOpen(false)}
+        onChanged={loadProducts}
+      />
+
       <DuplicateProductModal
         isOpen={Boolean(duplicateTarget)}
         productToDuplicate={duplicateTarget}
@@ -331,3 +352,4 @@ export default function ProductList() {
     </div>
   );
 }
+

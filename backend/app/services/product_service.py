@@ -8,14 +8,17 @@ from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import or_, desc, asc
-from app.models.db_models import Product
+from app.models.db_models import Product, Category
 from app.schemas.product import (
     ProductCreate,
     ProductUpdate,
     ProductDuplicateRequest,
     ProductListItem,
     ProductListResponse,
-    ProductResponse
+    ProductResponse,
+    CategoryItem,
+    CategoryCreateRequest,
+    CategoryDeleteRequest,
 )
 from app.schemas.sds_sections import SDSModel
 from app.schemas.validation import ValidationResult
@@ -65,6 +68,8 @@ class ProductService:
         )
         db.add(db_product)
         db.commit()
+        if product_in.kategori and product_in.kategori.strip():
+            self.create_category(db, product_in.kategori.strip())
         db.refresh(db_product)
         return db_product
 
@@ -83,6 +88,7 @@ class ProductService:
     ) -> ProductListResponse:
         db_query = db.query(Product)
 
+        # Filtreleme
         if query_str:
             term = f"%{query_str.strip()}%"
             db_query = db_query.filter(
@@ -135,15 +141,8 @@ class ProductService:
             items=items
         )
 
-    def get_categories(self, db: Session) -> List[str]:
-        """Veritabanında kayıtlı tüm benzersiz ürün ailelerini / kategorilerini döner."""
-        records = (
-            db.query(Product.kategori)
-            .filter(Product.kategori.isnot(None), Product.kategori != "")
-            .distinct()
-            .all()
-        )
-        cats = sorted([r[0].strip() for r in records if r[0] and r[0].strip()])
+    def _seed_categories_if_needed(self, db: Session):
+        """Varsayılan ürün ailelerini ve ürünlerdeki mevcut kategorileri Category tablosuna ekler."""
         defaults = [
             "Solventler & Tinerler",
             "Poliüretan Sistemler & Sertleştiriciler",
@@ -152,7 +151,84 @@ class ProductService:
             "Reçineler & Polimerler",
             "Epoksi Sistemler",
         ]
-        return list(dict.fromkeys(cats + [d for d in defaults if d not in cats]))
+        existing = {c.name.lower(): c for c in db.query(Category).all()}
+        product_cats = [
+            r[0].strip() for r in db.query(Product.kategori)
+            .filter(Product.kategori.isnot(None), Product.kategori != "")
+            .distinct().all() if r[0] and r[0].strip()
+        ]
+        all_initial = list(dict.fromkeys(defaults + product_cats))
+        added = False
+        for cat_name in all_initial:
+            if cat_name.lower() not in existing:
+                db.add(Category(name=cat_name))
+                existing[cat_name.lower()] = True
+                added = True
+        if added:
+            db.commit()
+
+    def get_categories(self, db: Session) -> List[CategoryItem]:
+        """Kayıtlı tüm ürün ailelerini ve her birindeki ürün adedini döner."""
+        self._seed_categories_if_needed(db)
+        categories = db.query(Category).order_by(asc(Category.name)).all()
+
+        results: List[CategoryItem] = []
+        for cat in categories:
+            count = db.query(Product).filter(Product.kategori == cat.name).count()
+            results.append(CategoryItem(
+                name=cat.name,
+                product_count=count
+            ))
+        return results
+
+    def create_category(self, db: Session, name: str) -> Category:
+        """Yeni bir ürün ailesi oluşturur."""
+        clean_name = name.strip()
+        if not clean_name:
+            raise ValueError("Kategori adı boş olamaz.")
+
+        existing = db.query(Category).filter(Category.name.ilike(clean_name)).first()
+        if existing:
+            return existing
+
+        new_cat = Category(name=clean_name)
+        db.add(new_cat)
+        db.commit()
+        db.refresh(new_cat)
+        return new_cat
+
+    def delete_category(self, db: Session, name: str, target_category: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Belirtilen ürün ailesini siler.
+        Bu aileye bağlı ürünleri hedef kategoriye (veya Genel'e) aktarır.
+        """
+        clean_name = name.strip()
+        target = target_category.strip() if target_category else "Genel"
+
+        # Hedef kategori yoksa ve silinecek kategoriyle aynı değilse oluştur
+        if target and target.lower() != clean_name.lower():
+            target_exists = db.query(Category).filter(Category.name.ilike(target)).first()
+            if not target_exists:
+                db.add(Category(name=target))
+                db.commit()
+
+        # Bu kategoriye bağlı ürünleri güncelle
+        affected_products = db.query(Product).filter(Product.kategori.ilike(clean_name)).all()
+        count = len(affected_products)
+        for p in affected_products:
+            p.kategori = target
+
+        # Category tablosundan sil
+        cat_rec = db.query(Category).filter(Category.name.ilike(clean_name)).first()
+        if cat_rec:
+            db.delete(cat_rec)
+
+        db.commit()
+        return {
+            "deleted": clean_name,
+            "affected_products": count,
+            "reassigned_to": target
+        }
 
     def update_product(self, db: Session, product_id: int, product_in: Any) -> Optional[Product]:
         product = self.get_product(db, product_id)

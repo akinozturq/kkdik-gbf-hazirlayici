@@ -30,9 +30,10 @@ export default function NewProductModal({ isOpen, onClose, onCreated }) {
   const loadCategories = async () => {
     try {
       const cats = await api.getProductCategories();
-      setCategoryOptions(cats || []);
-      if (cats && cats.length > 0) {
-        setSelectedKategori(cats[0]);
+      const catNames = (cats || []).map((c) => (typeof c === 'string' ? c : c.name));
+      setCategoryOptions(catNames);
+      if (catNames.length > 0) {
+        setSelectedKategori(catNames[0]);
       }
     } catch (err) {
       console.error('Kategoriler yüklenemedi:', err);

@@ -68,6 +68,22 @@ export const api = {
   // Ürün Aileleri / Kategorileri Listesi
   getProductCategories: () => request('/products/categories'),
 
+  // Yeni Ürün Ailesi Oluştur
+  createProductCategory: (name) =>
+    request('/products/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  // Ürün Ailesi Sil
+  deleteProductCategory: (name, targetCategory = null) => {
+    const query = new URLSearchParams();
+    if (targetCategory) query.set('target_category', targetCategory);
+    return request(`/products/categories/${encodeURIComponent(name)}?${query.toString()}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Yeni Ürün Oluştur
   createProduct: (data) =>
     request('/products', {

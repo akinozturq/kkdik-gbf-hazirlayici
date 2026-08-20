@@ -46,8 +46,34 @@ def test_get_product_categories(client, sample_valid_sds_dict):
     res = client.get("/api/products/categories")
     assert res.status_code == 200
     cats = res.json()
-    assert "Özel Epoksiler" in cats
-    assert "Solventler & Tinerler" in cats
+    cat_names = [c["name"] for c in cats]
+    assert "Özel Epoksiler" in cat_names
+    assert "Solventler & Tinerler" in cat_names
+
+
+def test_create_and_delete_product_category(client, sample_valid_sds_dict):
+    """Ürün ailesi oluşturma ve silme testi (POST & DELETE /api/products/categories)"""
+    # 1. Kategori oluştur
+    create_cat_res = client.post("/api/products/categories", json={"name": "Silinecek Özel Aile"})
+    assert create_cat_res.status_code == 200
+    assert create_cat_res.json()["name"] == "Silinecek Özel Aile"
+
+    # 2. Bu kategoriye bağlı ürün oluştur
+    client.post("/api/products", json={
+        "urun_adi": "Bağlı Ürün",
+        "ticari_kod": "BAG-01",
+        "kategori": "Silinecek Özel Aile",
+        "sds_data": sample_valid_sds_dict
+    })
+
+    # 3. Kategoriyi sil ve ürünleri "Genel"e aktar
+    del_cat_res = client.delete("/api/products/categories/Silinecek%20%C3%96zel%20Aile?target_category=Genel")
+    assert del_cat_res.status_code == 200
+    del_data = del_cat_res.json()
+    assert del_data["deleted"] == "Silinecek Özel Aile"
+    assert del_data["affected_products"] == 1
+    assert del_data["reassigned_to"] == "Genel"
+
 
 
 def test_list_products_and_search(client, sample_valid_sds_dict):

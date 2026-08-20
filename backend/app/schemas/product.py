@@ -58,3 +58,17 @@ class ProductListResponse(BaseModel):
     page: int
     page_size: int
     items: List[ProductListItem]
+
+
+class CategoryItem(BaseModel):
+    name: str
+    product_count: int = 0
+
+
+class CategoryCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Yeni ürün ailesi adı")
+
+
+class CategoryDeleteRequest(BaseModel):
+    target_category: Optional[str] = Field(None, description="Silinen kategorideki ürünlerin aktarılacağı hedef kategori")
+

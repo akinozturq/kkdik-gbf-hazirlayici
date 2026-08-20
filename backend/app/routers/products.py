@@ -11,12 +11,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.models.db_models import Product
 from app.schemas.product import (
     ProductCreate,
     ProductUpdate,
     ProductDuplicateRequest,
     ProductResponse,
     ProductListResponse,
+    CategoryItem,
+    CategoryCreateRequest,
+    CategoryDeleteRequest,
 )
 from app.schemas.sds_sections import SDSModel
 from app.schemas.validation import ValidationResult
@@ -73,14 +77,45 @@ def list_products(
 
 @router.get(
     "/categories",
-    response_model=List[str],
-    summary="Tüm benzersiz ürün aileleri / kategorileri listesi"
+    response_model=List[CategoryItem],
+    summary="Tüm benzersiz ürün aileleri / kategorileri listesi ve ürün sayıları"
 )
 def get_categories(db: Session = Depends(get_db)):
     """
-    Kayıtlı tüm ürün ailelerini ve hazır önerileri döner.
+    Kayıtlı tüm ürün ailelerini, hazır önerileri ve her kategorideki ürün sayısını döner.
     """
     return product_service.get_categories(db)
+
+
+@router.post(
+    "/categories",
+    response_model=CategoryItem,
+    summary="Yeni ürün ailesi / kategori oluştur"
+)
+def create_category(req: CategoryCreateRequest, db: Session = Depends(get_db)):
+    """
+    Yeni bir ürün ailesi tanımlar.
+    """
+    cat = product_service.create_category(db, req.name)
+    count = db.query(Product).filter(Product.kategori == cat.name).count()
+    return CategoryItem(name=cat.name, product_count=count)
+
+
+@router.delete(
+    "/categories/{name}",
+    summary="Ürün ailesini sil ve ürünleri aktar"
+)
+def delete_category(
+    name: str,
+    target_category: Optional[str] = Query(None, description="Silinen kategorideki ürünlerin aktarılacağı hedef kategori"),
+    db: Session = Depends(get_db)
+):
+    """
+    Belirtilen ürün ailesini siler ve bu aileye ait ürünleri hedef kategoriye (veya Genel'e) aktarır.
+    """
+    decoded_name = urllib.parse.unquote(name)
+    return product_service.delete_category(db, decoded_name, target_category)
+
 
 
 @router.get(
