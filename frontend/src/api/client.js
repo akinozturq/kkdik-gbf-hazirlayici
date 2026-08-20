@@ -250,7 +250,27 @@ export const api = {
   },
 
   getRawMaterialById: (idOrCas) => request(`/references/raw-materials/${idOrCas}`),
+
+  // ==========================================
+  // GOOGLE GEMINI AI ÇEVİRİ & AYARLAR
+  // ==========================================
+  getAiConfig: () => request('/ai/config'),
+  saveAiConfig: (data) =>
+    request('/ai/config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  testAiConnection: (data) =>
+    request('/ai/test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  translateProductWithAi: (id) =>
+    request(`/ai/translate-product/${id}`, {
+      method: 'POST',
+    }),
 };
+
 
 
 

@@ -1139,6 +1139,113 @@ class TranslationService:
         if b16.get("tam_h_ifadeleri"):
             b16["tam_h_ifadeleri"] = cls.format_h_statements(b16["tam_h_ifadeleri"], "en")
 
+        # 17. AI Hibrit Katmanı: Gemini API yapılandırılmışsa özel / serbest metinleri çevir
+        try:
+            from app.services.gemini_service import gemini_service
+            if gemini_service.is_configured():
+                pending_translations = {}
+
+                def register_if_needed(key_path: str, val: Any):
+                    if isinstance(val, str) and val.strip():
+                        # Türkçe harfler veya serbest cümle içeriyorsa
+                        if any(c in val for c in "çÇğĞıİöÖşŞüÜ") or len(val.split()) > 3:
+                            pending_translations[key_path] = val
+
+                # Taranacak serbest metin alanları
+                register_if_needed("b1.b1_1.madde_adi", b1_1.get("madde_karisim_adi"))
+                register_if_needed("b4.b4_2", b4.get("b4_2_belirtiler_etkiler"))
+                register_if_needed("b4.b4_3", b4.get("b4_3_acil_tibbi_mudahale"))
+                register_if_needed("b5.b5_2", b5.get("b5_2_ozel_zararlar"))
+                register_if_needed("b5.b5_3", b5.get("b5_3_sondurme_ekibi_tavsiyeleri"))
+                register_if_needed("b6.b6_1_1", b6_1.get("kisisel_onlemler_acil_olmayan"))
+                register_if_needed("b6.b6_1_2", b6_1.get("kisisel_onlemler_acil_mudahale"))
+                register_if_needed("b6.b6_2", b6.get("b6_2_cevresel_onlemler"))
+                register_if_needed("b6.b6_3", b6.get("b6_3_kontrol_temizleme_yontemleri"))
+                register_if_needed("b7.b7_1", b7.get("b7_1_guvenli_ellecleme"))
+                register_if_needed("b7.b7_2", b7_2.get("guvenli_depolama_kosullari"))
+                register_if_needed("b7.b7_3", b7.get("b7_3_belirli_son_kullanimlar"))
+                register_if_needed("b8.muhendislik", b8_2.get("muhendislik_kontrolleri"))
+                register_if_needed("b8.goz_yuz", kkd.get("goz_yuz"))
+                register_if_needed("b8.cilt_el", kkd.get("cilt_el"))
+                register_if_needed("b8.solunum", kkd.get("solunum"))
+                register_if_needed("b9.b9_2", b9.get("b9_2_diger_bilgiler"))
+                register_if_needed("b10.b10_4", b10.get("b10_4_kacinilmasi_gereken_durumlar"))
+                register_if_needed("b10.b10_5", b10.get("b10_5_kacinilmasi_gereken_maddeler"))
+                register_if_needed("b10.b10_6", b10.get("b10_6_zararli_bozunma_urunleri"))
+                register_if_needed("b11.akut", b11_1.get("akut_toksisite"))
+                register_if_needed("b11.cilt", b11_1.get("cilt_asinmasi_tahrisi"))
+                register_if_needed("b11.goz", b11_1.get("goz_hasari"))
+                register_if_needed("b12.toksisite", b12.get("b12_1_toksisite"))
+                register_if_needed("b12.kalicilik", b12.get("b12_2_kalicilik_bozunabilirlik"))
+                register_if_needed("b13.atik", b13.get("b13_1_atik_isleme_yontemleri"))
+                register_if_needed("b13.ambalaj", b13.get("b13_1_ambalaj_atik_isleme"))
+                register_if_needed("b16.revizyon", b16.get("revizyon_aciklamasi"))
+                register_if_needed("b16.egitim", b16.get("egitim_tavsiyeleri"))
+
+                if pending_translations:
+                    translated_map = gemini_service.translate_texts_batch(pending_translations, target_lang="en")
+                    
+                    if "b1.b1_1.madde_adi" in translated_map:
+                        b1_1["madde_karisim_adi"] = translated_map["b1.b1_1.madde_adi"]
+                    if "b4.b4_2" in translated_map:
+                        b4["b4_2_belirtiler_etkiler"] = translated_map["b4.b4_2"]
+                    if "b4.b4_3" in translated_map:
+                        b4["b4_3_acil_tibbi_mudahale"] = translated_map["b4.b4_3"]
+                    if "b5.b5_2" in translated_map:
+                        b5["b5_2_ozel_zararlar"] = translated_map["b5.b5_2"]
+                    if "b5.b5_3" in translated_map:
+                        b5["b5_3_sondurme_ekibi_tavsiyeleri"] = translated_map["b5.b5_3"]
+                    if "b6.b6_1_1" in translated_map:
+                        b6_1["kisisel_onlemler_acil_olmayan"] = translated_map["b6.b6_1_1"]
+                    if "b6.b6_1_2" in translated_map:
+                        b6_1["kisisel_onlemler_acil_mudahale"] = translated_map["b6.b6_1_2"]
+                    if "b6.b6_2" in translated_map:
+                        b6["b6_2_cevresel_onlemler"] = translated_map["b6.b6_2"]
+                    if "b6.b6_3" in translated_map:
+                        b6["b6_3_kontrol_temizleme_yontemleri"] = translated_map["b6.b6_3"]
+                    if "b7.b7_1" in translated_map:
+                        b7["b7_1_guvenli_ellecleme"] = translated_map["b7.b7_1"]
+                    if "b7.b7_2" in translated_map:
+                        b7_2["guvenli_depolama_kosullari"] = translated_map["b7.b7_2"]
+                    if "b7.b7_3" in translated_map:
+                        b7["b7_3_belirli_son_kullanimlar"] = translated_map["b7.b7_3"]
+                    if "b8.muhendislik" in translated_map:
+                        b8_2["muhendislik_kontrolleri"] = translated_map["b8.muhendislik"]
+                    if "b8.goz_yuz" in translated_map:
+                        kkd["goz_yuz"] = translated_map["b8.goz_yuz"]
+                    if "b8.cilt_el" in translated_map:
+                        kkd["cilt_el"] = translated_map["b8.cilt_el"]
+                    if "b8.solunum" in translated_map:
+                        kkd["solunum"] = translated_map["b8.solunum"]
+                    if "b9.b9_2" in translated_map:
+                        b9["b9_2_diger_bilgiler"] = translated_map["b9.b9_2"]
+                    if "b10.b10_4" in translated_map:
+                        b10["b10_4_kacinilmasi_gereken_durumlar"] = translated_map["b10.b10_4"]
+                    if "b10.b10_5" in translated_map:
+                        b10["b10_5_kacinilmasi_gereken_maddeler"] = translated_map["b10.b10_5"]
+                    if "b10.b10_6" in translated_map:
+                        b10["b10_6_zararli_bozunma_urunleri"] = translated_map["b10.b10_6"]
+                    if "b11.akut" in translated_map:
+                        b11_1["akut_toksisite"] = translated_map["b11.akut"]
+                    if "b11.cilt" in translated_map:
+                        b11_1["cilt_asinmasi_tahrisi"] = translated_map["b11.cilt"]
+                    if "b11.goz" in translated_map:
+                        b11_1["goz_hasari"] = translated_map["b11.goz"]
+                    if "b12.toksisite" in translated_map:
+                        b12["b12_1_toksisite"] = translated_map["b12.toksisite"]
+                    if "b12.kalicilik" in translated_map:
+                        b12["b12_2_kalicilik_bozunabilirlik"] = translated_map["b12.kalicilik"]
+                    if "b13.atik" in translated_map:
+                        b13["b13_1_atik_isleme_yontemleri"] = translated_map["b13.atik"]
+                    if "b13.ambalaj" in translated_map:
+                        b13["b13_1_ambalaj_atik_isleme"] = translated_map["b13.ambalaj"]
+                    if "b16.revizyon" in translated_map:
+                        b16["revizyon_aciklamasi"] = translated_map["b16.revizyon"]
+                    if "b16.egitim" in translated_map:
+                        b16["egitim_tavsiyeleri"] = translated_map["b16.egitim"]
+        except Exception as e:
+            pass
+
         return sds
 
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import ExportModal from './Wizard/ExportModal';
+import AiSettingsModal from './AiSettingsModal';
 import {
   FlaskConical,
   Save,
@@ -29,6 +30,7 @@ export default function Header() {
   } = useApp();
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const totalErrors = validationReport?.total_errors || 0;
   const totalWarnings = validationReport?.total_warnings || 0;
@@ -158,6 +160,26 @@ export default function Header() {
             </>
           )}
 
+          {/* Gemini AI Settings Button */}
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setIsAiModalOpen(true)}
+            title="Google Gemini AI Çeviri ve Model Ayarları"
+            style={{
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
+              color: '#ddd6fe',
+              borderColor: 'rgba(168, 85, 247, 0.4)',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Sparkles size={14} color="#c084fc" />
+            <span>Gemini AI</span>
+          </button>
+
           {/* Language Switcher Toggle */}
           <div
             style={{
@@ -167,7 +189,7 @@ export default function Header() {
               borderRadius: '20px',
               padding: '2px',
               border: '1px solid rgba(255, 255, 255, 0.15)',
-              marginLeft: '6px',
+              marginLeft: '4px',
             }}
           >
             <button
@@ -214,6 +236,12 @@ export default function Header() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
+      />
+
+      {/* Gemini AI Settings Modal */}
+      <AiSettingsModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
       />
     </>
   );

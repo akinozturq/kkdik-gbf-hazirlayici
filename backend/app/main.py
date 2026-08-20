@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
-from app.routers import products_router, references_router
+from app.routers import products_router, references_router, ai_router
 
 
 @asynccontextmanager
@@ -39,6 +39,7 @@ app.add_middleware(
 # Router'ları kaydet
 app.include_router(products_router)
 app.include_router(references_router)
+app.include_router(ai_router)
 
 
 @app.get("/", tags=["Sistem"])
