@@ -15,13 +15,14 @@ logger = logging.getLogger(__name__)
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
-# Desteklenen ve fallback modeller
+# Desteklenen ve bilinen kararlı modeller
 SUPPORTED_MODELS = [
-    {"id": "gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite (Hızlı & Ekonomik)", "recommended": True},
-    {"id": "gemini-3.5-flash-lite", "name": "Gemini 3.5 Flash Lite", "recommended": False},
+    {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash (En Kararlı & Ücretsiz Kotaya Uygun)", "recommended": True},
+    {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash (Yeni Nesil Hızlı)", "recommended": False},
     {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "recommended": False},
-    {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash (Klasik)", "recommended": False},
-    {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro (Gelişmiş)", "recommended": False},
+    {"id": "gemini-3.5-flash-lite", "name": "Gemini 3.5 Flash Lite", "recommended": False},
+    {"id": "gemini-1.5-flash-8b", "name": "Gemini 1.5 Flash 8B (Ultra Hafif)", "recommended": False},
+    {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro (Gelişmiş Zekâ)", "recommended": False},
 ]
 
 
@@ -36,7 +37,7 @@ class GeminiService:
 
     @property
     def model(self) -> str:
-        return self._model or settings.GEMINI_MODEL or "gemini-2.5-flash-lite"
+        return self._model or settings.GEMINI_MODEL or "gemini-1.5-flash"
 
     def set_credentials(self, api_key: Optional[str] = None, model: Optional[str] = None):
         if api_key is not None:
@@ -48,6 +49,35 @@ class GeminiService:
 
     def is_configured(self) -> bool:
         return bool(self.api_key and len(self.api_key) > 10)
+
+    def get_available_models(self, api_key: Optional[str] = None) -> List[Dict[str, Any]]:
+        """API anahtarı için Google'da tanımlı güncel model listesini çeker."""
+        key_to_use = (api_key or self.api_key).strip()
+        if not key_to_use:
+            return SUPPORTED_MODELS
+
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                res = client.get(f"{GEMINI_API_URL}?key={key_to_use}")
+                if res.status_code == 200:
+                    data = res.json()
+                    models = []
+                    for m in data.get("models", []):
+                        m_name = m.get("name", "").replace("models/", "")
+                        methods = m.get("supportedGenerationMethods", [])
+                        if "generateContent" in methods and "gemini" in m_name:
+                            disp = m.get("displayName", m_name)
+                            models.append({
+                                "id": m_name,
+                                "name": f"{disp} ({m_name})",
+                                "recommended": "1.5-flash" in m_name or "flash" in m_name
+                            })
+                    if models:
+                        return models
+        except Exception as e:
+            logger.warning(f"Google modelleri listelenemedi: {e}")
+
+        return SUPPORTED_MODELS
 
     def test_connection(self, api_key: Optional[str] = None, model: Optional[str] = None) -> Dict[str, Any]:
         """Gemini API bağlantısını test eder ve yanıt süresini döner."""
@@ -67,7 +97,7 @@ class GeminiService:
             "contents": [
                 {
                     "parts": [
-                        {"text": "Translate the following phrase into English in 5 words or fewer: 'Kolay alevlenir sıvı ve buhar.'"}
+                        {"text": "Translate into English in 5 words or fewer: 'Kolay alevlenir sıvı ve buhar.'"}
                     ]
                 }
             ],
@@ -88,13 +118,13 @@ class GeminiService:
                         text_part = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
                         return {
                             "success": True,
-                            "message": f"Bağlantı başarılı! Model yanıtı: '{text_part}'",
+                            "message": f"Bağlantı başarılı! Model: {model_to_use}",
                             "model": model_to_use,
                             "response_sample": text_part
                         }
                     return {
                         "success": True,
-                        "message": "Bağlantı başarılı ancak yanıt gövdesi boş.",
+                        "message": "Bağlantı başarılı.",
                         "model": model_to_use
                     }
                 else:
@@ -104,11 +134,33 @@ class GeminiService:
                         error_detail = err_json.get("error", {}).get("message", response.text)
                     except Exception:
                         pass
-                    
-                    # If model not found, try fallback to gemini-2.5-flash or gemini-1.5-flash
-                    if "not found" in error_detail.lower() and model_to_use != "gemini-2.5-flash-lite":
-                        logger.warning(f"Model {model_to_use} bulunamadı, gemini-2.5-flash-lite deneniyor...")
-                        return self.test_connection(key_to_use, "gemini-2.5-flash-lite")
+
+                    # 429 Prepayment Hatası Açıklaması
+                    if response.status_code == 429 and "prepayment" in error_detail.lower():
+                        msg = (
+                            "Google AI Studio 429 Hatası: Seçili proje ücretli (prepayment) plana bağlanmış ve kredi bakiyesi $0 görünüyor. "
+                            "Çözüm: Google AI Studio (aistudio.google.com/app/apikey) ekranında 'Create API key in new project' "
+                            "(yeni projede anahtar oluştur) seçeneğiyle tamamen ücretsiz bir API anahtarı alabilirsiniz."
+                        )
+                        return {
+                            "success": False,
+                            "message": msg,
+                            "model": model_to_use,
+                            "error_code": 429
+                        }
+
+                    # 404 Model Bulunamadı Hatası
+                    if response.status_code == 404 or "not found" in error_detail.lower():
+                        msg = (
+                            f"Model '{model_to_use}' bu API anahtarı için bulunamadı veya kullanımdan kaldırılmış. "
+                            "Lütfen 'gemini-1.5-flash' veya 'gemini-2.0-flash' modelini seçiniz."
+                        )
+                        return {
+                            "success": False,
+                            "message": msg,
+                            "model": model_to_use,
+                            "error_code": 404
+                        }
 
                     return {
                         "success": False,

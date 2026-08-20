@@ -37,11 +37,13 @@ def get_ai_config():
         else:
             masked_key = "***"
 
+    available_models = gemini_service.get_available_models(key)
+
     return {
         "is_configured": gemini_service.is_configured(),
         "api_key_masked": masked_key,
         "active_model": gemini_service.model,
-        "supported_models": SUPPORTED_MODELS
+        "supported_models": available_models
     }
 
 

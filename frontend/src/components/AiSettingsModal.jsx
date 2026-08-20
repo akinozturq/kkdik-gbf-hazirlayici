@@ -169,14 +169,24 @@ export default function AiSettingsModal({ isOpen, onClose }) {
                 onChange={(e) => setModel(e.target.value)}
                 style={{ fontWeight: 600 }}
               >
-                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Önerilen)</option>
-                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Ultra Hızlı & Ekonomik)</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Klasik)</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Gelişmiş Zekâ)</option>
+                {supportedModels && supportedModels.length > 0 ? (
+                  supportedModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (En Kararlı & Ücretsiz Kotaya Uygun)</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  </>
+                )}
               </select>
               <p style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '4px' }}>
-                <b>Gemini Flash Lite:</b> Kimyasal metin çevirilerinde anlık hız ve sıfıra yakın token maliyeti sunar.
+                💡 <b>İpucu:</b> <code>gemini-1.5-flash</code> modeli Google AI Studio ücretsiz planında en kararlı çalışan ve günlük 1.500 istek kotası veren modeldir.
               </p>
             </div>
 
