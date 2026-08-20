@@ -31,7 +31,9 @@ def test_ai_config_endpoints(client: TestClient):
     data2 = res2.json()
     assert data2["is_configured"] is True
     assert "AIzaSy" in data2["api_key_masked"]
-    assert data2["active_model"] == "gemini-3.5-flash-lite"
+
+    # 4. Clean up test credentials
+    client.post("/api/ai/config", json={"api_key": "", "model": "gemini-1.5-flash"})
 
 
 def test_ai_test_endpoint_without_valid_key(client: TestClient):

@@ -16,7 +16,7 @@ import {
 
 export default function AiSettingsModal({ isOpen, onClose }) {
   const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('gemini-3.5-flash-lite');
+  const [model, setModel] = useState('gemini-1.5-flash');
   const [isConfigured, setIsConfigured] = useState(false);
   const [maskedKey, setMaskedKey] = useState('');
   const [supportedModels, setSupportedModels] = useState([]);
@@ -39,7 +39,7 @@ export default function AiSettingsModal({ isOpen, onClose }) {
       const data = await api.getAiConfig();
       setIsConfigured(data.is_configured);
       setMaskedKey(data.api_key_masked || '');
-      setModel(data.active_model || 'gemini-3.5-flash-lite');
+      setModel(data.active_model || 'gemini-1.5-flash');
       setSupportedModels(data.supported_models || []);
     } catch (err) {
       console.error('AI Ayarları yükleme hatası:', err);
