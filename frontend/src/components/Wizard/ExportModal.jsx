@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { useApp } from '../../context/AppContext';
 import {
@@ -15,11 +15,18 @@ import {
 } from 'lucide-react';
 
 export default function ExportModal({ isOpen, onClose }) {
-  const { product, validationReport } = useApp();
-  const [selectedLang, setSelectedLang] = useState('tr');
+  const { product, validationReport, uiLang, setLanguage } = useApp();
+  const [selectedLang, setSelectedLang] = useState(uiLang || 'tr');
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Sync selectedLang with uiLang when modal opens or uiLang changes
+  useEffect(() => {
+    if (isOpen && uiLang) {
+      setSelectedLang(uiLang);
+    }
+  }, [isOpen, uiLang]);
 
   if (!isOpen || !product) return null;
 
@@ -27,6 +34,13 @@ export default function ExportModal({ isOpen, onClose }) {
   const errors = validationReport?.errors || [];
   const warnings = validationReport?.warnings || [];
   const completionPct = validationReport?.overall_completion_percentage || 0;
+
+  const handleSelectLang = (lang) => {
+    setSelectedLang(lang);
+    if (setLanguage) {
+      setLanguage(lang);
+    }
+  };
 
   const handleDocxDownload = async () => {
     setDownloadingDocx(true);
@@ -59,7 +73,8 @@ export default function ExportModal({ isOpen, onClose }) {
   };
 
   const handleOpenPreview = () => {
-    window.open(api.getPreviewHtmlUrl(product.id, selectedLang), '_blank');
+    const previewUrl = api.getPreviewHtmlUrl(product.id, selectedLang);
+    window.open(previewUrl, '_blank');
   };
 
   return (
@@ -68,7 +83,9 @@ export default function ExportModal({ isOpen, onClose }) {
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileDown size={20} color="#2563eb" />
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Güvenlik Bilgi Formu (GBF) Dışa Aktar</h3>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>
+              {selectedLang === 'en' ? 'Export Safety Data Sheet (SDS)' : 'Güvenlik Bilgi Formu (GBF) Dışa Aktar'}
+            </h3>
           </div>
           <button type="button" className="btn btn-secondary btn-icon" onClick={onClose}>
             <X size={18} />
@@ -123,7 +140,9 @@ export default function ExportModal({ isOpen, onClose }) {
               >
                 %{completionPct}
               </span>
-              <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Tamamlanma</div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                {selectedLang === 'en' ? 'Completed' : 'Tamamlanma'}
+              </div>
             </div>
           </div>
 
@@ -146,14 +165,14 @@ export default function ExportModal({ isOpen, onClose }) {
               )}
               <span style={{ color: isValid ? '#065f46' : '#92400e' }}>
                 {isValid
-                  ? 'Mevzuata Tam Uyumlu — Dışa Aktarıma Hazır'
-                  : `Mevzuat Uyarıları (${errors.length} Eksik Zorunlu Alan)`}
+                  ? (selectedLang === 'en' ? 'Fully Compliant — Ready for Export' : 'Mevzuata Tam Uyumlu — Dışa Aktarıma Hazır')
+                  : (selectedLang === 'en' ? `Validation Warnings (${errors.length} Missing Mandatory Fields)` : `Mevzuat Uyarıları (${errors.length} Eksik Zorunlu Alan)`)}
               </span>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#475569', marginTop: '4px' }}>
               {isValid
-                ? 'Tüm KKDİK Ek-2 zorunlu alt bölümleri ve kuralları eksiksiz karşılanmıştır.'
-                : 'Formda bazı zorunlu alanlar doldurulmamış olsa da taslak doküman olarak Word veya PDF formatında indirebilirsiniz.'}
+                ? (selectedLang === 'en' ? 'All mandatory subheadings and REACH Annex II rules are satisfied.' : 'Tüm KKDİK Ek-2 zorunlu alt bölümleri ve kuralları eksiksiz karşılanmıştır.')
+                : (selectedLang === 'en' ? 'Some fields are missing, but you can still download a draft copy in Word or PDF.' : 'Formda bazı zorunlu alanlar doldurulmamış olsa da taslak doküman olarak Word veya PDF formatında indirebilirsiniz.')}
             </p>
           </div>
 
@@ -166,7 +185,7 @@ export default function ExportModal({ isOpen, onClose }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <button
                 type="button"
-                onClick={() => setSelectedLang('tr')}
+                onClick={() => handleSelectLang('tr')}
                 style={{
                   padding: '10px 14px',
                   borderRadius: '8px',
@@ -177,6 +196,7 @@ export default function ExportModal({ isOpen, onClose }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
+                  boxShadow: selectedLang === 'tr' ? '0 0 0 1px #2563eb' : 'none',
                 }}
               >
                 <span style={{ fontSize: '1.4rem' }}>🇹🇷</span>
@@ -192,7 +212,7 @@ export default function ExportModal({ isOpen, onClose }) {
 
               <button
                 type="button"
-                onClick={() => setSelectedLang('en')}
+                onClick={() => handleSelectLang('en')}
                 style={{
                   padding: '10px 14px',
                   borderRadius: '8px',
@@ -203,6 +223,7 @@ export default function ExportModal({ isOpen, onClose }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
+                  boxShadow: selectedLang === 'en' ? '0 0 0 1px #2563eb' : 'none',
                 }}
               >
                 <span style={{ fontSize: '1.4rem' }}>🇬🇧</span>
@@ -235,10 +256,12 @@ export default function ExportModal({ isOpen, onClose }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem', color: '#1e3a8a' }}>
                   <FileText size={18} color="#2563eb" />
-                  <span>Word Belgesi (.docx)</span>
+                  <span>{selectedLang === 'en' ? 'Word Document (.docx)' : 'Word Belgesi (.docx)'}</span>
                 </div>
                 <p style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '6px', lineHeight: 1.35 }}>
-                  Resmi antet şablonu (GBF ANTET.docx), şirket logoları, tablolar ve düzenlenebilir Word formatı.
+                  {selectedLang === 'en'
+                    ? 'REACH Annex II structure, corporate header template (GBF ANTET.docx), logos and editable tables.'
+                    : 'Resmi antet şablonu (GBF ANTET.docx), şirket logoları, tablolar ve düzenlenebilir Word formatı.'}
                 </p>
               </div>
 
@@ -250,7 +273,11 @@ export default function ExportModal({ isOpen, onClose }) {
                 style={{ marginTop: '14px', width: '100%' }}
               >
                 <Download size={14} />
-                {downloadingDocx ? 'İndiriliyor...' : 'Word İndir (.docx)'}
+                {downloadingDocx
+                  ? 'İndiriliyor...'
+                  : selectedLang === 'en'
+                  ? 'Download Word (.docx)'
+                  : 'Word İndir (.docx)'}
               </button>
             </div>
 
@@ -269,10 +296,12 @@ export default function ExportModal({ isOpen, onClose }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem', color: '#991b1b' }}>
                   <FileText size={18} color="#dc2626" />
-                  <span>PDF Belgesi (.pdf)</span>
+                  <span>{selectedLang === 'en' ? 'PDF Document (.pdf)' : 'PDF Belgesi (.pdf)'}</span>
                 </div>
                 <p style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '6px', lineHeight: 1.35 }}>
-                  Baskıya hazır kurumsal mizanpaj, sayfa numaralandırması (Sayfa X / Y) ve 16 bölüm tabloları.
+                  {selectedLang === 'en'
+                    ? 'Print-ready corporate layout, official REACH Annex II headings, page numbering and 16 section tables.'
+                    : 'Baskıya hazır kurumsal mizanpaj, sayfa numaralandırması (Sayfa X / Y) ve 16 bölüm tabloları.'}
                 </p>
               </div>
 
@@ -284,7 +313,11 @@ export default function ExportModal({ isOpen, onClose }) {
                 style={{ marginTop: '14px', width: '100%', backgroundColor: '#b91c1c', borderColor: '#991b1b' }}
               >
                 <Download size={14} />
-                {downloadingPdf ? 'İndiriliyor...' : 'PDF İndir (.pdf)'}
+                {downloadingPdf
+                  ? 'İndiriliyor...'
+                  : selectedLang === 'en'
+                  ? 'Download PDF (.pdf)'
+                  : 'PDF İndir (.pdf)'}
               </button>
             </div>
           </div>
@@ -298,7 +331,9 @@ export default function ExportModal({ isOpen, onClose }) {
               style={{ color: '#475569', borderColor: '#cbd5e1' }}
             >
               <Eye size={14} />
-              Yeni Sekmede Canlı HTML Önizleme
+              {selectedLang === 'en'
+                ? 'Live HTML Preview in New Tab (English SDS)'
+                : 'Yeni Sekmede Canlı HTML Önizleme (Türkçe GBF)'}
               <ExternalLink size={12} />
             </button>
           </div>
@@ -306,7 +341,7 @@ export default function ExportModal({ isOpen, onClose }) {
 
         <div className="modal-footer">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Kapat
+            {selectedLang === 'en' ? 'Close' : 'Kapat'}
           </button>
         </div>
       </div>
