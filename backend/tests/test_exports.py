@@ -79,19 +79,39 @@ def test_preview_html_endpoint(client: TestClient):
 
 def test_export_english_docx_and_pdf(client: TestClient):
     create_res = client.post("/api/products", json={
-        "urun_adi": "Industrial Solvent Blend",
+        "urun_adi": "Endüstriyel Tiner",
         "ticari_kod": "SOL-200",
-        "kategori": "Solvents",
+        "kategori": "Solventler",
         "sds_data": {
             "meta": {"hazirlama_tarihi": "20.08.2026", "revizyon_no": "02"},
             "b1_kimlik": {
-                "b1_1": {"madde_karisim_adi": "Industrial Solvent Blend"},
-                "b1_3": {"tedarikci_adi": "Aypol Chemicals"},
-                "b1_4": {"acil_telefon": "112"}
+                "b1_1": {"madde_karisim_adi": "Endüstriyel Tiner", "kayit_numarasi": "Kayıttan muaftır / Uygulanabilir değildir."},
+                "b1_2": {"tanimlanmis_kullanimlar": ["Sanayi / Endüstriyel kullanım"]},
+                "b1_3": {"tedarikci_adi": "Aypol Kimya", "adres": "İstanbul / Türkiye"},
+                "b1_4": {"acil_telefon": "114 (UZEM - Ulusal Zehir Danışma Merkezi)"}
+            },
+            "b2_zarar_tanimi": {
+                "b2_1": {"siniflandirmalar": [{"zararlilik_sinifi": "Alevlenir Sıvı", "kategori": "Kategori 2", "h_kodu": "H225"}]},
+                "b2_2": {"piktogramlar": ["GHS02"], "uyari_kelimesi": "Tehlike", "h_ifadeleri": ["H225"]},
+                "b2_3": {"pbt_vpvb_degerlendirme": "PBT / vPvB kriterlerini karşılamaz."}
+            },
+            "b4_ilk_yardim": {
+                "b4_1": {"soluma": "Kazazedeyi temiz havaya çıkarın.", "cilt_temasi": "Bol su ve sabun ile yıkayınız."}
             }
         }
     })
     prod_id = create_res.json()["id"]
+
+    # English HTML Preview Content Translation Verification
+    html_en_res = client.get(f"/api/products/{prod_id}/export/preview-html?lang=en")
+    assert html_en_res.status_code == 200
+    assert "SAFETY DATA SHEET" in html_en_res.text
+    assert "Flammable Liquid" in html_en_res.text
+    assert "Danger" in html_en_res.text
+    assert "Remove casualty to fresh air" in html_en_res.text
+    assert "Wash thoroughly with plenty of soap and water" in html_en_res.text
+    assert "Industrial / Professional use" in html_en_res.text
+    assert "Istanbul / Turkey" in html_en_res.text
 
     # English DOCX
     docx_en_res = client.get(f"/api/products/{prod_id}/export/docx?lang=en")

@@ -3,6 +3,8 @@ KKDİK (TR) ve REACH Annex II (EN) Dil & Çeviri Servisi
 Tüm 16 Bölüm başlıkları, alt başlıkları, etiket unsurları ve standart ifadeleri içerir.
 """
 
+import re
+import json
 from typing import Dict, Any, Optional, List
 
 # REACH Annex II Resmi 16 Bölüm ve Alt Başlıkları
@@ -569,6 +571,256 @@ SECTIONS_TR = {
 }
 
 
+# Standard Turkish to English SDS Phrases and Sentences (REACH Annex II / CLP)
+PHRASE_TRANSLATIONS_TR_TO_EN = {
+    # General & Identifiers
+    "Sanayi / Endüstriyel kullanım": "Industrial / Professional use",
+    "Endüstriyel kullanım": "Industrial use",
+    "Profesyonel kullanım": "Professional use",
+    "Tüketici kullanımı": "Consumer use",
+    "Tavsiye edilen kullanımların dışında kullanılmamalıdır.": "Do not use for purposes other than those identified.",
+    "Kayıttan muaftır / Uygulanabilir değildir.": "Exempt from registration / Not applicable.",
+    "Kayıttan muaftır.": "Exempt from registration.",
+    "Uygulanabilir değildir.": "Not applicable.",
+    "Uygulanabilir değildir": "Not applicable",
+    "Uygulanamaz": "Not applicable",
+    "Belirlenmemiştir": "Not determined",
+    "Belirlenmemiştir / Uygulanabilir değildir.": "Not determined / Not applicable.",
+    "114 (UZEM - Ulusal Zehir Danışma Merkezi) | 112 Acil": "112 Emergency / National Poison Centre",
+    "114 (UZEM - Ulusal Zehir Danışma Merkezi)": "114 National Poison Center / 112 Emergency",
+    "114": "114 (UZEM) / 112 Emergency",
+    "İstanbul / Türkiye": "Istanbul / Turkey",
+    "Türkiye": "Turkey",
+    "Aypol Kimya Sanayi ve Ticaret A.Ş.": "Aypol Kimya Sanayi ve Ticaret A.S.",
+
+    # Section 2 Classification & Hazards
+    "SEA Yönetmeliği kriterlerine göre zararlı olarak sınıflandırılmamıştır.": "Not classified as hazardous according to Regulation (EC) No 1272/2008 [CLP].",
+    "Zararlı olarak sınıflandırılmamıştır.": "Not classified as hazardous according to Regulation (EC) No 1272/2008 [CLP].",
+    "PBT / vPvB kriterlerini karşılamaz.": "Does not meet the criteria for PBT or vPvB in accordance with Annex XIII of Regulation (EC) No 1907/2006.",
+    "PBT veya vPvB maddesi içermez.": "Does not contain PBT or vPvB substances.",
+    "PBT/vPvB kriterlerini karşılamaz.": "Does not meet PBT/vPvB criteria.",
+    "PBT/vPvB değerlendirmesi yapılmamıştır.": "PBT/vPvB assessment has not been conducted.",
+    "Endokrin bozucu özellik göstermez.": "Does not contain substances with endocrine disrupting properties.",
+    "Endokrin bozucu madde içermez.": "Does not contain endocrine disrupting substances.",
+    "Zararlı sınır değerini aşan bileşen bulunmamaktadır.": "Contains no hazardous ingredients exceeding reporting thresholds.",
+    "Zararlı sınır değerini aşan bileşen bildirilmemiştir.": "Contains no hazardous ingredients exceeding reporting thresholds.",
+    "GHS Piktogramı Bulunmamaktadır": "No GHS Pictogram required",
+    "GHS Piktogramı Yok": "No GHS Pictogram required",
+
+    # Hazard Classes
+    "Alevlenir Sıvı": "Flammable Liquid",
+    "Alevlenir Gaz": "Flammable Gas",
+    "Alevlenir Katı": "Flammable Solid",
+    "Alevlenir Aerosol": "Flammable Aerosol",
+    "Cilt Aşınması / Tahrişi": "Skin Corrosion / Irritation",
+    "Cilt Aşınması": "Skin Corrosion",
+    "Cilt Tahrişi": "Skin Irritation",
+    "Cilt Tahriş": "Skin Irritation",
+    "Ciddi Göz Hasarları / Tahrişi": "Serious Eye Damage / Eye Irritation",
+    "Ciddi Göz Hasarı / Göz Tahrişi": "Serious Eye Damage / Eye Irritation",
+    "Ciddi Göz Hasarı": "Serious Eye Damage",
+    "Göz Hasarı": "Serious Eye Damage",
+    "Göz Tahrişi": "Eye Irritation",
+    "Solunum Yolları veya Cilt Hassaslaşması": "Respiratory or Skin Sensitisation",
+    "Solunum Hassaslaşması": "Respiratory Sensitisation",
+    "Solunum Hassasiyeti": "Respiratory Sensitisation",
+    "Cilt Hassaslaşması": "Skin Sensitisation",
+    "Cilt Hassasiyeti": "Skin Sensitisation",
+    "Eşey Hücre Mutajenitesi": "Germ Cell Mutagenicity",
+    "Mutajenite": "Germ Cell Mutagenicity",
+    "Kanserojenite": "Carcinogenicity",
+    "Üreme Toksisitesi": "Reproductive Toxicity",
+    "Belirli Hedef Organ Toksisitesi (BHOT) - Tek Maruz Kalma": "Specific Target Organ Toxicity - Single Exposure (STOT SE)",
+    "Belirli Hedef Organ Toksisitesi (BHOT) - Tekrarlı Maruz Kalma": "Specific Target Organ Toxicity - Repeated Exposure (STOT RE)",
+    "Belirli Hedef Organ Toksisitesi - Tek Maruz Kalma": "Specific Target Organ Toxicity - Single Exposure (STOT SE)",
+    "Belirli Hedef Organ Toksisitesi - Tekrarlı Maruz Kalma": "Specific Target Organ Toxicity - Repeated Exposure (STOT RE)",
+    "Belirli Hedef Organ Toksisitesi": "Specific Target Organ Toxicity",
+    "BHOT Tek Maruz": "STOT SE",
+    "BHOT Tekrarlı Maruz": "STOT RE",
+    "BHOT Tek": "STOT SE",
+    "BHOT Tekr.": "STOT RE",
+    "Aspirasyon Zararı": "Aspiration Hazard",
+    "Aspirasyon Tehlikesi": "Aspiration Hazard",
+    "Sucul Akut": "Hazardous to the aquatic environment - Acute",
+    "Sucul Kronik": "Hazardous to the aquatic environment - Chronic",
+    "Sucul Ortama Zararlı - Akut": "Hazardous to the aquatic environment - Acute",
+    "Sucul Ortama Zararlı - Kronik": "Hazardous to the aquatic environment - Chronic",
+
+    # Section 4 First Aid
+    "Kazazedeyi temiz havaya çıkarın.": "Remove casualty to fresh air and keep at rest in a position comfortable for breathing.",
+    "Kazazedeyi temiz havaya çıkarın. Nefes almıyorsa suni solunum yapın. Doktora başvurun.": "Remove casualty to fresh air and keep at rest in a position comfortable for breathing. If not breathing, give artificial respiration. Get medical attention.",
+    "Bol su ve sabun ile yıkayınız.": "Wash thoroughly with plenty of soap and water. Remove contaminated clothing immediately.",
+    "Bol su ve sabunla yıkayınız.": "Wash thoroughly with plenty of soap and water. Remove contaminated clothing.",
+    "Bol su ile en az 15 dakika yıkayınız.": "Rinse cautiously with water for at least 15 minutes. Remove contact lenses if present and easy to do. Get medical attention if irritation persists.",
+    "Bol suyla en az 15 dakika yıkayınız.": "Rinse cautiously with water for at least 15 minutes. Get medical attention.",
+    "Ağzı su ile çalkalayınız. Kusturmayınız.": "Rinse mouth thoroughly with water. Do NOT induce vomiting. Seek medical advice immediately.",
+    "Ağzı suyla çalkalayınız. Kusturmayınız.": "Rinse mouth thoroughly with water. Do NOT induce vomiting. Seek medical attention immediately.",
+    "Önemli bir belirti bildirilmemiştir.": "No significant symptoms or effects are known under normal use.",
+    "Önemli belirti bildirilmemiştir.": "No significant symptoms known.",
+    "Semptomatik tedavi uygulayınız.": "Treat symptomatically and supportively.",
+
+    # Section 5 Firefighting
+    "Köpük, kuru kimyevi toz, CO2, su sisi.": "Water spray, alcohol-resistant foam, dry chemical powder, carbon dioxide (CO2).",
+    "Köpük, kuru kimyevi toz, karbon dioksit (CO2), su spreyi.": "Alcohol-resistant foam, dry chemical powder, carbon dioxide (CO2), water spray.",
+    "Yüksek basınçlı tam su jeti.": "High volume water jet (may scatter and spread fire).",
+    "Doğrudan su jeti (yangını yayabilir).": "Direct water jet (may spread fire).",
+    "Yanma halinde toksik karbon oksitler açığa çıkabilir.": "Thermal decomposition can lead to release of toxic carbon oxides (CO, CO2) and irritating fumes.",
+    "Yanma halinde toksik karbon oksitler açığa çıkar.": "Thermal decomposition can lead to release of toxic carbon oxides (CO, CO2).",
+    "Termal bozunma halinde toksik gazlar (karbon monoksit, karbon dioksit, azot oksitler) oluşabilir.": "Thermal decomposition may produce toxic gases (carbon monoxide, carbon dioxide, nitrogen oxides).",
+    "Tam koruyucu teçhizat ve solunum cihazı kullanınız.": "Wear self-contained breathing apparatus (SCBA) and full protective gear.",
+    "Tam koruyucu elbise ve solunum cihazı kullanınız.": "Wear self-contained breathing apparatus (SCBA) and full protective clothing.",
+    "Yangın söndürme personeli bağımsız solunum aparatı (SCBA) ve tam koruyucu kıyafet giymelidir.": "Firefighting personnel must wear self-contained breathing apparatus (SCBA) and full protective suit.",
+
+    # Section 6 Accidental Release
+    "Alanı havalandırın. Ateş kaynaklarını uzaklaştırın.": "Evacuate area. Ensure adequate ventilation. Keep away all sources of ignition. Wear suitable PPE.",
+    "Kanalizasyon ve su yollarına karışmasını önleyiniz.": "Prevent product from entering drains, surface water, groundwater or soil.",
+    "Toprağa, kanalizasyona, yüzey ve yeraltı sularına karışmasını önleyiniz.": "Prevent product from entering soil, drains, surface water and groundwater.",
+    "İnert emici materyal (kum vb.) ile toplayınız.": "Absorb with inert material (sand, silica gel, universal binder, sawdust) and collect in appropriate disposal containers.",
+    "İnert emici materyal ile toplayınız.": "Absorb with inert material and collect for disposal.",
+    "Dökülen materyali yanıcı olmayan emici bir madde (kum, toprak, diatomit, talaş vb.) ile toplayınız ve bertaraf için uygun bir kaba koyunuz.": "Absorb spillage with non-combustible absorbent material (sand, earth, diatomaceous earth, sawdust) and collect into suitable containers for disposal.",
+    "Kişisel korunma için Bölüm 8'e, bertaraf için Bölüm 13'e bakınız.": "See Section 8 for personal protective equipment and Section 13 for waste disposal.",
+
+    # Section 7 Handling & Storage
+    "İyi havalandırılan yerlerde kullanın. Temastan kaçının.": "Use only in well-ventilated areas. Avoid contact with eyes, skin and clothing. Avoid breathing vapours.",
+    "İyi havalandırılan yerlerde kullanın.": "Use only in well-ventilated areas.",
+    "Serin, kuru, iyi havalandırılan yerde saklayınız.": "Store in original tightly closed container in a cool, dry, well-ventilated place away from heat, sparks and open flames.",
+    "Orijinal ambalajında, kapağı sıkıca kapalı olarak serin, kuru ve iyi havalandırılan yerde, doğrudan güneş ışığından ve ateş kaynaklarından uzakta muhafaza ediniz.": "Store in original tightly closed container in a cool, dry and well-ventilated area, away from direct sunlight, heat and sources of ignition.",
+    "Bölüm 1.2'de belirtilen alanlar içindir.": "No specific end uses other than those specified in Section 1.2.",
+    "Ekstra bir son kullanım alanı bulunmamaktadır.": "No additional specific end use information available.",
+
+    # Section 8 Exposure Controls & PPE
+    "Tanımlı mesleki maruziyet sınır değeri bulunmamaktadır.": "Contains no substances with occupational exposure limit values.",
+    "Yeterli genel ve lokal havalandırma sağlayınız.": "Provide adequate local exhaust and general room ventilation.",
+    "Yeterli havalandırma sağlayınız.": "Provide adequate ventilation.",
+    "İyi bir genel havalandırma ve yerel egzoz havalandırması sağlayınız.": "Provide good general ventilation and local exhaust ventilation.",
+    "EN 166 uyumlu koruyucu gözlük.": "Safety glasses with side-shields conforming to EN 166.",
+    "EN 166 onaylı, yan korumalı emniyet gözlükleri veya kimyasal siperlik.": "Safety goggles with side-shields or chemical face shield conforming to EN 166.",
+    "EN 374 uyumlu nitril eldiven.": "Chemical resistant protective gloves conforming to EN 374 (e.g. Nitrile rubber).",
+    "EN 374 uyumlu koruyucu eldiven.": "Protective gloves conforming to EN 374.",
+    "EN 374 standardına uygun solvente/kimyasala dayanıklı nitril veya bütil kauçuk eldivenler.": "Solvent- and chemical-resistant nitrile or butyl rubber gloves conforming to EN 374.",
+    "Gerekli hallerde A tipi filtreli solunum maskesi.": "In case of insufficient ventilation or prolonged exposure, wear suitable respirator with filter type A (EN 14387).",
+    "Yetersiz havalandırma durumunda organik buharlara uygun A tipi kombine filtreli maske (EN 14387).": "In case of insufficient ventilation, wear respiratory mask with type A filter for organic vapours (EN 14387).",
+    "Resmi Gazete: 28733": "TR OEL (RG: 28733) / EU IOELV",
+
+    # Section 9 Physical & Chemical
+    "Karakteristik": "Characteristic",
+    "Karakteristik solvent kokusu": "Characteristic solvent odour",
+    "Kokusuz": "Odourless",
+    "Sıvı": "Liquid",
+    "Viskoz sıvı": "Viscous liquid",
+    "Katı": "Solid",
+    "Gaz": "Gas",
+    "Şeffaf": "Transparent / Clear",
+    "Berrak": "Clear",
+    "Berrak sıvı": "Clear liquid",
+    "Renksiz": "Colourless",
+    "Beyaz": "White",
+    "Sarı": "Yellow",
+    "Mavi": "Blue",
+    "Kırmızı": "Red",
+    "Gri": "Grey",
+    "Siyah": "Black",
+    "Patlayıcı değildir.": "Not explosive",
+    "Patlayıcı değildir": "Not explosive",
+    "Oksitleyici değildir.": "Not oxidising",
+    "Oksitleyici değildir": "Not oxidising",
+    "Suda çözünmez.": "Insoluble in water",
+    "Suda çözünmez": "Insoluble in water",
+    "Suda çözünür.": "Soluble in water",
+    "Suda çözünür": "Soluble in water",
+    "Suda kısmen çözünür.": "Partially soluble in water",
+    "Organik solventlerde çözünür.": "Soluble in organic solvents",
+    "Ek bilgi bulunmamaktadır.": "No further relevant information available.",
+
+    # Section 10 Stability & Reactivity
+    "Normal koşullarda tehlikeli bir reaksiyon vermez.": "No dangerous reactions known under normal conditions of use.",
+    "Normal koşullarda tehlikeli tepkime vermez.": "No dangerous reactions known under normal conditions.",
+    "Normal kullanım ve depolama koşullarında reaktif değildir.": "Non-reactive under normal conditions of use and storage.",
+    "Normal depolama ve kullanım koşullarında kararlıdır.": "Stable under recommended storage and handling conditions.",
+    "Tavsiye edilen depolama koşullarında kararlıdır.": "Stable under recommended storage conditions.",
+    "Tehlikeli reaksiyon beklenmez.": "No hazardous reactions known.",
+    "Normal kullanımda tehlikeli polimerizasyon veya reaksiyon meydana gelmez.": "No hazardous polymerization or reactions will occur under normal use.",
+    "Aşırı ısı, kıvılcım, açık alev.": "Excessive heat, sparks, open flames, hot surfaces and direct sunlight.",
+    "Aşırı ısı, açık alev, kıvılcım, doğrudan güneş ışığı ve statik elektrik.": "Excessive heat, open flames, sparks, direct sunlight and static discharge.",
+    "Kuvvetli asitler, bazlar ve oksitleyiciler.": "Strong acids, strong bases and strong oxidising agents.",
+    "Kuvvetli oksitleyici maddeler, kuvvetli asitler, kuvvetli alkaliler/bazlar.": "Strong oxidising agents, strong acids, strong alkalis/bases.",
+    "Normal depolamada ayrışmaz. Yangında toksik gazlar açığa çıkar.": "No hazardous decomposition products known under normal storage. Thermal decomposition releases toxic carbon oxides (CO, CO2).",
+    "Normal depolamada ayrışmaz.": "Does not decompose under normal storage conditions.",
+
+    # Section 11 Toxicological
+    "Kriterleri karşılamamaktadır.": "Based on available data, the classification criteria are not met.",
+    "Kriterleri karşılamaz.": "Does not meet classification criteria.",
+    "Mevcut bilgilere göre sınıflandırılmaz.": "Not classified based on available data.",
+    "Hassaslaştırıcı etkisi bildirilmemiştir.": "No sensitising effects known.",
+    "Mutajenik olarak sınıflandırılmaz.": "Not classified as a germ cell mutagen.",
+    "Kanserojen madde içermez.": "Contains no substances classified as carcinogenic.",
+    "Üreme için toksik değildir.": "Not classified as toxic for reproduction.",
+    "Organ hasarı beklenmez.": "No specific target organ toxicity expected.",
+    "Aspirasyon tehlikesi oluşturmaz.": "Not classified as an aspiration hazard.",
+    "Aspirasyon tehlikesi oluşturur.": "May be fatal if swallowed and enters airways (Aspiration Hazard).",
+
+    # Section 12 Ecological
+    "Sucul organizmalar için zararlı olarak sınıflandırılmamıştır.": "Not classified as environmentally hazardous.",
+    "Bileşenleri biyolojik olarak ayrışabilir.": "Components are expected to be biodegradable.",
+    "Biyobirikim potansiyeli düşüktür.": "Bioaccumulation potential is low.",
+    "Topraktaki hareketliliği çözünürlüğe bağlıdır.": "Mobility in soil depends on water solubility.",
+    "Bilinen başka bir olumsuz etkisi yoktur.": "No other adverse environmental effects known.",
+
+    # Section 13 Disposal
+    "Ulusal mevzuata uygun olarak lisanslı atık bertaraf tesislerine verilmelidir.": "Dispose of in accordance with local, national and European regulations. Deliver to a licensed hazardous waste disposal contractor.",
+    "Boş ambalajlar lisanslı geri kazanım/bertaraf firmalarına teslim edilmelidir.": "Empty contaminated packaging must be handed over to authorized recycling or disposal companies.",
+    "Kanalizasyona ve su kaynaklarına dökülmemelidir.": "Do not allow product to enter sewer systems, drains or natural watercourses.",
+
+    # Section 14 Transport
+    "Taşımacılıkta tehlikeli madde değildir.": "Not classified as dangerous goods under transport regulations (ADR/RID, IMDG, ICAO/IATA).",
+    "ADR / RID / IMDG / ICAO-IATA kapsamında tehlikeli madde değildir.": "Not classified as dangerous goods under transport regulations (ADR/RID, IMDG, ICAO/IATA).",
+    "Deniz Kirletici değildir.": "Not a Marine Pollutant",
+    "Deniz Kirletici (Marine Pollutant)": "Marine Pollutant",
+    "Taşımada devrilme ve hasara karşı emniyete alınız.": "Secure packages against damage, falling and tilting during transport.",
+    "Uygulanabilir değildir (Ambalajlı sevkiyat).": "Not applicable (Packaged goods transport).",
+
+    # Section 15 Regulatory
+    "KKDİK Yönetmeliği (RG: 30105), SEA Yönetmeliği (RG: 28848).": "Regulation (EC) No 1907/2006 (REACH), Regulation (EC) No 1272/2008 (CLP), and relevant national health & safety regulations.",
+    "Bu karışım için Kimyasal Güvenlik Değerlendirmesi (KGD) yapılmamıştır.": "A Chemical Safety Assessment (CSA) has not been carried out for this mixture.",
+    "Bu karışım/madde için kimyasal güvenlik değerlendirmesi yapılmamıştır.": "A Chemical Safety Assessment (CSA) has not been carried out for this substance/mixture.",
+
+    # Section 16 Other Info
+    "İlk versiyon (KKDİK Ek-2 uyumlu).": "Initial version (Compliant with REACH Annex II and Regulation (EU) 2020/878).",
+    "İlk versiyon.": "Initial version.",
+    "ADR: Karayolu Taşımacılığı; CAS: Chemical Abstracts Service; TWA: Zaman Ağırlıklı Ortalama; STEL: Kısa Süreli Maruziyet Sınırı.": "ADR: European Agreement concerning the International Carriage of Dangerous Goods by Road; CAS: Chemical Abstracts Service; TWA: Time Weighted Average; STEL: Short Term Exposure Limit; CLP: Classification, Labelling and Packaging; GHS: Globally Harmonized System.",
+    "ECHA Veritabanı, T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı Mevzuatı.": "ECHA (European Chemicals Agency) database, safety data sheets of raw materials, CLP Regulation.",
+    "Çalışanlar kimyasalların güvenli elleçlenmesi ve KKD kullanımı konusunda eğitilmelidir.": "Ensure operators are trained to minimize exposures, handle chemicals safely, and use appropriate personal protective equipment (PPE).",
+    "H-ifadesi bulunmamaktadır.": "No H-statements."
+}
+
+# Chemical substance name translations
+CHEMICAL_NAMES_TR_TO_EN = {
+    "Aseton": "Acetone",
+    "Toluen": "Toluene",
+    "Ksilen": "Xylene",
+    "Etil Asetat": "Ethyl Acetate",
+    "Bütil Asetat": "Butyl Acetate",
+    "İzopropil Alkol": "Isopropyl Alcohol (Isopropanol)",
+    "İzopropanol": "Isopropanol",
+    "Etanol": "Ethanol",
+    "Metanol": "Methanol",
+    "Stiren": "Styrene",
+    "Metil Etil Keton": "Methyl Ethyl Ketone (MEK)",
+    "Hekzan": "Hexane",
+    "n-Hekzan": "n-Hexane",
+    "Siklohekzan": "Cyclohexane",
+    "Tetrahidrofuran": "Tetrahydrofuran",
+    "Diklormetan": "Dichloromethane",
+    "Titanyum Dioksit": "Titanium Dioxide",
+    "Kalsiyum Karbonat": "Calcium Carbonate",
+    "Talk": "Talc",
+    "Baryum Sülfat": "Barium Sulfate",
+    "Demir Oksit": "Iron Oxide",
+    "Çinko Oksit": "Zinc Oxide",
+    "Su": "Water",
+}
+
+
 class TranslationService:
     @staticmethod
     def get_sections(lang: str = "tr") -> Dict[str, Any]:
@@ -576,6 +828,63 @@ class TranslationService:
         if lang.lower() == "en":
             return SECTIONS_EN
         return SECTIONS_TR
+
+    @staticmethod
+    def translate_phrase(text: Optional[str]) -> str:
+        """Çeviri sözlüğündeki veya standart kimyasal metinleri İngilizceye çevirir."""
+        if not text or not isinstance(text, str):
+            return text or ""
+        trimmed = text.strip()
+        if trimmed in PHRASE_TRANSLATIONS_TR_TO_EN:
+            return PHRASE_TRANSLATIONS_TR_TO_EN[trimmed]
+        
+        # Substring / pattern replacements for common terms
+        res = trimmed
+        for tr_phrase, en_phrase in PHRASE_TRANSLATIONS_TR_TO_EN.items():
+            if tr_phrase in res:
+                res = res.replace(tr_phrase, en_phrase)
+        return res
+
+    @staticmethod
+    def translate_chemical_name(name: Optional[str]) -> str:
+        if not name or not isinstance(name, str):
+            return name or ""
+        trimmed = name.strip()
+        return CHEMICAL_NAMES_TR_TO_EN.get(trimmed, trimmed)
+
+    @staticmethod
+    def translate_component_classification(class_str: Optional[str]) -> str:
+        """Bölüm 3.2 bileşen sınıflandırma kısaltmalarını CLP standardına çevirir."""
+        if not class_str or not isinstance(class_str, str):
+            return class_str or "—"
+        s = class_str
+        mappings = [
+            ("Alev. Sıvı", "Flam. Liq."),
+            ("Alev. Gaz", "Flam. Gas"),
+            ("Alev. Katı", "Flam. Sol."),
+            ("Alev. Aerosol", "Aerosol"),
+            ("Cilt Aşın.", "Skin Corr."),
+            ("Cilt Tah.", "Skin Irrit."),
+            ("Göz Has.", "Eye Dam."),
+            ("Göz Tah.", "Eye Irrit."),
+            ("Akut Tok.", "Acute Tox."),
+            ("Sol. Hassas.", "Resp. Sens."),
+            ("Cilt Hassas.", "Skin Sens."),
+            ("Mutajen.", "Muta."),
+            ("Kanserojen.", "Carc."),
+            ("Üreme Tok.", "Repr."),
+            ("BHOT Tek", "STOT SE"),
+            ("BHOT Tekr.", "STOT RE"),
+            ("Asp. Zar.", "Asp. Tox."),
+            ("Asp. Tok.", "Asp. Tox."),
+            ("Sucul Akut", "Aquatic Acute"),
+            ("Sucul Kronik", "Aquatic Chronic"),
+            ("Kategori", "Cat."),
+            ("Kat.", "Cat.")
+        ]
+        for tr_abbr, en_abbr in mappings:
+            s = s.replace(tr_abbr, en_abbr)
+        return s
 
     @staticmethod
     def translate_h_code(code: str, lang: str = "tr") -> str:
@@ -594,31 +903,40 @@ class TranslationService:
     @staticmethod
     def format_h_statements(h_codes: List[str], lang: str = "tr") -> List[str]:
         formatted = []
-        for code in h_codes:
-            code_u = code.strip().upper()
-            if lang.lower() == "en":
-                text = H_STATEMENTS_EN.get(code_u, "")
-                if text:
-                    formatted.append(f"{code_u}: {text}")
+        for item in h_codes:
+            if not item:
+                continue
+            # Extract H code if string is like "H225: Açıklama" or "H225"
+            item_str = str(item).strip()
+            match = re.search(r'\b(H\d{3}[a-zA-Z]?|EUH\d{3}[a-zA-Z]?)\b', item_str, re.IGNORECASE)
+            if match:
+                h_code = match.group(1).upper()
+                if lang.lower() == "en":
+                    text = H_STATEMENTS_EN.get(h_code, "")
+                    formatted.append(f"{h_code}: {text}" if text else item_str)
                 else:
-                    formatted.append(code_u)
+                    formatted.append(item_str)
             else:
-                formatted.append(code_u)
+                formatted.append(item_str)
         return formatted
 
     @staticmethod
     def format_p_statements(p_codes: List[str], lang: str = "tr") -> List[str]:
         formatted = []
-        for code in p_codes:
-            code_u = code.strip().upper()
-            if lang.lower() == "en":
-                text = P_STATEMENTS_EN.get(code_u, "")
-                if text:
-                    formatted.append(f"{code_u}: {text}")
+        for item in p_codes:
+            if not item:
+                continue
+            item_str = str(item).strip()
+            match = re.search(r'\b(P\d{3}(?:\+P\d{3})*)\b', item_str, re.IGNORECASE)
+            if match:
+                p_code = match.group(1).upper()
+                if lang.lower() == "en":
+                    text = P_STATEMENTS_EN.get(p_code, "")
+                    formatted.append(f"{p_code}: {text}" if text else item_str)
                 else:
-                    formatted.append(code_u)
+                    formatted.append(item_str)
             else:
-                formatted.append(code_u)
+                formatted.append(item_str)
         return formatted
 
     @staticmethod
@@ -633,5 +951,196 @@ class TranslationService:
             return "None"
         return signal_word or "Yok"
 
+    @classmethod
+    def translate_sds_dict(cls, sds_data: dict, lang: str = "tr") -> dict:
+        """
+        SDS verilerini talep edilen dile (İngilizce REACH Annex II) derinlemesine çevirir.
+        """
+        import json
+        if not sds_data or (lang or "tr").lower() == "tr":
+            return sds_data or {}
+
+        try:
+            sds = json.loads(json.dumps(dict(sds_data), default=str))
+        except Exception:
+            sds = dict(sds_data)
+        
+        # 1. Section 1
+        b1 = sds.get("b1_kimlik") or {}
+        b1_1 = b1.get("b1_1") or {}
+        b1_2 = b1.get("b1_2") or {}
+        b1_3 = b1.get("b1_3") or {}
+        b1_4 = b1.get("b1_4") or {}
+
+        if b1_1.get("kayit_numarasi"):
+            b1_1["kayit_numarasi"] = cls.translate_phrase(b1_1["kayit_numarasi"])
+        if b1_2.get("tanimlanmis_kullanimlar"):
+            b1_2["tanimlanmis_kullanimlar"] = [cls.translate_phrase(u) for u in b1_2["tanimlanmis_kullanimlar"]]
+        if b1_2.get("tavsiye_edilmeyen_kullanimlar"):
+            b1_2["tavsiye_edilmeyen_kullanimlar"] = [cls.translate_phrase(u) for u in b1_2["tavsiye_edilmeyen_kullanimlar"]]
+        if b1_3.get("adres"):
+            b1_3["adres"] = cls.translate_phrase(b1_3["adres"])
+        if b1_4.get("acil_telefon"):
+            b1_4["acil_telefon"] = cls.translate_phrase(b1_4["acil_telefon"])
+
+        # 2. Section 2
+        b2 = sds.get("b2_zarar_tanimi") or {}
+        b2_1 = b2.get("b2_1") or {}
+        b2_2 = b2.get("b2_2") or {}
+        b2_3 = b2.get("b2_3") or {}
+
+        if b2_1.get("siniflandirmalar"):
+            for item in b2_1["siniflandirmalar"]:
+                if "zararlilik_sinifi" in item:
+                    item["zararlilik_sinifi"] = cls.translate_phrase(item["zararlilik_sinifi"])
+                if "kategori" in item:
+                    item["kategori"] = cls.translate_phrase(item["kategori"])
+        if b2_1.get("siniflandirilmama_gerekcesi"):
+            b2_1["siniflandirilmama_gerekcesi"] = cls.translate_phrase(b2_1["siniflandirilmama_gerekcesi"])
+
+        if b2_2.get("uyari_kelimesi"):
+            b2_2["uyari_kelimesi"] = cls.translate_signal_word(b2_2["uyari_kelimesi"], "en")
+        if b2_2.get("h_ifadeleri"):
+            b2_2["h_ifadeleri"] = cls.format_h_statements(b2_2["h_ifadeleri"], "en")
+        if b2_2.get("p_ifadeleri"):
+            b2_2["p_ifadeleri"] = cls.format_p_statements(b2_2["p_ifadeleri"], "en")
+
+        if b2_3.get("pbt_vpvb_degerlendirme"):
+            b2_3["pbt_vpvb_degerlendirme"] = cls.translate_phrase(b2_3["pbt_vpvb_degerlendirme"])
+        if b2_3.get("diger_zararlar"):
+            b2_3["diger_zararlar"] = cls.translate_phrase(b2_3["diger_zararlar"])
+
+        # 3. Section 3
+        b3 = sds.get("b3_bilesim") or {}
+        if b3.get("tip") == "karisim":
+            bilesenler = b3.get("karisim", {}).get("bilesenler", [])
+            for b in bilesenler:
+                if "ad" in b:
+                    b["ad"] = cls.translate_chemical_name(b["ad"])
+                if "siniflandirma" in b:
+                    b["siniflandirma"] = cls.translate_component_classification(b["siniflandirma"])
+
+        # 4. Section 4
+        b4 = sds.get("b4_ilk_yardim") or {}
+        b4_1 = b4.get("b4_1") or {}
+        for key in ("soluma", "cilt_temasi", "goz_temasi", "yutma", "korunma"):
+            if b4_1.get(key):
+                b4_1[key] = cls.translate_phrase(b4_1[key])
+        if b4.get("b4_2_belirtiler_etkiler"):
+            b4["b4_2_belirtiler_etkiler"] = cls.translate_phrase(b4["b4_2_belirtiler_etkiler"])
+        if b4.get("b4_3_acil_tibbi_mudahale"):
+            b4["b4_3_acil_tibbi_mudahale"] = cls.translate_phrase(b4["b4_3_acil_tibbi_mudahale"])
+
+        # 5. Section 5
+        b5 = sds.get("b5_yangin_mucadele") or {}
+        b5_1 = b5.get("b5_1") or {}
+        if b5_1.get("uygun_sondurucu"):
+            b5_1["uygun_sondurucu"] = cls.translate_phrase(b5_1["uygun_sondurucu"])
+        if b5_1.get("uygun_olmayan_sondurucu"):
+            b5_1["uygun_olmayan_sondurucu"] = cls.translate_phrase(b5_1["uygun_olmayan_sondurucu"])
+        if b5.get("b5_2_ozel_zararlar"):
+            b5["b5_2_ozel_zararlar"] = cls.translate_phrase(b5["b5_2_ozel_zararlar"])
+        if b5.get("b5_3_sondurme_ekibi_tavsiyeleri"):
+            b5["b5_3_sondurme_ekibi_tavsiyeleri"] = cls.translate_phrase(b5["b5_3_sondurme_ekibi_tavsiyeleri"])
+
+        # 6. Section 6
+        b6 = sds.get("b6_kaza_sonucu_yayilma") or {}
+        b6_1 = b6.get("b6_1") or {}
+        if b6_1.get("kisisel_onlemler_acil_olmayan"):
+            b6_1["kisisel_onlemler_acil_olmayan"] = cls.translate_phrase(b6_1["kisisel_onlemler_acil_olmayan"])
+        if b6_1.get("kisisel_onlemler_acil_mudahale"):
+            b6_1["kisisel_onlemler_acil_mudahale"] = cls.translate_phrase(b6_1["kisisel_onlemler_acil_mudahale"])
+        if b6.get("b6_2_cevresel_onlemler"):
+            b6["b6_2_cevresel_onlemler"] = cls.translate_phrase(b6["b6_2_cevresel_onlemler"])
+        if b6.get("b6_3_kontrol_temizleme_yontemleri"):
+            b6["b6_3_kontrol_temizleme_yontemleri"] = cls.translate_phrase(b6["b6_3_kontrol_temizleme_yontemleri"])
+        if b6.get("b6_4_diger_bolumlere_atif"):
+            b6["b6_4_diger_bolumlere_atif"] = cls.translate_phrase(b6["b6_4_diger_bolumlere_atif"])
+
+        # 7. Section 7
+        b7 = sds.get("b7_ellecme_depolama") or {}
+        b7_2 = b7.get("b7_2") or {}
+        if b7.get("b7_1_guvenli_ellecleme"):
+            b7["b7_1_guvenli_ellecleme"] = cls.translate_phrase(b7["b7_1_guvenli_ellecleme"])
+        if b7_2.get("guvenli_depolama_kosullari"):
+            b7_2["guvenli_depolama_kosullari"] = cls.translate_phrase(b7_2["guvenli_depolama_kosullari"])
+        if b7.get("b7_3_belirli_son_kullanimlar"):
+            b7["b7_3_belirli_son_kullanimlar"] = cls.translate_phrase(b7["b7_3_belirli_son_kullanimlar"])
+
+        # 8. Section 8
+        b8 = sds.get("b8_maruz_kalma_kontrolu") or {}
+        b8_2 = b8.get("b8_2") or {}
+        kkd = b8_2.get("kkd") or {}
+        for exp in b8.get("b8_1_kontrol_parametreleri", []):
+            if "yasal_dayanak" in exp:
+                exp["yasal_dayanak"] = cls.translate_phrase(exp["yasal_dayanak"])
+            if "madde" in exp:
+                exp["madde"] = cls.translate_chemical_name(exp["madde"])
+        if b8_2.get("muhendislik_kontrolleri"):
+            b8_2["muhendislik_kontrolleri"] = cls.translate_phrase(b8_2["muhendislik_kontrolleri"])
+        for kkd_k in ("goz_yuz", "cilt_el", "cilt_vucut", "solunum", "termal_zararlar"):
+            if kkd.get(kkd_k):
+                kkd[kkd_k] = cls.translate_phrase(kkd[kkd_k])
+
+        # 9. Section 9
+        b9 = sds.get("b9_fiziksel_kimyasal_ozellikler") or {}
+        b9_1 = b9.get("b9_1") or {}
+        for prop_k in b9_1:
+            if b9_1.get(prop_k):
+                b9_1[prop_k] = cls.translate_phrase(b9_1[prop_k])
+        if b9.get("b9_2_diger_bilgiler"):
+            b9["b9_2_diger_bilgiler"] = cls.translate_phrase(b9["b9_2_diger_bilgiler"])
+
+        # 10. Section 10
+        b10 = sds.get("b10_kararlilik_tepkime") or {}
+        for k10 in ("b10_1_tepkime", "b10_2_kimyasal_kararlilik", "b10_3_zararli_reaksiyon_olasiligi",
+                    "b10_4_kacinilmasi_gereken_durumlar", "b10_5_kacinilmasi_gereken_maddeler", "b10_6_zararli_bozunma_urunleri"):
+            if b10.get(k10):
+                b10[k10] = cls.translate_phrase(b10[k10])
+
+        # 11. Section 11
+        b11 = sds.get("b11_toksikolojik") or {}
+        b11_1 = b11.get("b11_1") or {}
+        for tox_k in b11_1:
+            if b11_1.get(tox_k):
+                b11_1[tox_k] = cls.translate_phrase(b11_1[tox_k])
+
+        # 12. Section 12
+        b12 = sds.get("b12_ekolojik") or {}
+        for eco_k in ("b12_1_toksisite", "b12_2_kalicilik_bozunabilirlik", "b12_3_biyobirikim",
+                      "b12_4_topraktaki_hareketlilik", "b12_5_pbt_vpvb_sonuclari", "b12_6_diger_olumsuz_etkiler"):
+            if b12.get(eco_k):
+                b12[eco_k] = cls.translate_phrase(b12[eco_k])
+
+        # 13. Section 13
+        b13 = sds.get("b13_bertaraf") or {}
+        for dis_k in ("b13_1_atik_isleme_yontemleri", "b13_1_ambalaj_atik_isleme", "b13_1_kanalizasyon_uyarisi"):
+            if b13.get(dis_k):
+                b13[dis_k] = cls.translate_phrase(b13[dis_k])
+
+        # 14. Section 14
+        b14 = sds.get("b14_tasimacilik") or {}
+        for tr_k in ("b14_1_un_numarasi", "b14_2_un_tasimacilik_adi", "b14_5_cevresel_zararlar", "b14_6_kullanici_ozel_onlemler", "b14_7_marpol_ibc"):
+            if b14.get(tr_k):
+                b14[tr_k] = cls.translate_phrase(b14[tr_k])
+
+        # 15. Section 15
+        b15 = sds.get("b15_mevzuat") or {}
+        if b15.get("b15_1_ozel_mevzuat_hukumleri"):
+            b15["b15_1_ozel_mevzuat_hukumleri"] = cls.translate_phrase(b15["b15_1_ozel_mevzuat_hukumleri"])
+        if b15.get("b15_2_kimyasal_guvenlik_degerlendirmesi"):
+            b15["b15_2_kimyasal_guvenlik_degerlendirmesi"] = cls.translate_phrase(b15["b15_2_kimyasal_guvenlik_degerlendirmesi"])
+
+        # 16. Section 16
+        b16 = sds.get("b16_diger_bilgiler") or {}
+        for oth_k in ("revizyon_aciklamasi", "kisaltmalar_anahtari", "literatur_referanslari", "egitim_tavsiyeleri"):
+            if b16.get(oth_k):
+                b16[oth_k] = cls.translate_phrase(b16[oth_k])
+        if b16.get("tam_h_ifadeleri"):
+            b16["tam_h_ifadeleri"] = cls.format_h_statements(b16["tam_h_ifadeleri"], "en")
+
+        return sds
+
 
 translation_service = TranslationService()
+

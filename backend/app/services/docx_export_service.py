@@ -51,8 +51,10 @@ class DocxExportService:
     @classmethod
     def generate_docx(cls, product_dict: dict, lang: str = "tr") -> io.BytesIO:
         sds = product_dict.get("sds_data") or {}
-        meta = sds.get("meta") or {}
         lang_clean = (lang or "tr").lower()
+        if lang_clean == "en":
+            sds = translation_service.translate_sds_dict(sds, lang="en")
+        meta = sds.get("meta") or {}
         t = translation_service.get_sections(lang_clean)
 
         urun_adi = product_dict.get("urun_adi") or "KİMYASAL ÜRÜN"

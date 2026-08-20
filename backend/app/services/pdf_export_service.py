@@ -142,8 +142,11 @@ class PdfExportService:
         )
         template = env.get_template("gbf_pdf_template.html")
 
-        safe_sds = to_safe_dict(product_dict.get("sds_data") or {})
+        raw_sds = product_dict.get("sds_data") or {}
         lang_clean = (lang or "tr").lower()
+        if lang_clean == "en":
+            raw_sds = translation_service.translate_sds_dict(raw_sds, lang="en")
+        safe_sds = to_safe_dict(raw_sds)
         t = translation_service.get_sections(lang_clean)
 
         # Load GHS Pictogram images
