@@ -57,7 +57,7 @@ class DocxExportService:
         meta = sds.get("meta") or {}
         t = translation_service.get_sections(lang_clean)
 
-        urun_adi = product_dict.get("urun_adi") or "KİMYASAL ÜRÜN"
+        urun_adi = sds.get("b1_kimlik", {}).get("b1_1", {}).get("madde_karisim_adi") or product_dict.get("urun_adi") or "KİMYASAL ÜRÜN"
         ticari_kod = product_dict.get("ticari_kod") or "KOD-001"
         hazirlama_tarihi = meta.get("hazirlama_tarihi") or "01.01.2026"
         revizyon_no = str(meta.get("revizyon_no") or "00")

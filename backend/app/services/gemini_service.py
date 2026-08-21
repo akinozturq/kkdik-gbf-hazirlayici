@@ -216,13 +216,21 @@ class GeminiService:
             ],
             "generationConfig": {
                 "response_mime_type": "application/json",
-                "temperature": 0.1
+                "temperature": 0.1,
+                "maxOutputTokens": 4096
             }
         }
 
         try:
-            with httpx.Client(timeout=20.0) as client:
+            with httpx.Client(timeout=25.0) as client:
                 response = client.post(url, json=payload, headers={"Content-Type": "application/json"})
+                
+                # If model not found or deprecated, try gemini-1.5-flash
+                if response.status_code == 404 and self.model != "gemini-1.5-flash":
+                    logger.warning(f"Model {self.model} 404 döndürdü, gemini-1.5-flash deneniyor...")
+                    fallback_url = f"{GEMINI_API_URL}/gemini-1.5-flash:generateContent?key={self.api_key}"
+                    response = client.post(fallback_url, json=payload, headers={"Content-Type": "application/json"})
+
                 if response.status_code == 200:
                     data = response.json()
                     candidates = data.get("candidates", [])
@@ -245,6 +253,7 @@ class GeminiService:
                         for k, trans_v in translated_dict.items():
                             if k in result and trans_v:
                                 result[k] = str(trans_v).strip()
+                        logger.info(f"Gemini AI {len(result)} alanı başarıyla İngilizceye çevirdi.")
                         return result
                 else:
                     logger.warning(f"Gemini çeviri başarısız ({response.status_code}): {response.text}")

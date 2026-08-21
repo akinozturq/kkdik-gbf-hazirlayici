@@ -146,6 +146,9 @@ class PdfExportService:
         lang_clean = (lang or "tr").lower()
         if lang_clean == "en":
             raw_sds = translation_service.translate_sds_dict(raw_sds, lang="en")
+            trans_pname = raw_sds.get("b1_kimlik", {}).get("b1_1", {}).get("madde_karisim_adi")
+            if trans_pname:
+                product_dict["urun_adi"] = trans_pname
         safe_sds = to_safe_dict(raw_sds)
         t = translation_service.get_sections(lang_clean)
 

@@ -653,6 +653,9 @@ PHRASE_TRANSLATIONS_TR_TO_EN = {
     "Bol su ve sabunla yıkayınız.": "Wash thoroughly with plenty of soap and water. Remove contaminated clothing.",
     "Bol su ile en az 15 dakika yıkayınız.": "Rinse cautiously with water for at least 15 minutes. Remove contact lenses if present and easy to do. Get medical attention if irritation persists.",
     "Bol suyla en az 15 dakika yıkayınız.": "Rinse cautiously with water for at least 15 minutes. Get medical attention.",
+    "Gözleri bol su ile en az 15 dakika yıkayınız.": "Rinse cautiously with water for at least 15 minutes. Remove contact lenses if present and easy to do. Get medical attention if irritation persists.",
+    "Gözleri bol suyla en az 15 dakika yıkayınız.": "Rinse cautiously with water for at least 15 minutes. Get medical attention.",
+    "Gözleri bol su ile yıkayınız.": "Rinse eyes thoroughly with plenty of water.",
     "Ağzı su ile çalkalayınız. Kusturmayınız.": "Rinse mouth thoroughly with water. Do NOT induce vomiting. Seek medical advice immediately.",
     "Ağzı suyla çalkalayınız. Kusturmayınız.": "Rinse mouth thoroughly with water. Do NOT induce vomiting. Seek medical attention immediately.",
     "Önemli bir belirti bildirilmemiştir.": "No significant symptoms or effects are known under normal use.",
@@ -837,11 +840,25 @@ class TranslationService:
         trimmed = text.strip()
         if trimmed in PHRASE_TRANSLATIONS_TR_TO_EN:
             return PHRASE_TRANSLATIONS_TR_TO_EN[trimmed]
+
+        # Türkçe emir kipi varyantları: "-ınız/-iniz" -> "-ın/-in" normalizasyonu
+        # Örn: "çıkarınız" -> "çıkarın", "yıkayınız" -> "yıkayın", "başvurunuz" -> "başvurun"
+        norm = re.sub(r'([a-zA-ZçÇğĞıİöÖşŞüÜ]+)(y?)(ınız|iniz|unuz|ünüz)\b', r'\1\2ın', trimmed)
+        if norm in PHRASE_TRANSLATIONS_TR_TO_EN:
+            return PHRASE_TRANSLATIONS_TR_TO_EN[norm]
+
+        norm_in = re.sub(r'([a-zA-ZçÇğĞıİöÖşŞüÜ]+)(y?)(ınız|iniz|unuz|ünüz)\b', r'\1\2in', trimmed)
+        if norm_in in PHRASE_TRANSLATIONS_TR_TO_EN:
+            return PHRASE_TRANSLATIONS_TR_TO_EN[norm_in]
+
+        norm_un = re.sub(r'([a-zA-ZçÇğĞıİöÖşŞüÜ]+)(y?)(ınız|iniz|unuz|ünüz)\b', r'\1\2un', trimmed)
+        if norm_un in PHRASE_TRANSLATIONS_TR_TO_EN:
+            return PHRASE_TRANSLATIONS_TR_TO_EN[norm_un]
         
         # Substring / pattern replacements for common terms
         res = trimmed
         for tr_phrase, en_phrase in PHRASE_TRANSLATIONS_TR_TO_EN.items():
-            if tr_phrase in res:
+            if len(tr_phrase) > 4 and tr_phrase in res:
                 res = res.replace(tr_phrase, en_phrase)
         return res
 
@@ -873,8 +890,12 @@ class TranslationService:
             ("Mutajen.", "Muta."),
             ("Kanserojen.", "Carc."),
             ("Üreme Tok.", "Repr."),
+            ("Ür. Sis.", "Repr."),
+            ("Ür. Tok.", "Repr."),
+            ("Üreme Sist.", "Repr."),
             ("BHOT Tek", "STOT SE"),
             ("BHOT Tekr.", "STOT RE"),
+            ("BHOT Tek.", "STOT SE"),
             ("Asp. Zar.", "Asp. Tox."),
             ("Asp. Tok.", "Asp. Tox."),
             ("Sucul Akut", "Aquatic Acute"),
@@ -952,9 +973,90 @@ class TranslationService:
         return signal_word or "Yok"
 
     @classmethod
+    def _is_non_translatable(cls, s: str) -> bool:
+        """Metnin çevrilmeye ihtiyaç duyup duymadığını tespit eder."""
+        if not isinstance(s, str):
+            return True
+        s = s.strip()
+        if not s or s == "—" or s == "-" or s.isdigit():
+            return True
+        # CAS No, EC No, Tarih, Telefon, E-posta, URL, Piktogram / H-P kodlarını atla
+        if re.match(r'^(CAS\s*:?\s*)?\d{2,7}-\d{2}-\d$', s, re.IGNORECASE):
+            return True
+        if re.match(r'^(EC\s*:?\s*)?\d{3}-\d{3}-\d$', s, re.IGNORECASE):
+            return True
+        if re.match(r'^[HhPp]\d{3}[a-zA-Z]?$', s):
+            return True
+        if re.match(r'^\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4}$', s):
+            return True
+        if re.match(r'^[\d\s\+\-\(\)\.\,\%\/\:\;]+$', s):
+            return True
+        if "@" in s and "." in s and " " not in s:
+            return True
+        if s.startswith("http://") or s.startswith("https://") or s.startswith("www."):
+            return True
+        # GHS Kodları
+        if s.startswith("GHS0") or s.startswith("GHS"):
+            return True
+        return False
+
+    @classmethod
+    def _collect_untranslated_strings(cls, data, prefix=""):
+        """Tüm SDS yapısını özyinelemeli tarayarak çevrilmemiş serbest Türkçe metinleri toplar."""
+        items = {}
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if k in ("cas_no", "ec_no", "kayit_no", "telefon", "eposta", "web", "h_kodu", "piktogramlar", "created_at", "updated_at", "konsantrasyon"):
+                    continue
+                path = f"{prefix}.{k}" if prefix else k
+                if isinstance(v, str):
+                    if not cls._is_non_translatable(v):
+                        items[path] = v
+                elif isinstance(v, (dict, list)):
+                    items.update(cls._collect_untranslated_strings(v, path))
+        elif isinstance(data, list):
+            for i, v in enumerate(data):
+                path = f"{prefix}[{i}]"
+                if isinstance(v, str):
+                    if not cls._is_non_translatable(v):
+                        items[path] = v
+                elif isinstance(v, (dict, list)):
+                    items.update(cls._collect_untranslated_strings(v, path))
+        return items
+
+    @classmethod
+    def _set_by_path(cls, data, path: str, value: Any):
+        """Nokta ve dizi indeksli yollara (örn: b3_bilesim.karisim.bilesenler[0].ad) göre değeri günceller."""
+        tokens = re.findall(r'[^.\[\]]+', path)
+        if not tokens:
+            return
+        curr = data
+        for i, token in enumerate(tokens[:-1]):
+            next_token = tokens[i + 1]
+            if token.isdigit():
+                idx = int(token)
+                while len(curr) <= idx:
+                    curr.append({})
+                curr = curr[idx]
+            else:
+                if token not in curr or not isinstance(curr[token], (dict, list)):
+                    curr[token] = [] if next_token.isdigit() else {}
+                curr = curr[token]
+
+        last_token = tokens[-1]
+        if last_token.isdigit():
+            idx = int(last_token)
+            if isinstance(curr, list) and idx < len(curr):
+                curr[idx] = value
+        else:
+            if isinstance(curr, dict):
+                curr[last_token] = value
+
+    @classmethod
     def translate_sds_dict(cls, sds_data: dict, lang: str = "tr") -> dict:
         """
         SDS verilerini talep edilen dile (İngilizce REACH Annex II) derinlemesine çevirir.
+        Hibrit: 1. Aşama Kural/Sözlük tabanlı anlık çeviri, 2. Aşama Kapsamlı Gemini AI çevirisi.
         """
         import json
         if not sds_data or (lang or "tr").lower() == "tr":
@@ -965,7 +1067,7 @@ class TranslationService:
         except Exception:
             sds = dict(sds_data)
         
-        # 1. Section 1
+        # 1. Aşama: Deterministik REACH Annex II sözlüğü ve CLP kuralları ile anlık çevir
         b1 = sds.get("b1_kimlik") or {}
         b1_1 = b1.get("b1_1") or {}
         b1_2 = b1.get("b1_2") or {}
@@ -983,7 +1085,6 @@ class TranslationService:
         if b1_4.get("acil_telefon"):
             b1_4["acil_telefon"] = cls.translate_phrase(b1_4["acil_telefon"])
 
-        # 2. Section 2
         b2 = sds.get("b2_zarar_tanimi") or {}
         b2_1 = b2.get("b2_1") or {}
         b2_2 = b2.get("b2_2") or {}
@@ -1010,7 +1111,6 @@ class TranslationService:
         if b2_3.get("diger_zararlar"):
             b2_3["diger_zararlar"] = cls.translate_phrase(b2_3["diger_zararlar"])
 
-        # 3. Section 3
         b3 = sds.get("b3_bilesim") or {}
         if b3.get("tip") == "karisim":
             bilesenler = b3.get("karisim", {}).get("bilesenler", [])
@@ -1020,7 +1120,6 @@ class TranslationService:
                 if "siniflandirma" in b:
                     b["siniflandirma"] = cls.translate_component_classification(b["siniflandirma"])
 
-        # 4. Section 4
         b4 = sds.get("b4_ilk_yardim") or {}
         b4_1 = b4.get("b4_1") or {}
         for key in ("soluma", "cilt_temasi", "goz_temasi", "yutma", "korunma"):
@@ -1031,7 +1130,6 @@ class TranslationService:
         if b4.get("b4_3_acil_tibbi_mudahale"):
             b4["b4_3_acil_tibbi_mudahale"] = cls.translate_phrase(b4["b4_3_acil_tibbi_mudahale"])
 
-        # 5. Section 5
         b5 = sds.get("b5_yangin_mucadele") or {}
         b5_1 = b5.get("b5_1") or {}
         if b5_1.get("uygun_sondurucu"):
@@ -1043,7 +1141,6 @@ class TranslationService:
         if b5.get("b5_3_sondurme_ekibi_tavsiyeleri"):
             b5["b5_3_sondurme_ekibi_tavsiyeleri"] = cls.translate_phrase(b5["b5_3_sondurme_ekibi_tavsiyeleri"])
 
-        # 6. Section 6
         b6 = sds.get("b6_kaza_sonucu_yayilma") or {}
         b6_1 = b6.get("b6_1") or {}
         if b6_1.get("kisisel_onlemler_acil_olmayan"):
@@ -1057,7 +1154,6 @@ class TranslationService:
         if b6.get("b6_4_diger_bolumlere_atif"):
             b6["b6_4_diger_bolumlere_atif"] = cls.translate_phrase(b6["b6_4_diger_bolumlere_atif"])
 
-        # 7. Section 7
         b7 = sds.get("b7_ellecme_depolama") or {}
         b7_2 = b7.get("b7_2") or {}
         if b7.get("b7_1_guvenli_ellecleme"):
@@ -1067,7 +1163,6 @@ class TranslationService:
         if b7.get("b7_3_belirli_son_kullanimlar"):
             b7["b7_3_belirli_son_kullanimlar"] = cls.translate_phrase(b7["b7_3_belirli_son_kullanimlar"])
 
-        # 8. Section 8
         b8 = sds.get("b8_maruz_kalma_kontrolu") or {}
         b8_2 = b8.get("b8_2") or {}
         kkd = b8_2.get("kkd") or {}
@@ -1082,7 +1177,6 @@ class TranslationService:
             if kkd.get(kkd_k):
                 kkd[kkd_k] = cls.translate_phrase(kkd[kkd_k])
 
-        # 9. Section 9
         b9 = sds.get("b9_fiziksel_kimyasal_ozellikler") or {}
         b9_1 = b9.get("b9_1") or {}
         for prop_k in b9_1:
@@ -1091,47 +1185,40 @@ class TranslationService:
         if b9.get("b9_2_diger_bilgiler"):
             b9["b9_2_diger_bilgiler"] = cls.translate_phrase(b9["b9_2_diger_bilgiler"])
 
-        # 10. Section 10
         b10 = sds.get("b10_kararlilik_tepkime") or {}
         for k10 in ("b10_1_tepkime", "b10_2_kimyasal_kararlilik", "b10_3_zararli_reaksiyon_olasiligi",
                     "b10_4_kacinilmasi_gereken_durumlar", "b10_5_kacinilmasi_gereken_maddeler", "b10_6_zararli_bozunma_urunleri"):
             if b10.get(k10):
                 b10[k10] = cls.translate_phrase(b10[k10])
 
-        # 11. Section 11
         b11 = sds.get("b11_toksikolojik") or {}
         b11_1 = b11.get("b11_1") or {}
         for tox_k in b11_1:
             if b11_1.get(tox_k):
                 b11_1[tox_k] = cls.translate_phrase(b11_1[tox_k])
 
-        # 12. Section 12
         b12 = sds.get("b12_ekolojik") or {}
         for eco_k in ("b12_1_toksisite", "b12_2_kalicilik_bozunabilirlik", "b12_3_biyobirikim",
                       "b12_4_topraktaki_hareketlilik", "b12_5_pbt_vpvb_sonuclari", "b12_6_diger_olumsuz_etkiler"):
             if b12.get(eco_k):
                 b12[eco_k] = cls.translate_phrase(b12[eco_k])
 
-        # 13. Section 13
         b13 = sds.get("b13_bertaraf") or {}
         for dis_k in ("b13_1_atik_isleme_yontemleri", "b13_1_ambalaj_atik_isleme", "b13_1_kanalizasyon_uyarisi"):
             if b13.get(dis_k):
                 b13[dis_k] = cls.translate_phrase(b13[dis_k])
 
-        # 14. Section 14
         b14 = sds.get("b14_tasimacilik") or {}
-        for tr_k in ("b14_1_un_numarasi", "b14_2_un_tasimacilik_adi", "b14_5_cevresel_zararlar", "b14_6_kullanici_ozel_onlemler", "b14_7_marpol_ibc"):
+        for tr_k in ("b14_1_un_numarasi", "b14_2_un_tasimacilik_adi", "b14_3_tasimacilik_sinifi", "b14_5_cevresel_zararlar", "b14_6_kullanici_ozel_onlemler", "b14_7_marpol_ibc"):
             if b14.get(tr_k):
                 b14[tr_k] = cls.translate_phrase(b14[tr_k])
 
-        # 15. Section 15
         b15 = sds.get("b15_mevzuat") or {}
         if b15.get("b15_1_ozel_mevzuat_hukumleri"):
             b15["b15_1_ozel_mevzuat_hukumleri"] = cls.translate_phrase(b15["b15_1_ozel_mevzuat_hukumleri"])
         if b15.get("b15_2_kimyasal_guvenlik_degerlendirmesi"):
             b15["b15_2_kimyasal_guvenlik_degerlendirmesi"] = cls.translate_phrase(b15["b15_2_kimyasal_guvenlik_degerlendirmesi"])
 
-        # 16. Section 16
         b16 = sds.get("b16_diger_bilgiler") or {}
         for oth_k in ("revizyon_aciklamasi", "kisaltmalar_anahtari", "literatur_referanslari", "egitim_tavsiyeleri"):
             if b16.get(oth_k):
@@ -1139,110 +1226,20 @@ class TranslationService:
         if b16.get("tam_h_ifadeleri"):
             b16["tam_h_ifadeleri"] = cls.format_h_statements(b16["tam_h_ifadeleri"], "en")
 
-        # 17. AI Hibrit Katmanı: Gemini API yapılandırılmışsa özel / serbest metinleri çevir
+        # 2. Aşama: Kapsamlı Evrensel Gemini AI Katmanı
         try:
             from app.services.gemini_service import gemini_service
             if gemini_service.is_configured():
-                pending_translations = {}
-
-                def register_if_needed(key_path: str, val: Any):
-                    if isinstance(val, str) and val.strip():
-                        # Türkçe harfler veya serbest cümle içeriyorsa
-                        if any(c in val for c in "çÇğĞıİöÖşŞüÜ") or len(val.split()) > 3:
-                            pending_translations[key_path] = val
-
-                # Taranacak serbest metin alanları
-                register_if_needed("b1.b1_1.madde_adi", b1_1.get("madde_karisim_adi"))
-                register_if_needed("b4.b4_2", b4.get("b4_2_belirtiler_etkiler"))
-                register_if_needed("b4.b4_3", b4.get("b4_3_acil_tibbi_mudahale"))
-                register_if_needed("b5.b5_2", b5.get("b5_2_ozel_zararlar"))
-                register_if_needed("b5.b5_3", b5.get("b5_3_sondurme_ekibi_tavsiyeleri"))
-                register_if_needed("b6.b6_1_1", b6_1.get("kisisel_onlemler_acil_olmayan"))
-                register_if_needed("b6.b6_1_2", b6_1.get("kisisel_onlemler_acil_mudahale"))
-                register_if_needed("b6.b6_2", b6.get("b6_2_cevresel_onlemler"))
-                register_if_needed("b6.b6_3", b6.get("b6_3_kontrol_temizleme_yontemleri"))
-                register_if_needed("b7.b7_1", b7.get("b7_1_guvenli_ellecleme"))
-                register_if_needed("b7.b7_2", b7_2.get("guvenli_depolama_kosullari"))
-                register_if_needed("b7.b7_3", b7.get("b7_3_belirli_son_kullanimlar"))
-                register_if_needed("b8.muhendislik", b8_2.get("muhendislik_kontrolleri"))
-                register_if_needed("b8.goz_yuz", kkd.get("goz_yuz"))
-                register_if_needed("b8.cilt_el", kkd.get("cilt_el"))
-                register_if_needed("b8.solunum", kkd.get("solunum"))
-                register_if_needed("b9.b9_2", b9.get("b9_2_diger_bilgiler"))
-                register_if_needed("b10.b10_4", b10.get("b10_4_kacinilmasi_gereken_durumlar"))
-                register_if_needed("b10.b10_5", b10.get("b10_5_kacinilmasi_gereken_maddeler"))
-                register_if_needed("b10.b10_6", b10.get("b10_6_zararli_bozunma_urunleri"))
-                register_if_needed("b11.akut", b11_1.get("akut_toksisite"))
-                register_if_needed("b11.cilt", b11_1.get("cilt_asinmasi_tahrisi"))
-                register_if_needed("b11.goz", b11_1.get("goz_hasari"))
-                register_if_needed("b12.toksisite", b12.get("b12_1_toksisite"))
-                register_if_needed("b12.kalicilik", b12.get("b12_2_kalicilik_bozunabilirlik"))
-                register_if_needed("b13.atik", b13.get("b13_1_atik_isleme_yontemleri"))
-                register_if_needed("b13.ambalaj", b13.get("b13_1_ambalaj_atik_isleme"))
-                register_if_needed("b16.revizyon", b16.get("revizyon_aciklamasi"))
-                register_if_needed("b16.egitim", b16.get("egitim_tavsiyeleri"))
-
-                if pending_translations:
-                    translated_map = gemini_service.translate_texts_batch(pending_translations, target_lang="en")
+                # Sözlükte karşılığı bulunmayan kalan tüm serbest Türkçe metinleri topla
+                untranslated_map = cls._collect_untranslated_strings(sds)
+                
+                if untranslated_map:
+                    translated_map = gemini_service.translate_texts_batch(untranslated_map, target_lang="en")
                     
-                    if "b1.b1_1.madde_adi" in translated_map:
-                        b1_1["madde_karisim_adi"] = translated_map["b1.b1_1.madde_adi"]
-                    if "b4.b4_2" in translated_map:
-                        b4["b4_2_belirtiler_etkiler"] = translated_map["b4.b4_2"]
-                    if "b4.b4_3" in translated_map:
-                        b4["b4_3_acil_tibbi_mudahale"] = translated_map["b4.b4_3"]
-                    if "b5.b5_2" in translated_map:
-                        b5["b5_2_ozel_zararlar"] = translated_map["b5.b5_2"]
-                    if "b5.b5_3" in translated_map:
-                        b5["b5_3_sondurme_ekibi_tavsiyeleri"] = translated_map["b5.b5_3"]
-                    if "b6.b6_1_1" in translated_map:
-                        b6_1["kisisel_onlemler_acil_olmayan"] = translated_map["b6.b6_1_1"]
-                    if "b6.b6_1_2" in translated_map:
-                        b6_1["kisisel_onlemler_acil_mudahale"] = translated_map["b6.b6_1_2"]
-                    if "b6.b6_2" in translated_map:
-                        b6["b6_2_cevresel_onlemler"] = translated_map["b6.b6_2"]
-                    if "b6.b6_3" in translated_map:
-                        b6["b6_3_kontrol_temizleme_yontemleri"] = translated_map["b6.b6_3"]
-                    if "b7.b7_1" in translated_map:
-                        b7["b7_1_guvenli_ellecleme"] = translated_map["b7.b7_1"]
-                    if "b7.b7_2" in translated_map:
-                        b7_2["guvenli_depolama_kosullari"] = translated_map["b7.b7_2"]
-                    if "b7.b7_3" in translated_map:
-                        b7["b7_3_belirli_son_kullanimlar"] = translated_map["b7.b7_3"]
-                    if "b8.muhendislik" in translated_map:
-                        b8_2["muhendislik_kontrolleri"] = translated_map["b8.muhendislik"]
-                    if "b8.goz_yuz" in translated_map:
-                        kkd["goz_yuz"] = translated_map["b8.goz_yuz"]
-                    if "b8.cilt_el" in translated_map:
-                        kkd["cilt_el"] = translated_map["b8.cilt_el"]
-                    if "b8.solunum" in translated_map:
-                        kkd["solunum"] = translated_map["b8.solunum"]
-                    if "b9.b9_2" in translated_map:
-                        b9["b9_2_diger_bilgiler"] = translated_map["b9.b9_2"]
-                    if "b10.b10_4" in translated_map:
-                        b10["b10_4_kacinilmasi_gereken_durumlar"] = translated_map["b10.b10_4"]
-                    if "b10.b10_5" in translated_map:
-                        b10["b10_5_kacinilmasi_gereken_maddeler"] = translated_map["b10.b10_5"]
-                    if "b10.b10_6" in translated_map:
-                        b10["b10_6_zararli_bozunma_urunleri"] = translated_map["b10.b10_6"]
-                    if "b11.akut" in translated_map:
-                        b11_1["akut_toksisite"] = translated_map["b11.akut"]
-                    if "b11.cilt" in translated_map:
-                        b11_1["cilt_asinmasi_tahrisi"] = translated_map["b11.cilt"]
-                    if "b11.goz" in translated_map:
-                        b11_1["goz_hasari"] = translated_map["b11.goz"]
-                    if "b12.toksisite" in translated_map:
-                        b12["b12_1_toksisite"] = translated_map["b12.toksisite"]
-                    if "b12.kalicilik" in translated_map:
-                        b12["b12_2_kalicilik_bozunabilirlik"] = translated_map["b12.kalicilik"]
-                    if "b13.atik" in translated_map:
-                        b13["b13_1_atik_isleme_yontemleri"] = translated_map["b13.atik"]
-                    if "b13.ambalaj" in translated_map:
-                        b13["b13_1_ambalaj_atik_isleme"] = translated_map["b13.ambalaj"]
-                    if "b16.revizyon" in translated_map:
-                        b16["revizyon_aciklamasi"] = translated_map["b16.revizyon"]
-                    if "b16.egitim" in translated_map:
-                        b16["egitim_tavsiyeleri"] = translated_map["b16.egitim"]
+                    # Çevrilen alanları tam olarak orijinal JSON ağacındaki yerlerine yaz
+                    for path, trans_text in translated_map.items():
+                        if trans_text and isinstance(trans_text, str) and trans_text.strip():
+                            cls._set_by_path(sds, path, trans_text.strip())
         except Exception as e:
             pass
 
@@ -1250,4 +1247,5 @@ class TranslationService:
 
 
 translation_service = TranslationService()
+
 
