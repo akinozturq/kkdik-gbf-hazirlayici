@@ -242,6 +242,35 @@ export default function RawMaterialPickerModal({ isOpen, onClose, onSelect }) {
                       <b>UN No:</b> {mat.tasimacilik_bilgileri.un_no} ({mat.tasimacilik_bilgileri.uygun_tasima_adi})
                     </div>
                   </div>
+                    {(mat.akut_toksisite_oral || mat.akut_toksisite_dermal || mat.akut_toksisite_soluma) && (
+                      <div style={{ display: 'flex', gap: '16px', fontSize: '0.76rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginTop: '8px' }}>
+                        {mat.akut_toksisite_oral && (
+                          <div>
+                            <b>ATE Oral LD50:</b> {mat.akut_toksisite_oral} mg/kg
+                          </div>
+                        )}
+                        {mat.akut_toksisite_dermal && (
+                          <div>
+                            <b>ATE Dermal LD50:</b> {mat.akut_toksisite_dermal} mg/kg
+                          </div>
+                        )}
+                        {mat.akut_toksisite_soluma && (
+                          <div>
+                            <b>ATE Soluma LC50:</b> {mat.akut_toksisite_soluma} mg/L
+                          </div>
+                        )}
+                        {mat.m_faktoru_akut && (
+                          <div>
+                            <b>M (Akut):</b> {mat.m_faktoru_akut}
+                          </div>
+                        )}
+                        {mat.m_faktoru_kronik && (
+                          <div>
+                            <b>M (Kronik):</b> {mat.m_faktoru_kronik}
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>

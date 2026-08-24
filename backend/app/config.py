@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "KKDİK SDS Hazırlayıcı API"
     APP_VERSION: str = "1.0.0"
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DB_FILE.as_posix()}")
-    DEBUG: bool = True
+    DEBUG: bool = os.getenv("DEBUG", "true").lower() in ("true", "1", "yes")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 

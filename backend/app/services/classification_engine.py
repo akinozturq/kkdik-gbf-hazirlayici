@@ -83,11 +83,7 @@ class ClassificationEngine:
             if c.startswith("H361") and len(c) == 5:
                 normalized.append("H361" + c[4].lower())
             elif c.startswith("H360") and len(c) > 4:
-                suffix = c[4:]
-                if suffix in ["D", "F", "FD"]:
-                    normalized.append("H360" + suffix)
-                else:
-                    normalized.append("H360" + suffix)
+                normalized.append("H360" + c[4:])
             else:
                 normalized.append(c)
         return list(dict.fromkeys(normalized))
@@ -241,11 +237,13 @@ class ClassificationEngine:
                 c_repr2 += conc
                 repr_h_specific = next((c for c in codes if c.startswith("H361")), "H361")
 
-            # Aquatic
+            # Aquatic — M-faktörü uygulaması (SEA Ek-1 Bölüm 4.1.3.5.5)
+            m_akut = float(comp.get("m_faktoru_akut") or 1)
+            m_kronik = float(comp.get("m_faktoru_kronik") or 1)
             if "H400" in codes:
-                c_aq_acute1 += conc
+                c_aq_acute1 += conc * m_akut
             if "H410" in codes:
-                c_aq_chronic1 += conc
+                c_aq_chronic1 += conc * m_kronik
             if "H411" in codes:
                 c_aq_chronic2 += conc
             if "H412" in codes:
@@ -471,40 +469,174 @@ class ClassificationEngine:
             calculation_steps.append(f"• Üreme Toksisitesi: ∑(Repr 2) = %{c_repr2:.1f} >= %3.0 -> Sınıflandırıldı: Kategori 2 ({h_repr})")
 
         # --- H. SUCUL ÇEVRE ZARARLARI (AQUATIC HAZARDS) ---
+        # H.1 - Akut Kategori 1 (H400) — SEA Ek-1 Tablo 4.1.1 (M x ∑Akut 1 >= %25)
+        if c_aq_acute1 >= 25.0:
+            siniflandirmalar.append({"zararlilik_sinifi": "Sucul Ortama Zararlı - Akut", "kategori": "Akut Kategori 1", "h_kodu": "H400"})
+            h_codes.add("H400")
+            piktogram_set.add("GHS09")
+            if uyari_kelimesi != "Tehlike":
+                uyari_kelimesi = "Dikkat"
+            calculation_steps.append(f"• Sucul Çevre (Akut): ∑(M x Akut 1) = %{c_aq_acute1:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Akut 1 (H400)")
+        elif c_aq_acute1 > 0:
+            calculation_steps.append(f"• Sucul Çevre (Akut): ∑(M x Akut 1) = %{c_aq_acute1:.1f} < %25.0 -> Eşik değer aşılmadı.")
+
+        # H.2 - Kronik Kategoriler (H410/H411/H412/H413) — SEA Ek-1 Tablo 4.1.2
         if c_aq_chronic1 >= 25.0:
             siniflandirmalar.append({"zararlilik_sinifi": "Sucul Ortama Zararlı - Kronik", "kategori": "Kronik Kategori 1", "h_kodu": "H410"})
             h_codes.add("H410")
             piktogram_set.add("GHS09")
-            calculation_steps.append(f"• Sucul Çevre: ∑(Kronik 1) = %{c_aq_chronic1:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 1 (H410)")
+            calculation_steps.append(f"• Sucul Çevre (Kronik): ∑(M x Kronik 1) = %{c_aq_chronic1:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 1 (H410)")
         elif (10.0 * c_aq_chronic1 + c_aq_chronic2) >= 25.0:
             chr2_sum = (10.0 * c_aq_chronic1 + c_aq_chronic2)
             siniflandirmalar.append({"zararlilik_sinifi": "Sucul Ortama Zararlı - Kronik", "kategori": "Kronik Kategori 2", "h_kodu": "H411"})
             h_codes.add("H411")
             piktogram_set.add("GHS09")
-            calculation_steps.append(f"• Sucul Çevre: (10 x ∑Kronik 1) + ∑Kronik 2 = %{chr2_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 2 (H411)")
+            calculation_steps.append(f"• Sucul Çevre (Kronik): (10 x ∑M x Kronik 1) + ∑Kronik 2 = %{chr2_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 2 (H411)")
         elif (100.0 * c_aq_chronic1 + 10.0 * c_aq_chronic2 + c_aq_chronic3) >= 25.0:
             chr3_sum = (100.0 * c_aq_chronic1 + 10.0 * c_aq_chronic2 + c_aq_chronic3)
             siniflandirmalar.append({"zararlilik_sinifi": "Sucul Ortama Zararlı - Kronik", "kategori": "Kronik Kategori 3", "h_kodu": "H412"})
             h_codes.add("H412")
-            calculation_steps.append(f"• Sucul Çevre: (100 x ∑Kronik 1) + (10 x ∑Kronik 2) + ∑Kronik 3 = %{chr3_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 3 (H412)")
+            calculation_steps.append(f"• Sucul Çevre (Kronik): (100 x ∑M x Kronik 1) + (10 x ∑Kronik 2) + ∑Kronik 3 = %{chr3_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 3 (H412)")
         elif (c_aq_chronic1 + c_aq_chronic2 + c_aq_chronic3 + c_aq_chronic4) >= 25.0:
             chr4_sum = (c_aq_chronic1 + c_aq_chronic2 + c_aq_chronic3 + c_aq_chronic4)
             siniflandirmalar.append({"zararlilik_sinifi": "Sucul Ortama Zararlı - Kronik", "kategori": "Kronik Kategori 4", "h_kodu": "H413"})
             h_codes.add("H413")
-            calculation_steps.append(f"• Sucul Çevre: Toplam Kronik = %{chr4_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 4 (H413)")
+            calculation_steps.append(f"• Sucul Çevre (Kronik): Toplam Kronik = %{chr4_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 4 (H413)")
 
         # EUH066 check
         if has_solvents and not is_skin_irrit_2 and not is_skin_corr_1:
             euh_codes.add("EUH066")
             calculation_steps.append("• İlave Bilgi: Solvent içeriği mevcut olup Cilt Tahrişi Kat 2 sınırının altında kaldığı için EUH066 eklendi.")
 
+        # --- I. AKUT TOKSİSİTE (ACUTE TOXICITY - ATE_mix HARMONİK FORMÜL) ---
+        # SEA Ek-1 Bölüm 3.1.3.6: 100/ATE_mix = Σ(Ci/ATEi)
+        # Sayısal ATE verilmemişse SEA Ek-1 Tablo 3.1.2 dönüşüm değerleri kullanılır
+        ATE_CONVERSION_ORAL = {"H300": 5, "H301": 50, "H302": 500}
+        ATE_CONVERSION_DERMAL = {"H310": 50, "H311": 200, "H312": 1100}
+        ATE_CONVERSION_INHAL = {"H330": 0.05, "H331": 0.5, "H332": 3.0}
+
+        ate_oral_sum = 0.0
+        ate_dermal_sum = 0.0
+        ate_inhal_sum = 0.0
+
+        for comp in bilesenler:
+            conc = cls.parse_concentration(comp.get("konsantrasyon"))
+            if conc <= 0:
+                continue
+            sinif_str = comp.get("siniflandirma") or ""
+            codes = cls.extract_h_codes(sinif_str)
+
+            ate_oral_val = comp.get("akut_toksisite_oral")
+            ate_dermal_val = comp.get("akut_toksisite_dermal")
+            ate_inhal_val = comp.get("akut_toksisite_soluma")
+
+            # Oral
+            if ate_oral_val and float(ate_oral_val) > 0:
+                ate_oral_sum += conc / float(ate_oral_val)
+            else:
+                for h_code, conv_ate in ATE_CONVERSION_ORAL.items():
+                    if h_code in codes:
+                        ate_oral_sum += conc / conv_ate
+                        break
+
+            # Dermal
+            if ate_dermal_val and float(ate_dermal_val) > 0:
+                ate_dermal_sum += conc / float(ate_dermal_val)
+            else:
+                for h_code, conv_ate in ATE_CONVERSION_DERMAL.items():
+                    if h_code in codes:
+                        ate_dermal_sum += conc / conv_ate
+                        break
+
+            # Soluma (İnhalasyon)
+            if ate_inhal_val and float(ate_inhal_val) > 0:
+                ate_inhal_sum += conc / float(ate_inhal_val)
+            else:
+                for h_code, conv_ate in ATE_CONVERSION_INHAL.items():
+                    if h_code in codes:
+                        ate_inhal_sum += conc / conv_ate
+                        break
+
+        # CLP/SEA Akut Toksisite Kategori eşikleri
+        ATE_ORAL_THRESHOLDS = [
+            (5, "Kategori 1", "H300"),
+            (50, "Kategori 2", "H300"),
+            (300, "Kategori 3", "H301"),
+            (2000, "Kategori 4", "H302"),
+        ]
+        ATE_DERMAL_THRESHOLDS = [
+            (50, "Kategori 1", "H310"),
+            (200, "Kategori 2", "H310"),
+            (1000, "Kategori 3", "H311"),
+            (2000, "Kategori 4", "H312"),
+        ]
+        ATE_INHAL_THRESHOLDS = [
+            (0.5, "Kategori 1", "H330"),
+            (2.0, "Kategori 2", "H330"),
+            (10.0, "Kategori 3", "H331"),
+            (20.0, "Kategori 4", "H332"),
+        ]
+
+        calculation_steps.append("\n--- Akut Toksisite (ATE_mix Harmonik Formül — SEA Ek-1 Bölüm 3.1.3.6) ---")
+
+        def _classify_ate(route_name: str, ate_sum: float, thresholds: list):
+            if ate_sum <= 0:
+                calculation_steps.append(f"• Akut Toksisite ({route_name}): ATE verileri mevcut değil veya bileşenler akut toksik değil — hesaplama atlandı.")
+                return None
+            ate_mix = 100.0 / ate_sum
+            calculation_steps.append(f"• Akut Toksisite ({route_name}): 100 / Σ(Ci/ATEi) = 100 / {ate_sum:.4f} = ATE_mix = {ate_mix:.1f}")
+            for threshold, cat_name, h_code in thresholds:
+                if ate_mix <= threshold:
+                    calculation_steps.append(f"  → ATE_mix ({ate_mix:.1f}) ≤ {threshold} → Sınıflandırıldı: {cat_name} ({h_code})")
+                    return {"cat": cat_name, "h_code": h_code, "ate_mix": ate_mix}
+            calculation_steps.append(f"  → ATE_mix ({ate_mix:.1f}) > {thresholds[-1][0]} — Akut toksisite sınıflandırma eşiği aşılmadı.")
+            return None
+
+        oral_result = _classify_ate("Oral", ate_oral_sum, ATE_ORAL_THRESHOLDS)
+        if oral_result:
+            siniflandirmalar.append({"zararlilik_sinifi": "Akut Toksisite - Oral", "kategori": oral_result["cat"], "h_kodu": oral_result["h_code"]})
+            h_codes.add(oral_result["h_code"])
+            if oral_result["h_code"] in ("H300", "H301"):
+                piktogram_set.add("GHS06")
+                uyari_kelimesi = "Tehlike"
+            elif oral_result["h_code"] == "H302":
+                piktogram_set.add("GHS07")
+                if uyari_kelimesi != "Tehlike":
+                    uyari_kelimesi = "Dikkat"
+
+        dermal_result = _classify_ate("Dermal", ate_dermal_sum, ATE_DERMAL_THRESHOLDS)
+        if dermal_result:
+            siniflandirmalar.append({"zararlilik_sinifi": "Akut Toksisite - Dermal", "kategori": dermal_result["cat"], "h_kodu": dermal_result["h_code"]})
+            h_codes.add(dermal_result["h_code"])
+            if dermal_result["h_code"] in ("H310", "H311"):
+                piktogram_set.add("GHS06")
+                uyari_kelimesi = "Tehlike"
+            elif dermal_result["h_code"] == "H312":
+                piktogram_set.add("GHS07")
+                if uyari_kelimesi != "Tehlike":
+                    uyari_kelimesi = "Dikkat"
+
+        inhal_result = _classify_ate("Soluma", ate_inhal_sum, ATE_INHAL_THRESHOLDS)
+        if inhal_result:
+            siniflandirmalar.append({"zararlilik_sinifi": "Akut Toksisite - Soluma", "kategori": inhal_result["cat"], "h_kodu": inhal_result["h_code"]})
+            h_codes.add(inhal_result["h_code"])
+            if inhal_result["h_code"] in ("H330", "H331"):
+                piktogram_set.add("GHS06")
+                uyari_kelimesi = "Tehlike"
+            elif inhal_result["h_code"] == "H332":
+                piktogram_set.add("GHS07")
+                if uyari_kelimesi != "Tehlike":
+                    uyari_kelimesi = "Dikkat"
+
         # --- 3. GHS PİKTOGRAM VE UYARI KELİMESİ ÖNCELİK KURALLARI (SEA MD. 26 & 28) ---
         filtered_piktogramlar = set(piktogram_set)
 
         # Rule 1: GHS06 vs GHS07
         if "GHS06" in filtered_piktogramlar and "GHS07" in filtered_piktogramlar:
-            # If GHS07 is solely from acute tox, it is dropped
-            calculation_steps.append("• Piktogram Önceliği (Madde 26): GHS06 (Toksik) mevcut olduğu için Akut Toksisite kaynaklı GHS07 elendi.")
+            # If GHS07 is solely from acute tox (H302, H312, H332), it is dropped
+            if not ("H315" in h_codes or "H319" in h_codes or "H317" in h_codes or "H335" in h_codes or "H336" in h_codes):
+                filtered_piktogramlar.discard("GHS07")
+                calculation_steps.append("• Piktogram Önceliği (Madde 26): GHS06 (Toksik) mevcut olduğu için Akut Toksisite (Kat 4) kaynaklı GHS07 elendi.")
 
         # Rule 2: GHS05 vs GHS07 for skin/eye
         if "GHS05" in filtered_piktogramlar and "GHS07" in filtered_piktogramlar:

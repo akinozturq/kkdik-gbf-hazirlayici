@@ -32,6 +32,11 @@ export default function Step3_Bilesim() {
         kayit_no: '',
         konsantrasyon: '',
         siniflandirma: '',
+        akut_toksisite_oral: null,
+        akut_toksisite_dermal: null,
+        akut_toksisite_soluma: null,
+        m_faktoru_akut: null,
+        m_faktoru_kronik: null,
       },
     ];
     updateSdsField(['b3_bilesim', 'karisim', 'bilesenler'], updated);
@@ -59,6 +64,11 @@ export default function Step3_Bilesim() {
       kayit_no: mat.kayit_no,
       konsantrasyon: '',
       siniflandirma: mat.siniflandirma_str,
+      akut_toksisite_oral: mat.akut_toksisite_oral || null,
+      akut_toksisite_dermal: mat.akut_toksisite_dermal || null,
+      akut_toksisite_soluma: mat.akut_toksisite_soluma || null,
+      m_faktoru_akut: mat.m_faktoru_akut || null,
+      m_faktoru_kronik: mat.m_faktoru_kronik || null,
     };
     updateSdsField(['b3_bilesim', 'karisim', 'bilesenler'], [...bilesenler, newComponent]);
     setIsRawPickerOpen(false);
@@ -274,12 +284,17 @@ export default function Step3_Bilesim() {
             <table className="custom-table">
               <thead>
                 <tr>
-                  <th style={{ width: '22%' }}>Bileşen Adı</th>
-                  <th style={{ width: '13%' }}>CAS No</th>
-                  <th style={{ width: '13%' }}>EC No</th>
-                  <th style={{ width: '16%' }}>Kayıt No</th>
-                  <th style={{ width: '12%' }}>Konsantrasyon</th>
-                  <th style={{ width: '20%' }}>SEA Sınıflandırması & H-İfadeleri</th>
+                  <th style={{ width: '15%' }}>Bileşen Adı</th>
+                  <th style={{ width: '9%' }}>CAS No</th>
+                  <th style={{ width: '9%' }}>EC No</th>
+                  <th style={{ width: '11%' }}>Kayıt No</th>
+                  <th style={{ width: '8%' }}>Konsantrasyon</th>
+                  <th style={{ width: '13%' }}>SEA Sınıflandırması &amp; H-İfadeleri</th>
+                  <th style={{ width: '7%' }} title="Akut Toksisite Tahmin Değeri - Oral LD50 (mg/kg)">ATE Oral</th>
+                  <th style={{ width: '7%' }} title="Akut Toksisite Tahmin Değeri - Dermal LD50 (mg/kg)">ATE Dermal</th>
+                  <th style={{ width: '7%' }} title="Akut Toksisite Tahmin Değeri - Soluma LC50 (mg/L, buhar)">ATE Soluma</th>
+                  <th style={{ width: '5%' }} title="Sucul Akut Kat 1 M-faktörü (SEA Ek-1)">M (Akut)</th>
+                  <th style={{ width: '5%' }} title="Sucul Kronik Kat 1 M-faktörü (SEA Ek-1)">M (Kronik)</th>
                   <th style={{ width: '4%', textAlign: 'center' }}>Sil</th>
                 </tr>
               </thead>
@@ -340,6 +355,61 @@ export default function Step3_Bilesim() {
                         onChange={(e) => updateComponentField(idx, 'siniflandirma', e.target.value)}
                       />
                     </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="mg/kg"
+                        value={row.akut_toksisite_oral ?? ''}
+                        onChange={(e) => updateComponentField(idx, 'akut_toksisite_oral', e.target.value ? parseFloat(e.target.value) : null)}
+                        style={{ fontSize: '0.8rem' }}
+                        title="Oral LD50 (mg/kg) — ör. Aseton: 5800"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="mg/kg"
+                        value={row.akut_toksisite_dermal ?? ''}
+                        onChange={(e) => updateComponentField(idx, 'akut_toksisite_dermal', e.target.value ? parseFloat(e.target.value) : null)}
+                        style={{ fontSize: '0.8rem' }}
+                        title="Dermal LD50 (mg/kg) — ör. Toluen: 5000"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="mg/L"
+                        value={row.akut_toksisite_soluma ?? ''}
+                        onChange={(e) => updateComponentField(idx, 'akut_toksisite_soluma', e.target.value ? parseFloat(e.target.value) : null)}
+                        style={{ fontSize: '0.8rem' }}
+                        title="Soluma LC50 (mg/L, buhar, 4 saat) — ör. Toluen: 28.1"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="1"
+                        value={row.m_faktoru_akut ?? ''}
+                        onChange={(e) => updateComponentField(idx, 'm_faktoru_akut', e.target.value ? parseFloat(e.target.value) : null)}
+                        style={{ fontSize: '0.8rem' }}
+                        title="Sucul Akut M-faktörü (ör. 10)"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="1"
+                        value={row.m_faktoru_kronik ?? ''}
+                        onChange={(e) => updateComponentField(idx, 'm_faktoru_kronik', e.target.value ? parseFloat(e.target.value) : null)}
+                        style={{ fontSize: '0.8rem' }}
+                        title="Sucul Kronik M-faktörü (ör. 10)"
+                      />
+                    </td>
                     <td style={{ textAlign: 'center' }}>
                       <button
                         type="button"
@@ -353,7 +423,7 @@ export default function Step3_Bilesim() {
                 ))}
                 {bilesenler.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
+                    <td colSpan={12} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
                       Henüz bileşen eklenmedi. Yukarıdaki <b>"📦 Hammadde Kütüphanesinden Ekle"</b> butonuna tıklayarak Aseton veya Toluen'i tek tıkla ekleyebilirsiniz.
                     </td>
                   </tr>

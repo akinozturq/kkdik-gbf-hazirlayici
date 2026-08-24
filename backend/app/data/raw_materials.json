@@ -39,6 +39,11 @@
       "cilt_goz_etkisi": "Ciddi göz tahrişine yol açar (Kategori 2). Tekrarlı maruz kalmada ciltte kuruluğa veya çatlaklara yol açabilir (EUH066).",
       "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
     },
+    "akut_toksisite_oral": 5800,
+    "akut_toksisite_dermal": 15800,
+    "akut_toksisite_soluma": 76.0,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
     "ekolojik_bilgiler": {
       "balik_toksisitesi": "LC50 (96 saat): 5540 mg/L (Oncorhynchus mykiss)",
       "su_piresi_toksisitesi": "EC50 (48 saat): 8800 mg/L (Daphnia magna)",
@@ -95,6 +100,11 @@
       "cmr": "Doğmamış çocukta hasara yol açma şüphesi var (Repr. 2, H361d).",
       "aspirasyon": "Solunum yoluna nüfuzu ve yutulması halinde öldürücüdür (Asp. Tox. 1, H304)."
     },
+    "akut_toksisite_oral": 5580,
+    "akut_toksisite_dermal": 5000,
+    "akut_toksisite_soluma": 28.1,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
     "ekolojik_bilgiler": {
       "balik_toksisitesi": "LC50 (96 saat): 5.5 mg/L (Oncorhynchus kisutch)",
       "su_piresi_toksisitesi": "EC50 (48 saat): 3.78 mg/L (Ceriodaphnia dubia)",

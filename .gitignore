@@ -1,52 +1,55 @@
-# Root reference documents & specifications
-/*.pdf
-/*.docx
-/*.xlsx
-/*.md
-!/README.md
+# Environment & Secrets
+.env
+backend/.env
+frontend/.env
+*.env.local
 
-# Dependencies
-node_modules/
-frontend/node_modules/
-backend/venv/
-.venv/
-env/
-venv/
-
-# Build outputs
-dist/
-frontend/dist/
-build/
-*.egg-info/
-
-# Python cache
+# Python
 __pycache__/
-backend/**/__pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Local databases & logs
+# Database
 *.db
 *.sqlite
 *.sqlite3
-*.log
 
-# Temp files
-scratch_*.py
-temp_*
-*.tmp
-agy --*.txt
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend/dist/
+frontend/dist-ssr/
+*.local
 
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# IDE / Editor files
+# IDE & OS
 .vscode/
 .idea/
-*.swp
-*.swo
+.DS_Store
+Thumbs.db
+
+# Temporary & Scratch
+agy*.txt
+scratch_*.py

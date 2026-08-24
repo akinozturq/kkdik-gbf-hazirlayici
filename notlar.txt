@@ -1,0 +1,33 @@
+1. extract_h_codes içindeki H360/H361 normalizasyon bloğunda if/else dalları aynı işlemi yapıyor (suffix in ["D","F","FD"] kontrolü sonuç değiştirmiyor) — işlevsel bir hata değil ama ölü/anlamsız kod, temizlenebilir.
+2. .env dosyası git'e dahil edilmiş (backend/.env, commit b9c796d). Şu an içindeki GEMINI_API_KEY boş olduğu için sızıntı yok, ama .gitignore'da .env hiç yok ve config.py içindeki save_env_setting() fonksiyonu API anahtarını doğrudan bu dosyaya yazıyor. Birisi Gemini anahtarını girip git add -A && git commit yaparsa anahtar public repoya gider. Bunu .gitignore'a eklemek tek satırlık ama önemli bir düzeltme.
+3. CORS: allow_origins=["*"] + allow_credentials=True birlikte kullanılmış — bu kombinasyon tarayıcı spesifikasyonuna göre zaten geçersiz/reddedilir ve genel olarak "kopyala-yapıştır" güvenlik kalıbı sayılır. Yerel tek-kullanıcı aracı için pratik risk düşük ama ileride dışarı açılacağı içn düzeltilmeli.
+4. DEBUG: bool = True config.py'de sabit varsayılan — ortam değişkeniyle değil hardcoded. Üretime taşınma ihtimali var, bu ayrılmalı.
+
+5. Sucul Akut Kategori 1 (H400) hiç sınıflandırılmıyor
+
+Koda tekrar baktım:
+
+python
+c_aq_acute1 = 0.0        # H400  (satır 163)
+...
+if "H400" in codes:
+    c_aq_acute1 += conc   # satır 245-246
+
+Bileşenlerden H400 konsantrasyonu topluyor ama bu değişken hesaplamanın hiçbir yerinde tekrar kullanılmıyor. Dosyanın "H. Sucul Çevre Zararları" bölümünde (satır 473-495) sadece Kronik 1-2-3-4 (H410/411/412/413) kontrolü var; Akut Kategori 1 (H400) için hiçbir eşik/karar bloğu yok. Yani:
+
+Karışımda %25 üzeri "Sucul Ortama Zararlı - Akut Kategori 1" bileşen olsa bile, motor bunu hiç H400 olarak işaretlemiyor, siniflandirmalar listesine eklemiyor.
+Bu, GBF'nin Bölüm 2'sinde eksik bir H-ifadesi (dolayısıyla eksik etiketleme) anlamına gelir — mevzuata uygunluk açısından ciddi bir boşluk.
+
+6. M-faktörü hiç desteklenmiyor
+bash
+grep -i "m.factor\|m_faktor" → sonuç yok
+
+SEA/CLP'ye göre M-faktörü, sucul ortam Akut Kategori 1 veya Kronik Kategori 1 olarak sınıflandırılmış maddeler için tanımlanır ve toplama formülünde konsantrasyon yerine M×C kullanılır — çünkü bazı maddeler (örn. biyositler, bazı izosiyanat türevleri) %0.1-1 gibi çok düşük oranlarda bile mixture'ı Akut 1 / Kronik 1'e sokabilir. Şu anki motor ve sds_sections.py'deki bileşen şeması M-faktörü alanı bile içermiyor — yani hem veri modeli hem hesaplama katmanı bu konuda kör. Boya/tiner formülasyonlarında (özellikle biyosidal katkılı su bazlı sistemlerde) bu gerçek bir yanlış-negatif riski.
+
+Önerim
+
+Öncelik sırası:
+
+Sucul Akut Kategori 1 (H400, ΣC ≥%25) sınıflandırma bloğunu ekle — bu, mevcut kronik bloğun hemen yanına birkaç satırla eklenebilir, zaten c_aq_acute1 toplanıyor.
+Bileşen şemasına opsiyonel m_faktoru alanı ekleyip hem akut hem kronik 1 toplamlarını M ile çarpacak şekilde güncelle.
+Bu ikisi eklendikten sonra, gerçek/örnek reçetelerle (özellikle biyosidal içeren su bazlı sistemler) regresyon testi yaz — test_classification_engine.py'ye en az 2-3 yeni test eklenmeli.

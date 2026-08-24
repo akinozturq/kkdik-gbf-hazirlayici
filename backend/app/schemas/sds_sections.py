@@ -93,6 +93,11 @@ class MixtureComponentItem(BaseModel):
     kayit_no: Optional[str] = Field(None, description="KKDİK / REACH Kayıt Numarası")
     konsantrasyon: str = Field("", description="Ağırlıkça % veya konsantrasyon aralığı (ör. %10-25)")
     siniflandirma: str = Field("", description="Bileşenin SEA sınıflandırması ve H-ifadeleri")
+    akut_toksisite_oral: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Oral LD50 (mg/kg)")
+    akut_toksisite_dermal: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Dermal LD50 (mg/kg)")
+    akut_toksisite_soluma: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Soluma LC50 (mg/L, buhar, 4 saat)")
+    m_faktoru_akut: Optional[float] = Field(None, description="Sucul Akut Kat 1 M-faktörü (SEA Ek-1 Bölüm 4.1.3.5.5)")
+    m_faktoru_kronik: Optional[float] = Field(None, description="Sucul Kronik Kat 1 M-faktörü (SEA Ek-1 Bölüm 4.1.3.5.5)")
 
 class B3_2_KarisimDetay(BaseModel):
     bilesenler: List[MixtureComponentItem] = Field(default_factory=list, description="Karışımı oluşturan tehlikeli bileşenler listesi")
