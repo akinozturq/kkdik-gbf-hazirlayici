@@ -53,3 +53,9 @@ Thumbs.db
 # Temporary & Scratch
 agy*.txt
 scratch_*.py
+notlar.txt
+*spesifikasyon*.md
+*Spesifikasyon*.md
+*.pdf
+*.xlsx
+*.docx
