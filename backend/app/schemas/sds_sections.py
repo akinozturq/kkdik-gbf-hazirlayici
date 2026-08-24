@@ -95,9 +95,11 @@ class MixtureComponentItem(BaseModel):
     siniflandirma: str = Field("", description="Bileşenin SEA sınıflandırması ve H-ifadeleri")
     akut_toksisite_oral: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Oral LD50 (mg/kg)")
     akut_toksisite_dermal: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Dermal LD50 (mg/kg)")
-    akut_toksisite_soluma: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Soluma LC50 (mg/L, buhar, 4 saat)")
+    akut_toksisite_soluma: Optional[float] = Field(None, description="Akut toksisite tahmin değeri - Soluma LC50 (Buhar/Toz için mg/L, Gaz için ppmV)")
+    akut_toksisite_soluma_formu: Optional[Literal["buhar", "gaz", "toz_sis"]] = Field("buhar", description="Soluma maruziyet formu (buhar: mg/L, gaz: ppmV, toz_sis: mg/L)")
     m_faktoru_akut: Optional[float] = Field(None, description="Sucul Akut Kat 1 M-faktörü (SEA Ek-1 Bölüm 4.1.3.5.5)")
     m_faktoru_kronik: Optional[float] = Field(None, description="Sucul Kronik Kat 1 M-faktörü (SEA Ek-1 Bölüm 4.1.3.5.5)")
+    is_isocyanate: Optional[bool] = Field(False, description="Bileşenin izosiyanat türevi olup olmadığı (EUH204 tetiklemesi için)")
 
 class B3_2_KarisimDetay(BaseModel):
     bilesenler: List[MixtureComponentItem] = Field(default_factory=list, description="Karışımı oluşturan tehlikeli bileşenler listesi")

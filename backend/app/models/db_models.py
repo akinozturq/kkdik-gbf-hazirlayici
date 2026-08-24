@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, DateTime, JSON
+from sqlalchemy import Column, Integer, Float, String, DateTime, JSON
 from app.database import Base
 
 class Category(Base):
@@ -28,6 +28,8 @@ class Product(Base):
         nullable=False
     )
     sds_data = Column(JSON, nullable=False, default=dict)
+    tamamlanma_yuzdesi = Column(Float, nullable=False, default=0.0)
+    dogrulama_durumu = Column(String(50), nullable=False, default="Eksik / Hatalı")
 
     def __repr__(self):
         return f"<Product(id={self.id}, urun_adi='{self.urun_adi}', ticari_kod='{self.ticari_kod}')>"

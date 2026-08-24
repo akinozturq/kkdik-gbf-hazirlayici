@@ -12,10 +12,11 @@ T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı **KKDİK Yönetme
    * Bölüm bazlı ve genel mevzuata uygunluk ilerleme skoru.
 
 2. **SEA Ek-1 Gelişmiş Karışım Zararlılık Hesaplama Motoru:**
-   * **Akut Toksisite (ATE_mix):** SEA Ek-1 Bölüm 3.1.3.6 harmonik formülü `100/ATE_mix = Σ(Ci/ATEi)` (Oral, Dermal ve Soluma maruziyet yolları, SEA Ek-1 Tablo 3.1.2 dönüşüm değerleri fallback desteği).
+   * **Akut Toksisite (ATE_mix):** SEA Ek-1 Bölüm 3.1.3.6 harmonik formülü `100/ATE_mix = Σ(Ci/ATEi)` (Oral, Dermal ve Soluma maruziyet yolları; Buhar mg/L, Gaz ppmV, Toz/Sis mg/L ayrımı ve SEA Ek-1 Tablo 3.1.2 dönüşüm değerleri fallback desteği).
    * **Sucul Çevre Zararları & M-Faktörü:** Akut Kategori 1 (H400) ve Kronik 1-4 (H410-H413) toplanabilirlik formülleri; Akut ve Kronik M-faktörü (`M x C`) çarpan desteği.
-   * **Fiziksel & Sağlık Zararları:** Alevlenir sıvılar, cilt aşınması/tahrişi, ciddi göz hasarı/tahrişi, aspirasyon toksisitesi, STOT SE/RE, izosiyanat/solunum hassaslaşması, CMR ve EUH066 kuralları.
+   * **Fiziksel & Sağlık Zararları:** Alevlenir sıvılar (ölçülmüş parlama noktası zorunluluğu), Cilt Aşınması 1A/1B/1C ayrımı, ciddi göz hasarı/tahrişi, aspirasyon toksisitesi, STOT SE/RE, izosiyanat/solunum hassaslaşması (EUH204), CMR 1A/1B ve EUH066 kuralları.
    * **GHS Piktogram ve Uyarı Kelimesi Öncelik Kuralları:** SEA Madde 26 & 28 (GHS06 vs GHS07, GHS05 vs GHS07, GHS08 vs GHS07 eleme mantığı).
+   * **Semantik Çapraz Doğrulama (Semantic Cross-Validation):** Bölüm 2 ile Bölüm 9 (parlama noktası, kinematik viskozite), Bölüm 12 (ekotoksisite) ve Bölüm 14 (UN No) arasındaki mantıksal tutarlılık denetimi.
    * **Şeffaf Matematiksel Hesaplama Raporu:** Her adımın formül ve ara değerlerini gösteren detaylı denetim raporu.
 
 3. **Hammadde Kütüphanesi & Reçete Entegrasyonu:**
@@ -51,7 +52,7 @@ T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı **KKDİK Yönetme
 │   │   ├── schemas/              # 16 Bölümlük KKDİK Pydantic v2 Veri Modelleri
 │   │   ├── services/             # ClassificationEngine, ProductService, ValidatorService, ExportServices, AI/Translation
 │   │   └── templates/            # Antetli GBF Şablonu, Fonts & Piktogramlar
-│   └── tests/                    # 57 Adet Kapsamlı Otomatize Pytest Test Paketi
+│   └── tests/                    # 65 Adet Kapsamlı Otomatize Pytest Test Paketi
 │
 ├── frontend/                      # React 19 + Vite Frontend Sihirbazı
 │   ├── src/

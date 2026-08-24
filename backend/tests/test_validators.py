@@ -116,10 +116,23 @@ def test_rule_unclassified_mixture_explanation(sample_valid_sds_dict):
 
 
 def test_section_progress_calculation(sample_valid_sds_dict):
-    """16 bölümün ilerleme oranları doğru hesaplanmalıdır."""
-    res = validator_service.validate_sds(sample_valid_sds_dict)
-    assert len(res.section_progress) == 16
-    for sp in res.section_progress:
-        assert 1 <= sp.section_number <= 16
-        assert sp.completion_percentage >= 0.0
-        assert sp.total_subsections > 0
+    """Her bölümün ilerleme durumu ve overall completion skoru doğru hesaplanmalıdır."""
+    result = validator_service.validate_sds(sample_valid_sds_dict)
+    assert len(result.section_progress) == 16
+    assert all(p.completion_percentage == 100.0 for p in result.section_progress)
+    assert result.overall_completion_percentage == 100.0
+
+
+def test_semantic_cross_validation_flammables_and_viscosity(sample_valid_sds_dict):
+    """HIGH-04: B2'de H226 varsa B9.1 parlama noktası zorunludur; H304 varsa viskozite uyarısı verilmelidir."""
+    sds_data = dict(sample_valid_sds_dict)
+    sds_data["b2_zarar_tanimi"]["b2_2"]["h_ifadeleri"] = ["H226", "H304"]
+    sds_data["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "Bilgi yok"
+    sds_data["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["kinematik_viskozite"] = ""
+    sds_data["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["akiskanlik"] = ""
+
+    res = validator_service.validate_sds(sds_data)
+    # H226 varken parlama noktası "Bilgi yok" -> Error B9.1
+    assert any(e.section == "B9.1" and "parlama noktası" in e.message for e in res.errors)
+    # H304 varken viskozite ve akiskanlik boş -> Warning B9.1
+    assert any(w.section == "B9.1" and "kinematik viskozite" in w.message for w in res.warnings)

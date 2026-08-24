@@ -35,8 +35,10 @@ export default function Step3_Bilesim() {
         akut_toksisite_oral: null,
         akut_toksisite_dermal: null,
         akut_toksisite_soluma: null,
+        akut_toksisite_soluma_formu: 'buhar',
         m_faktoru_akut: null,
         m_faktoru_kronik: null,
+        is_isocyanate: false,
       },
     ];
     updateSdsField(['b3_bilesim', 'karisim', 'bilesenler'], updated);
@@ -67,8 +69,10 @@ export default function Step3_Bilesim() {
       akut_toksisite_oral: mat.akut_toksisite_oral || null,
       akut_toksisite_dermal: mat.akut_toksisite_dermal || null,
       akut_toksisite_soluma: mat.akut_toksisite_soluma || null,
+      akut_toksisite_soluma_formu: mat.akut_toksisite_soluma_formu || 'buhar',
       m_faktoru_akut: mat.m_faktoru_akut || null,
       m_faktoru_kronik: mat.m_faktoru_kronik || null,
+      is_isocyanate: mat.is_isocyanate || false,
     };
     updateSdsField(['b3_bilesim', 'karisim', 'bilesenler'], [...bilesenler, newComponent]);
     setIsRawPickerOpen(false);
@@ -378,15 +382,28 @@ export default function Step3_Bilesim() {
                       />
                     </td>
                     <td>
-                      <input
-                        type="number"
-                        className="form-control"
-                        placeholder="mg/L"
-                        value={row.akut_toksisite_soluma ?? ''}
-                        onChange={(e) => updateComponentField(idx, 'akut_toksisite_soluma', e.target.value ? parseFloat(e.target.value) : null)}
-                        style={{ fontSize: '0.8rem' }}
-                        title="Soluma LC50 (mg/L, buhar, 4 saat) — ör. Toluen: 28.1"
-                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <input
+                          type="number"
+                          className="form-control"
+                          placeholder={row.akut_toksisite_soluma_formu === 'gaz' ? 'ppmV' : 'mg/L'}
+                          value={row.akut_toksisite_soluma ?? ''}
+                          onChange={(e) => updateComponentField(idx, 'akut_toksisite_soluma', e.target.value ? parseFloat(e.target.value) : null)}
+                          style={{ fontSize: '0.8rem', padding: '3px 5px' }}
+                          title="Soluma LC50 değeri"
+                        />
+                        <select
+                          className="form-control"
+                          value={row.akut_toksisite_soluma_formu || 'buhar'}
+                          onChange={(e) => updateComponentField(idx, 'akut_toksisite_soluma_formu', e.target.value)}
+                          style={{ fontSize: '0.7rem', padding: '1px 3px', height: '22px', backgroundColor: '#f8f9fa' }}
+                          title="Maruziyet Formu (Buhar: mg/L, Gaz: ppmV, Toz/Sis: mg/L)"
+                        >
+                          <option value="buhar">Buhar (mg/L)</option>
+                          <option value="gaz">Gaz (ppmV)</option>
+                          <option value="toz_sis">Toz/Sis (mg/L)</option>
+                        </select>
+                      </div>
                     </td>
                     <td>
                       <input

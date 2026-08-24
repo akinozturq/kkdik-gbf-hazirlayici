@@ -39,14 +39,24 @@ def _deep_merge_dict(target: dict, source: dict) -> dict:
 
 
 class ProductService:
-    def create_product(self, db: Session, product_in: ProductCreate) -> Product:
-        sds_obj = product_in.sds_data or SDSModel()
-        sds_dict = sds_obj.model_dump()
+    def _compute_validation_stats(self, sds_dict: Dict[str, Any]) -> Tuple[float, str]:
+        """SDS verisi için tamamlanma yüzdesi ve doğrulama durumunu hesaplar."""
+        val_res = validator_service.validate_sds(sds_dict or {})
+        if val_res.total_errors > 0:
+            status = "Eksik / Hatalı"
+        elif val_res.total_warnings > 0:
+            status = "Uyarılı"
+        else:
+            status = "Eksiksiz"
+        return (val_res.overall_completion_percentage, status)
 
-        # Otomatik varsayılanlar: B1.1'deki adı ürün adıyla eşle
+    def create_product(self, db: Session, product_in: ProductCreate) -> Product:
+        sds_dict = product_in.sds_data.model_dump() if hasattr(product_in.sds_data, "model_dump") else (product_in.sds_data or {})
+        
+        # B1.1'e ürün adını otomatik senkronize et
+        if "b1_kimlik" not in sds_dict:
+            sds_dict["b1_kimlik"] = {}
         if not sds_dict.get("b1_kimlik", {}).get("b1_1", {}).get("madde_karisim_adi"):
-            if "b1_kimlik" not in sds_dict:
-                sds_dict["b1_kimlik"] = {}
             if "b1_1" not in sds_dict["b1_kimlik"]:
                 sds_dict["b1_kimlik"]["b1_1"] = {}
             sds_dict["b1_kimlik"]["b1_1"]["madde_karisim_adi"] = product_in.urun_adi
@@ -57,12 +67,15 @@ class ProductService:
                 sds_dict["meta"] = {}
             sds_dict["meta"]["hazirlama_tarihi"] = datetime.date.today().strftime("%d.%m.%Y")
 
+        pct, stat = self._compute_validation_stats(sds_dict)
         now = datetime.datetime.now(datetime.timezone.utc)
         db_product = Product(
             urun_adi=product_in.urun_adi.strip(),
             ticari_kod=product_in.ticari_kod.strip(),
             kategori=product_in.kategori.strip() if product_in.kategori else None,
             sds_data=sds_dict,
+            tamamlanma_yuzdesi=pct,
+            dogrulama_durumu=stat,
             olusturma_tarihi=now,
             son_guncelleme=now
         )
@@ -115,13 +128,9 @@ class ProductService:
 
         items: List[ProductListItem] = []
         for p in products:
-            val_res = validator_service.validate_sds(p.sds_data or {})
-            if val_res.total_errors > 0:
-                status = "Eksik / Hatalı"
-            elif val_res.total_warnings > 0:
-                status = "Uyarılı"
-            else:
-                status = "Eksiksiz"
+            # Doğrudan DB kolonundan oku, kolon boşsa hesapla
+            pct = p.tamamlanma_yuzdesi if getattr(p, "tamamlanma_yuzdesi", None) is not None else 0.0
+            stat = p.dogrulama_durumu or "Eksik / Hatalı"
 
             items.append(ProductListItem(
                 id=p.id,
@@ -130,8 +139,8 @@ class ProductService:
                 kategori=p.kategori,
                 olusturma_tarihi=p.olusturma_tarihi,
                 son_guncelleme=p.son_guncelleme,
-                tamamlanma_yuzdesi=val_res.overall_completion_percentage,
-                dogrulama_durumu=status
+                tamamlanma_yuzdesi=pct,
+                dogrulama_durumu=stat
             ))
 
         return ProductListResponse(
@@ -259,6 +268,9 @@ class ProductService:
             product.sds_data = updated_sds
             flag_modified(product, "sds_data")
 
+        pct, stat = self._compute_validation_stats(product.sds_data or {})
+        product.tamamlanma_yuzdesi = pct
+        product.dogrulama_durumu = stat
         product.son_guncelleme = datetime.datetime.now(datetime.timezone.utc)
         db.commit()
         db.refresh(product)
@@ -290,12 +302,15 @@ class ProductService:
         if "b1_kimlik" in new_sds and "b1_1" in new_sds["b1_kimlik"]:
             new_sds["b1_kimlik"]["b1_1"]["madde_karisim_adi"] = new_name
 
+        pct, stat = self._compute_validation_stats(new_sds)
         now = datetime.datetime.now(datetime.timezone.utc)
         duplicated = Product(
             urun_adi=new_name,
             ticari_kod=new_code,
             kategori=original.kategori,
             sds_data=new_sds,
+            tamamlanma_yuzdesi=pct,
+            dogrulama_durumu=stat,
             olusturma_tarihi=now,
             son_guncelleme=now
         )

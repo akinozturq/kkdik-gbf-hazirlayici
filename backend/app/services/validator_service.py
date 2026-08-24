@@ -464,17 +464,18 @@ class ValidatorService:
             ))
 
         # -------------------------------------------------------------
-        # İlerleme (Section Progress) Hesabı
+        # KURAL 7: BÖLÜMLER ARASI SEMANTİK ÇAPRAZ DOĞRULAMA (SEMANTIC VALIDATION)
         # -------------------------------------------------------------
+        self._check_cross_section_semantics(sds_dict, errors, warnings)
+
+        # İlerleme Skoru ve Bölüm Durumlarını Hesapla
         section_progress = self._calculate_progress(sds_dict, errors, warnings)
         overall_completion = round(
             sum(p.completion_percentage for p in section_progress) / len(section_progress), 1
         ) if section_progress else 0.0
 
-        is_valid = len(errors) == 0
-
         return ValidationResult(
-            is_valid_for_export=is_valid,
+            is_valid_for_export=(len(errors) == 0),
             total_errors=len(errors),
             total_warnings=len(warnings),
             overall_completion_percentage=overall_completion,
@@ -482,6 +483,105 @@ class ValidatorService:
             warnings=warnings,
             section_progress=section_progress
         )
+
+    def _check_cross_section_semantics(
+        self,
+        sds_dict: Dict[str, Any],
+        errors: List[ValidationItem],
+        warnings: List[ValidationItem]
+    ):
+        """
+        Bölüm 2 zararlılıkları ile Bölüm 9, 11, 12 ve 14 arasındaki semantik tutarlılığı denetler.
+        """
+        h_codes: Set[str] = set()
+        # B2 h_ifadeleri
+        b2_h_list = _get_nested(sds_dict, "b2_zarar_tanimi", "b2_2", "h_ifadeleri", default=[])
+        if isinstance(b2_h_list, list):
+            for h in b2_h_list:
+                if isinstance(h, str):
+                    for code in re.findall(r"\bH[234]\d{2}[a-zA-Z]*\b", h, re.IGNORECASE):
+                        h_codes.add(code.upper())
+
+        # B2 siniflandirmalar
+        siniflandirmalar = _get_nested(sds_dict, "b2_zarar_tanimi", "b2_1", "siniflandirmalar", default=[])
+        if isinstance(siniflandirmalar, list):
+            for s in siniflandirmalar:
+                if isinstance(s, dict):
+                    h_kodu = s.get("h_kodu")
+                    if h_kodu:
+                        h_codes.add(h_kodu.upper())
+
+        # 1. Alevlenir Sıvılar (H224, H225, H226) <-> Bölüm 9.1 Parlama Noktası
+        if any(c in h_codes for c in ["H224", "H225", "H226"]):
+            parlama_noktasi = (
+                _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "parlama_noktasi") or
+                _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "parlama_noktasi")
+            )
+            p_str = str(parlama_noktasi or "").strip().lower()
+            is_invalid = (
+                not self._is_filled(parlama_noktasi) or
+                "bilgi yok" in p_str or
+                "n/a" in p_str or
+                p_str == "yok" or
+                p_str == "-" or
+                p_str == "tanımsız"
+            )
+            if is_invalid:
+                errors.append(ValidationItem(
+                    section="B9.1",
+                    field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.parlama_noktasi",
+                    message="Bölüm 2'de Alevlenir Sıvı (H224/H225/H226) sınıflandırması mevcuttur; Bölüm 9.1'de ölçülmüş sayısal bir parlama noktası girilmesi zorunludur.",
+                    regulation_ref="KKDİK Ek-2 md. 9.1 & SEA Ek-1 md. 2.6",
+                    severity="ERROR"
+                ))
+
+        # 2. Aspirasyon Zararı (H304) <-> Bölüm 9.1 Kinematik Viskozite
+        if "H304" in h_codes:
+            viskozite = (
+                _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "kinematik_viskozite") or
+                _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "kinematik_viskozite") or
+                _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "akiskanlik")
+            )
+            if not self._is_filled(viskozite):
+                warnings.append(ValidationItem(
+                    section="B9.1",
+                    field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.kinematik_viskozite",
+                    message="Bölüm 2'de Aspirasyon Zararı (H304) sınıflandırması mevcuttur; Bölüm 9.1'de 40°C'deki kinematik viskozite (mm²/s) bilgisi belirtilmelidir.",
+                    regulation_ref="KKDİK Ek-2 md. 9.1 & SEA Ek-1 Bölüm 3.10",
+                    severity="WARNING"
+                ))
+
+        # 3. Sucul Zararlılık (H400, H410, H411) <-> Bölüm 12 Ekotoksisite
+        if any(c in h_codes for c in ["H400", "H410", "H411"]):
+            b12_toks = (
+                _get_nested(sds_dict, "b12_ekolojik", "b12_1_toksisite") or
+                _get_nested(sds_dict, "b12_ekoloji", "b12_1", "balik_toksisitesi") or
+                _get_nested(sds_dict, "b12_ekoloji", "b12_1", "su_piresi_toksisitesi") or
+                _get_nested(sds_dict, "b12_ekoloji", "b12_1", "alg_toksisitesi")
+            )
+            if not self._is_filled(b12_toks):
+                warnings.append(ValidationItem(
+                    section="B12.1",
+                    field_path="b12_ekolojik.b12_1_toksisite",
+                    message="Bölüm 2'de Sucul Ortama Zararlı sınıflandırması mevcuttur; Bölüm 12.1 Ekotoksisite verileri (Balık/Daphnia/Alg LC50/EC50) veya hesaplama açıklaması doldurulmalıdır.",
+                    regulation_ref="KKDİK Ek-2 md. 12.1",
+                    severity="WARNING"
+                ))
+
+        # 4. Alevlenir / Aşındırıcı Sınıflandırma <-> Bölüm 14.1 UN Numarası
+        if any(c in h_codes for c in ["H224", "H225", "H226", "H314"]):
+            un_no = str(
+                _get_nested(sds_dict, "b14_tasimacilik", "b14_1_un_numarasi") or
+                _get_nested(sds_dict, "b14_tasimacilik", "b14_1_un_no") or ""
+            ).strip()
+            if not self._is_filled(un_no) or "zararlı olarak sınıflandırılmamıştır" in un_no.lower():
+                warnings.append(ValidationItem(
+                    section="B14.1",
+                    field_path="b14_tasimacilik.b14_1_un_numarasi",
+                    message="Alevlenir veya aşındırıcı olarak sınıflandırılmış ürünler için Bölüm 14'te geçerli bir UN Numarası (ör. UN 1263, UN 1294) ve taşımacılık sınıfı belirtilmelidir.",
+                    regulation_ref="KKDİK Ek-2 md. 14.1 & ADR / IMDG",
+                    severity="WARNING"
+                ))
 
     def _check_forbidden_phrases(self, data: Any, warnings: List[ValidationItem], path: str = ""):
         """

@@ -1,7 +1,7 @@
 import re
 import os
 import json
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Set
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 H_TO_P_PATH = os.path.join(DATA_DIR, "h_to_p_mapping.json")
@@ -37,7 +37,8 @@ class ClassificationEngine:
     def parse_concentration(cls, conc_str: Any) -> float:
         """
         Bölüm 3.2'deki '%10-25', '15%', '< 2.5%', '>= 50%' gibi metinlerden
-        güvenlik ilkesi gereğince üst sınır konsantrasyonu (float) çeker.
+        güvenlik ilkesi ve mevzuat eşitsizlik kuralları gereğince konsantrasyon (float) çeker.
+        '<' operatörü durumunda katı eşitsizlik gereği eşik değerin hemen altı (örn. <0.1% -> 0.0999) döndürülür.
         """
         if isinstance(conc_str, (int, float)):
             return float(conc_str)
@@ -45,6 +46,9 @@ class ClassificationEngine:
             return 0.0
 
         clean = conc_str.replace("%", "").replace(",", ".").strip()
+
+        # Check for strict less than: e.g. "< 0.1", "<2.5%", "< 2.5"
+        is_strict_less = bool(re.search(r"<\s*(\d+(?:\.\d+)?)", clean) and not "<=" in clean)
 
         # Check for range: e.g. "10 - 25" or "10-25"
         range_match = re.findall(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)", clean)
@@ -59,11 +63,52 @@ class ClassificationEngine:
         num_matches = re.findall(r"\d+(?:\.\d+)?", clean)
         if num_matches:
             try:
-                return float(num_matches[-1])
-            except ValueError:
+                val = float(num_matches[-1])
+                if is_strict_less:
+                    return max(0.0, val - 0.0001)
+                return val
+            except (ValueError, TypeError):
                 pass
 
         return 0.0
+
+    @classmethod
+    def parse_float_safe(cls, val: Any, default: Optional[float] = None) -> Optional[float]:
+        """
+        Sayısal olmayan metinlerden (ör. '500 mg/kg', '100-200', '15.5') güvenli float çeker.
+        Hata durumunda default değer döner (asla exception fırlatmaz).
+        """
+        if val is None or val == "":
+            return default
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            clean = val.replace(",", ".").strip()
+            matches = re.findall(r"[-+]?\d+(?:\.\d+)?", clean)
+            if matches:
+                try:
+                    return float(matches[0])
+                except (ValueError, TypeError):
+                    pass
+        return default
+
+    @classmethod
+    def resolve_repro_h_code(cls, found_codes: Set[str], prefix: str = "H360") -> str:
+        """
+        Birden fazla H360/H361 varyasyonu bulunduğunda en kapsayıcı ve deterministik kodu seçer.
+        Öncelik: H360FD > H360Fd > H360Df > H360F > H360D > H360
+        H361fd > H361f > H361d > H361
+        """
+        if prefix == "H360":
+            priority = ["H360FD", "H360Fd", "H360Df", "H360F", "H360D", "H360"]
+        else:
+            priority = ["H361fd", "H361f", "H361d", "H361"]
+
+        for p in priority:
+            for c in found_codes:
+                if c.upper() == p.upper():
+                    return p
+        return "H360D" if prefix == "H360" else "H361d"
 
     @classmethod
     def extract_h_codes(cls, text: str) -> List[str]:
@@ -125,8 +170,11 @@ class ClassificationEngine:
         # Flammables
         flam_components = []
         
-        # Skin & Eye Additivity pools
-        c_skin_corr_1 = 0.0      # H314
+        # Skin & Eye pools
+        c_skin_corr_1a = 0.0     # H314 Kat 1A
+        c_skin_corr_1b = 0.0     # H314 Kat 1B
+        c_skin_corr_1c = 0.0     # H314 Kat 1C
+        c_skin_corr_1_gen = 0.0  # H314 Generic Kat 1
         c_skin_irrit_2 = 0.0     # H315
         c_eye_dam_1 = 0.0        # H318
         c_eye_irrit_2 = 0.0      # H319
@@ -134,6 +182,7 @@ class ClassificationEngine:
         # Sensitization pools
         c_skin_sens_1 = 0.0      # H317
         c_resp_sens_1 = 0.0      # H334
+        has_isocyanates = False  # Explicit isocyanate indicator for EUH204
         
         # Aspiration
         c_asp_tox_1 = 0.0        # H304
@@ -147,13 +196,17 @@ class ClassificationEngine:
         c_stot_re2 = 0.0         # H373
         
         # CMR pools
-        c_carc1 = 0.0            # H350 / H350i
+        c_carc1a = 0.0           # H350 / H350i Kat 1A
+        c_carc1b = 0.0           # H350 / H350i Kat 1B
         c_carc2 = 0.0            # H351
-        c_muta1 = 0.0            # H340
+        c_muta1a = 0.0           # H340 Kat 1A
+        c_muta1b = 0.0           # H340 Kat 1B
         c_muta2 = 0.0            # H341
-        c_repr1 = 0.0            # H360...
+        c_repr1a = 0.0           # H360... Kat 1A
+        c_repr1b = 0.0           # H360... Kat 1B
         c_repr2 = 0.0            # H361...
-        repr_h_specific = None
+        repr_h360_codes: Set[str] = set()
+        repr_h361_codes: Set[str] = set()
         
         # Aquatic pools
         c_aq_acute1 = 0.0        # H400
@@ -163,7 +216,8 @@ class ClassificationEngine:
         c_aq_chronic4 = 0.0      # H413
 
         # Solvent indicators for EUH066
-        has_solvents = False
+        c_solvent_total = 0.0
+        has_explicit_euh066 = False
 
         for comp in bilesenler:
             ad = comp.get("ad") or "Bileşen"
@@ -176,17 +230,24 @@ class ClassificationEngine:
             # Flammables
             if "H224" in codes or "Flam. Liq. 1" in sinif_str:
                 flam_components.append(("Kat 1", conc, "H224"))
-                has_solvents = True
+                c_solvent_total += conc
             elif "H225" in codes or "Flam. Liq. 2" in sinif_str:
                 flam_components.append(("Kat 2", conc, "H225"))
-                has_solvents = True
+                c_solvent_total += conc
             elif "H226" in codes or "Flam. Liq. 3" in sinif_str:
                 flam_components.append(("Kat 3", conc, "H226"))
-                has_solvents = True
+                c_solvent_total += conc
 
-            # Skin & Eye
-            if "H314" in codes:
-                c_skin_corr_1 += conc
+            # Skin & Eye (Subcategory detection 1A / 1B / 1C)
+            if "H314" in codes or "Skin Corr." in sinif_str:
+                if "1A" in sinif_str or "1a" in sinif_str:
+                    c_skin_corr_1a += conc
+                elif "1B" in sinif_str or "1b" in sinif_str:
+                    c_skin_corr_1b += conc
+                elif "1C" in sinif_str or "1c" in sinif_str:
+                    c_skin_corr_1c += conc
+                else:
+                    c_skin_corr_1_gen += conc
                 c_eye_dam_1 += conc # Skin Corr 1 automatically counts as Eye Dam 1
             if "H315" in codes:
                 c_skin_irrit_2 += conc
@@ -195,16 +256,20 @@ class ClassificationEngine:
             if "H319" in codes:
                 c_eye_irrit_2 += conc
 
-            # Sensitization
+            # Sensitization & Isocyanates
             if "H317" in codes:
                 c_skin_sens_1 += conc
             if "H334" in codes:
                 c_resp_sens_1 += conc
+                ad_l = ad.lower()
+                sinif_l = sinif_str.lower()
+                if any(iso in ad_l or iso in sinif_l for iso in ["izosiyanat", "isocyanate", "mdi", "tdi", "hdi", "ipdi"]) or comp.get("is_isocyanate"):
+                    has_isocyanates = True
 
             # Aspiration
             if "H304" in codes:
                 c_asp_tox_1 += conc
-                has_solvents = True
+                c_solvent_total += conc
 
             # STOT SE / RE
             if "H370" in codes:
@@ -215,35 +280,56 @@ class ClassificationEngine:
                 c_stot_se3_335 += conc
             if "H336" in codes:
                 c_stot_se3_336 += conc
-                has_solvents = True
+                c_solvent_total += conc
             if "H372" in codes:
                 c_stot_re1 += conc
             if "H373" in codes:
                 c_stot_re2 += conc
 
-            # CMR
+            # CMR (Preserving 1A vs 1B)
             if "H350" in codes or "H350i" in codes:
-                c_carc1 += conc
+                if "1A" in sinif_str or "1a" in sinif_str:
+                    c_carc1a += conc
+                else:
+                    c_carc1b += conc
             if "H351" in codes:
                 c_carc2 += conc
+
             if "H340" in codes:
-                c_muta1 += conc
+                if "1A" in sinif_str or "1a" in sinif_str:
+                    c_muta1a += conc
+                else:
+                    c_muta1b += conc
             if "H341" in codes:
                 c_muta2 += conc
+
             if any(c.startswith("H360") for c in codes):
-                c_repr1 += conc
-                repr_h_specific = next((c for c in codes if c.startswith("H360")), "H360")
+                if "1A" in sinif_str or "1a" in sinif_str:
+                    c_repr1a += conc
+                else:
+                    c_repr1b += conc
+                for c in codes:
+                    if c.startswith("H360"):
+                        repr_h360_codes.add(c)
             if any(c.startswith("H361") for c in codes):
                 c_repr2 += conc
-                repr_h_specific = next((c for c in codes if c.startswith("H361")), "H361")
+                for c in codes:
+                    if c.startswith("H361"):
+                        repr_h361_codes.add(c)
 
             # Aquatic — M-faktörü uygulaması (SEA Ek-1 Bölüm 4.1.3.5.5)
-            m_akut = float(comp.get("m_faktoru_akut") or 1)
-            m_kronik = float(comp.get("m_faktoru_kronik") or 1)
+            m_akut_raw = comp.get("m_faktoru_akut")
+            m_kronik_raw = comp.get("m_faktoru_kronik")
+            m_akut = cls.parse_float_safe(m_akut_raw, 1.0) or 1.0
+            m_kronik = cls.parse_float_safe(m_kronik_raw, 1.0) or 1.0
             if "H400" in codes:
                 c_aq_acute1 += conc * m_akut
+                if not m_akut_raw:
+                    comp_summary.append(f"  ℹ️ [{ad}] Sucul Akut 1 M-faktörü belirtilmediği için varsayılan M=1 uygulandı.")
             if "H410" in codes:
                 c_aq_chronic1 += conc * m_kronik
+                if not m_kronik_raw:
+                    comp_summary.append(f"  ℹ️ [{ad}] Sucul Kronik 1 M-faktörü belirtilmediği için varsayılan M=1 uygulandı.")
             if "H411" in codes:
                 c_aq_chronic2 += conc
             if "H412" in codes:
@@ -252,7 +338,7 @@ class ClassificationEngine:
                 c_aq_chronic4 += conc
 
             if "EUH066" in codes:
-                has_solvents = True
+                has_explicit_euh066 = True
 
         calculation_steps.append("=== 1. BİLEŞEN KONSANTRASYONLARI VE ZARARLILIKLARI ===")
         calculation_steps.extend(comp_summary)
@@ -279,41 +365,40 @@ class ClassificationEngine:
                 if uyari_kelimesi != "Tehlike":
                     uyari_kelimesi = "Dikkat"
                 calculation_steps.append(f"• Alevlenir Sıvı: Parlama Noktası ({parlama_noktasi}°C, 23°C - 60°C arası) -> Kategori 3 (H226)")
-        elif flam_components:
-            # Component based estimation if test data not provided
-            if any(f[0] == "Kat 1" for f in flam_components):
-                siniflandirmalar.append({"zararlilik_sinifi": "Alevlenir Sıvılar", "kategori": "Kategori 1", "h_kodu": "H224"})
-                h_codes.add("H224")
-                piktogram_set.add("GHS02")
-                uyari_kelimesi = "Tehlike"
-                calculation_steps.append("• Alevlenir Sıvı: Karışımda Alevlenir Sıvı Kat 1 bileşeni bulundu -> Kategori 1 (H224)")
-            elif any(f[0] == "Kat 2" for f in flam_components):
-                siniflandirmalar.append({"zararlilik_sinifi": "Alevlenir Sıvılar", "kategori": "Kategori 2", "h_kodu": "H225"})
-                h_codes.add("H225")
-                piktogram_set.add("GHS02")
-                uyari_kelimesi = "Tehlike"
-                calculation_steps.append("• Alevlenir Sıvı: Karışımda Alevlenir Sıvı Kat 2 bileşeni bulundu -> Kategori 2 (H225)")
-            elif any(f[0] == "Kat 3" for f in flam_components):
-                siniflandirmalar.append({"zararlilik_sinifi": "Alevlenir Sıvılar", "kategori": "Kategori 3", "h_kodu": "H226"})
-                h_codes.add("H226")
-                piktogram_set.add("GHS02")
-                if uyari_kelimesi != "Tehlike":
-                    uyari_kelimesi = "Dikkat"
-                calculation_steps.append("• Alevlenir Sıvı: Karışımda Alevlenir Sıvı Kat 3 bileşeni bulundu -> Kategori 3 (H226)")
+            else:
+                calculation_steps.append(f"• Alevlenir Sıvı: Parlama Noktası ({parlama_noktasi}°C > 60°C) -> Alevlenir sıvı sınıflandırma eşiği aşılmadı.")
+        else:
+            if flam_components:
+                calculation_steps.append("• Alevlenir Sıvı: Karışımda alevlenir bileşenler bulunmaktadır ancak karışımın ölçülmüş parlama noktası girilmediğinden otomatik sınıflandırma yapılmamıştır (Fiziksel tehlikeler için test verisi zorunludur - SEA Ek-1).")
+            else:
+                calculation_steps.append("• Alevlenir Sıvı: Karışımda alevlenir bileşen veya parlama noktası verisi girilmemiştir.")
 
         # --- B. CİLT AŞINMASI VE TAHRİŞİ (SKIN CORROSION / IRRITATION) ---
         is_skin_corr_1 = False
         is_skin_irrit_2 = False
+        total_skin_corr = c_skin_corr_1a + c_skin_corr_1b + c_skin_corr_1c + c_skin_corr_1_gen
 
-        if c_skin_corr_1 >= 5.0:
+        if total_skin_corr >= 5.0:
             is_skin_corr_1 = True
-            siniflandirmalar.append({"zararlilik_sinifi": "Cilt Aşınması / Tahrişi", "kategori": "Kategori 1", "h_kodu": "H314"})
+            corr_cat = "Kategori 1"
+            if c_skin_corr_1a >= 5.0:
+                corr_cat = "Kategori 1A"
+            elif c_skin_corr_1b >= 5.0:
+                corr_cat = "Kategori 1B"
+            elif c_skin_corr_1c >= 5.0:
+                corr_cat = "Kategori 1C"
+            elif c_skin_corr_1a > 0 and (c_skin_corr_1a + c_skin_corr_1b + c_skin_corr_1c + c_skin_corr_1_gen >= 5.0):
+                corr_cat = "Kategori 1A"
+            elif c_skin_corr_1b > 0:
+                corr_cat = "Kategori 1B"
+
+            siniflandirmalar.append({"zararlilik_sinifi": "Cilt Aşınması / Tahrişi", "kategori": corr_cat, "h_kodu": "H314"})
             h_codes.add("H314")
             piktogram_set.add("GHS05")
             uyari_kelimesi = "Tehlike"
-            calculation_steps.append(f"• Cilt Aşınması: ∑(Cilt Aşınması Kat 1) = %{c_skin_corr_1:.1f} >= %5.0 -> Sınıflandırıldı: Kategori 1 (H314)")
+            calculation_steps.append(f"• Cilt Aşınması: ∑(Cilt Aşınması Kat 1) = %{total_skin_corr:.1f} >= %5.0 -> Sınıflandırıldı: {corr_cat} (H314)")
         else:
-            skin_irrit_sum = (10.0 * c_skin_corr_1) + c_skin_irrit_2
+            skin_irrit_sum = (10.0 * total_skin_corr) + c_skin_irrit_2
             if skin_irrit_sum >= 10.0:
                 is_skin_irrit_2 = True
                 siniflandirmalar.append({"zararlilik_sinifi": "Cilt Aşınması / Tahrişi", "kategori": "Kategori 2", "h_kodu": "H315"})
@@ -321,9 +406,9 @@ class ClassificationEngine:
                 piktogram_set.add("GHS07")
                 if uyari_kelimesi != "Tehlike":
                     uyari_kelimesi = "Dikkat"
-                calculation_steps.append(f"• Cilt Tahrişi: (10 x ∑Cilt 1 [%{c_skin_corr_1:.1f}]) + ∑Cilt 2 [%{c_skin_irrit_2:.1f}] = %{skin_irrit_sum:.1f} >= %10.0 -> Sınıflandırıldı: Kategori 2 (H315)")
+                calculation_steps.append(f"• Cilt Tahrişi: (10 x ∑Cilt 1 [%{total_skin_corr:.1f}]) + ∑Cilt 2 [%{c_skin_irrit_2:.1f}] = %{skin_irrit_sum:.1f} >= %10.0 -> Sınıflandırıldı: Kategori 2 (H315)")
             else:
-                calculation_steps.append(f"• Cilt Aşınması/Tahrişi: Eşik değerler aşılmadı (Cilt 1: %{c_skin_corr_1:.1f} < %5, Tahriş toplamı: %{skin_irrit_sum:.1f} < %10)")
+                calculation_steps.append(f"• Cilt Aşınması/Tahrişi: Eşik değerler aşılmadı (Cilt 1: %{total_skin_corr:.1f} < %5, Tahriş toplamı: %{skin_irrit_sum:.1f} < %10)")
 
         # --- C. CİDDİ GÖZ HASARI / GÖZ TAHRİŞİ (SERIOUS EYE DAMAGE / EYE IRRITATION) ---
         if is_skin_corr_1:
@@ -356,8 +441,11 @@ class ClassificationEngine:
             uyari_kelimesi = "Tehlike"
             calculation_steps.append(f"• Solunum Hassaslaşması: ∑(Solunum Hassaslaştırıcı) = %{c_resp_sens_1:.1f} >= %0.2 -> Sınıflandırıldı: Kategori 1 (H334)")
         elif 0.1 <= c_resp_sens_1 < 0.2:
-            euh_codes.add("EUH204")
-            calculation_steps.append(f"• Solunum Hassaslaşması: %0.1 <= %{c_resp_sens_1:.1f} < %0.2 -> EUH204 (İzosiyanat içerir) tetiklendi.")
+            if has_isocyanates:
+                euh_codes.add("EUH204")
+                calculation_steps.append(f"• Solunum Hassaslaşması: %0.1 <= %{c_resp_sens_1:.1f} < %0.2 ve İzosiyanat bileşeni mevcut -> EUH204 (İzosiyanat içerir) eklendi.")
+            else:
+                calculation_steps.append(f"• Solunum Hassaslaşması: %0.1 <= %{c_resp_sens_1:.1f} < %0.2 (İzosiyanat tespit edilmediği için EUH204 uygulanmadı).")
 
         if c_skin_sens_1 >= 1.0:
             siniflandirmalar.append({"zararlilik_sinifi": "Solunum veya Cilt Hassaslaşması", "kategori": "Cilt Hassaslaştırıcı Kat 1", "h_kodu": "H317"})
@@ -424,12 +512,14 @@ class ClassificationEngine:
             calculation_steps.append(f"• STOT RE: ∑(STOT RE 2) = %{c_stot_re2:.1f} >= %1.0 -> Sınıflandırıldı: Kategori 2 (H373)")
 
         # --- G. CMR (MUTAJENİTE, KANSEROJENİTE, ÜREME TOKSİSİTESİ) ---
-        if c_muta1 >= 0.1:
-            siniflandirmalar.append({"zararlilik_sinifi": "Eşey Hücre Mutajenitesi", "kategori": "Kategori 1B", "h_kodu": "H340"})
+        total_muta1 = c_muta1a + c_muta1b
+        if total_muta1 >= 0.1:
+            muta_cat = "Kategori 1A" if c_muta1a >= 0.1 else "Kategori 1B"
+            siniflandirmalar.append({"zararlilik_sinifi": "Eşey Hücre Mutajenitesi", "kategori": muta_cat, "h_kodu": "H340"})
             h_codes.add("H340")
             piktogram_set.add("GHS08")
             uyari_kelimesi = "Tehlike"
-            calculation_steps.append(f"• Mutajenite: ∑(Muta 1) = %{c_muta1:.1f} >= %0.1 -> Sınıflandırıldı: Kategori 1B (H340)")
+            calculation_steps.append(f"• Mutajenite: ∑(Muta 1) = %{total_muta1:.1f} >= %0.1 -> Sınıflandırıldı: {muta_cat} (H340)")
         elif c_muta2 >= 1.0:
             siniflandirmalar.append({"zararlilik_sinifi": "Eşey Hücre Mutajenitesi", "kategori": "Kategori 2", "h_kodu": "H341"})
             h_codes.add("H341")
@@ -438,12 +528,14 @@ class ClassificationEngine:
                 uyari_kelimesi = "Dikkat"
             calculation_steps.append(f"• Mutajenite: ∑(Muta 2) = %{c_muta2:.1f} >= %1.0 -> Sınıflandırıldı: Kategori 2 (H341)")
 
-        if c_carc1 >= 0.1:
-            siniflandirmalar.append({"zararlilik_sinifi": "Kanserojenite", "kategori": "Kategori 1B", "h_kodu": "H350"})
+        total_carc1 = c_carc1a + c_carc1b
+        if total_carc1 >= 0.1:
+            carc_cat = "Kategori 1A" if c_carc1a >= 0.1 else "Kategori 1B"
+            siniflandirmalar.append({"zararlilik_sinifi": "Kanserojenite", "kategori": carc_cat, "h_kodu": "H350"})
             h_codes.add("H350")
             piktogram_set.add("GHS08")
             uyari_kelimesi = "Tehlike"
-            calculation_steps.append(f"• Kanserojenite: ∑(Carc 1) = %{c_carc1:.1f} >= %0.1 -> Sınıflandırıldı: Kategori 1B (H350)")
+            calculation_steps.append(f"• Kanserojenite: ∑(Carc 1) = %{total_carc1:.1f} >= %0.1 -> Sınıflandırıldı: {carc_cat} (H350)")
         elif c_carc2 >= 1.0:
             siniflandirmalar.append({"zararlilik_sinifi": "Kanserojenite", "kategori": "Kategori 2", "h_kodu": "H351"})
             h_codes.add("H351")
@@ -452,15 +544,17 @@ class ClassificationEngine:
                 uyari_kelimesi = "Dikkat"
             calculation_steps.append(f"• Kanserojenite: ∑(Carc 2) = %{c_carc2:.1f} >= %1.0 -> Sınıflandırıldı: Kategori 2 (H351)")
 
-        if c_repr1 >= 0.3:
-            h_repr = repr_h_specific if repr_h_specific and repr_h_specific.startswith("H360") else "H360D"
-            siniflandirmalar.append({"zararlilik_sinifi": "Üreme Sistemi Toksisitesi", "kategori": "Kategori 1B", "h_kodu": h_repr})
+        total_repr1 = c_repr1a + c_repr1b
+        if total_repr1 >= 0.3:
+            repr_cat = "Kategori 1A" if c_repr1a >= 0.3 else "Kategori 1B"
+            h_repr = cls.resolve_repro_h_code(repr_h360_codes, "H360")
+            siniflandirmalar.append({"zararlilik_sinifi": "Üreme Sistemi Toksisitesi", "kategori": repr_cat, "h_kodu": h_repr})
             h_codes.add(h_repr)
             piktogram_set.add("GHS08")
             uyari_kelimesi = "Tehlike"
-            calculation_steps.append(f"• Üreme Toksisitesi: ∑(Repr 1) = %{c_repr1:.1f} >= %0.3 -> Sınıflandırıldı: Kategori 1B ({h_repr})")
+            calculation_steps.append(f"• Üreme Toksisitesi: ∑(Repr 1) = %{total_repr1:.1f} >= %0.3 -> Sınıflandırıldı: {repr_cat} ({h_repr})")
         elif c_repr2 >= 3.0:
-            h_repr = repr_h_specific if repr_h_specific and repr_h_specific.startswith("H361") else "H361d"
+            h_repr = cls.resolve_repro_h_code(repr_h361_codes, "H361")
             siniflandirmalar.append({"zararlilik_sinifi": "Üreme Sistemi Toksisitesi", "kategori": "Kategori 2", "h_kodu": h_repr})
             h_codes.add(h_repr)
             piktogram_set.add("GHS08")
@@ -503,21 +597,25 @@ class ClassificationEngine:
             h_codes.add("H413")
             calculation_steps.append(f"• Sucul Çevre (Kronik): Toplam Kronik = %{chr4_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 4 (H413)")
 
-        # EUH066 check
-        if has_solvents and not is_skin_irrit_2 and not is_skin_corr_1:
+        # EUH066 check (Anlamlı solvent içeriği >= %10 veya açıkça EUH066 içeren bileşen)
+        if (has_explicit_euh066 or c_solvent_total >= 10.0) and not is_skin_irrit_2 and not is_skin_corr_1:
             euh_codes.add("EUH066")
-            calculation_steps.append("• İlave Bilgi: Solvent içeriği mevcut olup Cilt Tahrişi Kat 2 sınırının altında kaldığı için EUH066 eklendi.")
+            calculation_steps.append(f"• İlave Bilgi: Anlamlı solvent içeriği (%{c_solvent_total:.1f}) mevcut olup Cilt Tahrişi Kat 2 sınırının altında kaldığı için EUH066 eklendi.")
 
         # --- I. AKUT TOKSİSİTE (ACUTE TOXICITY - ATE_mix HARMONİK FORMÜL) ---
         # SEA Ek-1 Bölüm 3.1.3.6: 100/ATE_mix = Σ(Ci/ATEi)
-        # Sayısal ATE verilmemişse SEA Ek-1 Tablo 3.1.2 dönüşüm değerleri kullanılır
+        # Dönüşüm değerleri (Tablo 3.1.2)
         ATE_CONVERSION_ORAL = {"H300": 5, "H301": 50, "H302": 500}
         ATE_CONVERSION_DERMAL = {"H310": 50, "H311": 200, "H312": 1100}
-        ATE_CONVERSION_INHAL = {"H330": 0.05, "H331": 0.5, "H332": 3.0}
+        ATE_CONVERSION_INHAL_VAPOUR = {"H330": 0.5, "H331": 3.0, "H332": 11.0}
+        ATE_CONVERSION_INHAL_GAS = {"H330": 100, "H331": 700, "H332": 4500}
+        ATE_CONVERSION_INHAL_DUST = {"H330": 0.05, "H331": 0.5, "H332": 1.5}
 
         ate_oral_sum = 0.0
         ate_dermal_sum = 0.0
-        ate_inhal_sum = 0.0
+        ate_inhal_vapour_sum = 0.0
+        ate_inhal_gas_sum = 0.0
+        ate_inhal_dust_sum = 0.0
 
         for comp in bilesenler:
             conc = cls.parse_concentration(comp.get("konsantrasyon"))
@@ -526,13 +624,14 @@ class ClassificationEngine:
             sinif_str = comp.get("siniflandirma") or ""
             codes = cls.extract_h_codes(sinif_str)
 
-            ate_oral_val = comp.get("akut_toksisite_oral")
-            ate_dermal_val = comp.get("akut_toksisite_dermal")
-            ate_inhal_val = comp.get("akut_toksisite_soluma")
+            ate_oral_val = cls.parse_float_safe(comp.get("akut_toksisite_oral"))
+            ate_dermal_val = cls.parse_float_safe(comp.get("akut_toksisite_dermal"))
+            ate_inhal_val = cls.parse_float_safe(comp.get("akut_toksisite_soluma"))
+            inhal_form = (comp.get("akut_toksisite_soluma_formu") or "buhar").lower()
 
             # Oral
-            if ate_oral_val and float(ate_oral_val) > 0:
-                ate_oral_sum += conc / float(ate_oral_val)
+            if ate_oral_val and ate_oral_val > 0:
+                ate_oral_sum += conc / ate_oral_val
             else:
                 for h_code, conv_ate in ATE_CONVERSION_ORAL.items():
                     if h_code in codes:
@@ -540,21 +639,31 @@ class ClassificationEngine:
                         break
 
             # Dermal
-            if ate_dermal_val and float(ate_dermal_val) > 0:
-                ate_dermal_sum += conc / float(ate_dermal_val)
+            if ate_dermal_val and ate_dermal_val > 0:
+                ate_dermal_sum += conc / ate_dermal_val
             else:
                 for h_code, conv_ate in ATE_CONVERSION_DERMAL.items():
                     if h_code in codes:
                         ate_dermal_sum += conc / conv_ate
                         break
 
-            # Soluma (İnhalasyon)
-            if ate_inhal_val and float(ate_inhal_val) > 0:
-                ate_inhal_sum += conc / float(ate_inhal_val)
+            # Soluma (İnhalasyon - Maruziyet Formlarına Göre Ayrım)
+            if ate_inhal_val and ate_inhal_val > 0:
+                if inhal_form == "gaz":
+                    ate_inhal_gas_sum += conc / ate_inhal_val
+                elif inhal_form in ["toz_sis", "toz", "sis"]:
+                    ate_inhal_dust_sum += conc / ate_inhal_val
+                else:
+                    ate_inhal_vapour_sum += conc / ate_inhal_val
             else:
-                for h_code, conv_ate in ATE_CONVERSION_INHAL.items():
+                for h_code in ["H330", "H331", "H332"]:
                     if h_code in codes:
-                        ate_inhal_sum += conc / conv_ate
+                        if inhal_form == "gaz":
+                            ate_inhal_gas_sum += conc / ATE_CONVERSION_INHAL_GAS[h_code]
+                        elif inhal_form in ["toz_sis", "toz", "sis"]:
+                            ate_inhal_dust_sum += conc / ATE_CONVERSION_INHAL_DUST[h_code]
+                        else:
+                            ate_inhal_vapour_sum += conc / ATE_CONVERSION_INHAL_VAPOUR[h_code]
                         break
 
         # CLP/SEA Akut Toksisite Kategori eşikleri
@@ -570,29 +679,41 @@ class ClassificationEngine:
             (1000, "Kategori 3", "H311"),
             (2000, "Kategori 4", "H312"),
         ]
-        ATE_INHAL_THRESHOLDS = [
+        ATE_INHAL_VAPOUR_THRESHOLDS = [
             (0.5, "Kategori 1", "H330"),
             (2.0, "Kategori 2", "H330"),
             (10.0, "Kategori 3", "H331"),
             (20.0, "Kategori 4", "H332"),
         ]
+        ATE_INHAL_GAS_THRESHOLDS = [
+            (100, "Kategori 1", "H330"),
+            (500, "Kategori 2", "H330"),
+            (2500, "Kategori 3", "H331"),
+            (20000, "Kategori 4", "H332"),
+        ]
+        ATE_INHAL_DUST_THRESHOLDS = [
+            (0.05, "Kategori 1", "H330"),
+            (0.5, "Kategori 2", "H330"),
+            (1.0, "Kategori 3", "H331"),
+            (5.0, "Kategori 4", "H332"),
+        ]
 
         calculation_steps.append("\n--- Akut Toksisite (ATE_mix Harmonik Formül — SEA Ek-1 Bölüm 3.1.3.6) ---")
 
-        def _classify_ate(route_name: str, ate_sum: float, thresholds: list):
+        def _classify_ate(route_name: str, ate_sum: float, thresholds: list, unit_str: str):
             if ate_sum <= 0:
                 calculation_steps.append(f"• Akut Toksisite ({route_name}): ATE verileri mevcut değil veya bileşenler akut toksik değil — hesaplama atlandı.")
                 return None
             ate_mix = 100.0 / ate_sum
-            calculation_steps.append(f"• Akut Toksisite ({route_name}): 100 / Σ(Ci/ATEi) = 100 / {ate_sum:.4f} = ATE_mix = {ate_mix:.1f}")
+            calculation_steps.append(f"• Akut Toksisite ({route_name}): 100 / Σ(Ci/ATEi) = 100 / {ate_sum:.4f} = ATE_mix = {ate_mix:.1f} {unit_str}")
             for threshold, cat_name, h_code in thresholds:
                 if ate_mix <= threshold:
-                    calculation_steps.append(f"  → ATE_mix ({ate_mix:.1f}) ≤ {threshold} → Sınıflandırıldı: {cat_name} ({h_code})")
+                    calculation_steps.append(f"  → ATE_mix ({ate_mix:.1f} {unit_str}) ≤ {threshold} → Sınıflandırıldı: {cat_name} ({h_code})")
                     return {"cat": cat_name, "h_code": h_code, "ate_mix": ate_mix}
-            calculation_steps.append(f"  → ATE_mix ({ate_mix:.1f}) > {thresholds[-1][0]} — Akut toksisite sınıflandırma eşiği aşılmadı.")
+            calculation_steps.append(f"  → ATE_mix ({ate_mix:.1f} {unit_str}) > {thresholds[-1][0]} — Akut toksisite sınıflandırma eşiği aşılmadı.")
             return None
 
-        oral_result = _classify_ate("Oral", ate_oral_sum, ATE_ORAL_THRESHOLDS)
+        oral_result = _classify_ate("Oral", ate_oral_sum, ATE_ORAL_THRESHOLDS, "mg/kg")
         if oral_result:
             siniflandirmalar.append({"zararlilik_sinifi": "Akut Toksisite - Oral", "kategori": oral_result["cat"], "h_kodu": oral_result["h_code"]})
             h_codes.add(oral_result["h_code"])
@@ -604,7 +725,7 @@ class ClassificationEngine:
                 if uyari_kelimesi != "Tehlike":
                     uyari_kelimesi = "Dikkat"
 
-        dermal_result = _classify_ate("Dermal", ate_dermal_sum, ATE_DERMAL_THRESHOLDS)
+        dermal_result = _classify_ate("Dermal", ate_dermal_sum, ATE_DERMAL_THRESHOLDS, "mg/kg")
         if dermal_result:
             siniflandirmalar.append({"zararlilik_sinifi": "Akut Toksisite - Dermal", "kategori": dermal_result["cat"], "h_kodu": dermal_result["h_code"]})
             h_codes.add(dermal_result["h_code"])
@@ -616,17 +737,22 @@ class ClassificationEngine:
                 if uyari_kelimesi != "Tehlike":
                     uyari_kelimesi = "Dikkat"
 
-        inhal_result = _classify_ate("Soluma", ate_inhal_sum, ATE_INHAL_THRESHOLDS)
-        if inhal_result:
-            siniflandirmalar.append({"zararlilik_sinifi": "Akut Toksisite - Soluma", "kategori": inhal_result["cat"], "h_kodu": inhal_result["h_code"]})
-            h_codes.add(inhal_result["h_code"])
-            if inhal_result["h_code"] in ("H330", "H331"):
-                piktogram_set.add("GHS06")
-                uyari_kelimesi = "Tehlike"
-            elif inhal_result["h_code"] == "H332":
-                piktogram_set.add("GHS07")
-                if uyari_kelimesi != "Tehlike":
-                    uyari_kelimesi = "Dikkat"
+        # Soluma: Buhar, Gaz ve Toz/Sis yolları
+        inhal_vapour_res = _classify_ate("Soluma (Buhar)", ate_inhal_vapour_sum, ATE_INHAL_VAPOUR_THRESHOLDS, "mg/L")
+        inhal_gas_res = _classify_ate("Soluma (Gaz)", ate_inhal_gas_sum, ATE_INHAL_GAS_THRESHOLDS, "ppmV")
+        inhal_dust_res = _classify_ate("Soluma (Toz/Sis)", ate_inhal_dust_sum, ATE_INHAL_DUST_THRESHOLDS, "mg/L")
+
+        for inhal_res, label in [(inhal_vapour_res, "Soluma (Buhar)"), (inhal_gas_res, "Soluma (Gaz)"), (inhal_dust_res, "Soluma (Toz/Sis)")]:
+            if inhal_res:
+                siniflandirmalar.append({"zararlilik_sinifi": f"Akut Toksisite - {label}", "kategori": inhal_res["cat"], "h_kodu": inhal_res["h_code"]})
+                h_codes.add(inhal_res["h_code"])
+                if inhal_res["h_code"] in ("H330", "H331"):
+                    piktogram_set.add("GHS06")
+                    uyari_kelimesi = "Tehlike"
+                elif inhal_res["h_code"] == "H332":
+                    piktogram_set.add("GHS07")
+                    if uyari_kelimesi != "Tehlike":
+                        uyari_kelimesi = "Dikkat"
 
         # --- 3. GHS PİKTOGRAM VE UYARI KELİMESİ ÖNCELİK KURALLARI (SEA MD. 26 & 28) ---
         filtered_piktogramlar = set(piktogram_set)
