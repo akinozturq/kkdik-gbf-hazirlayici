@@ -400,3 +400,26 @@ def test_safe_float_parsing_with_strings():
     res = ClassificationEngine.calculate_mixture_hazards(components)
     assert "H302" in res["h_ifadeleri"]
 
+
+def test_aspiration_hazard_with_low_viscosity():
+    """%15 H304 ve 40°C kinematik viskozite 12 mm²/s <= 20.5 -> H304 olarak sınıflandırılmalı"""
+    components = [
+        {"ad": "Aromatik Ağır Nafta", "konsantrasyon": "%15", "siniflandirma": "Asp. Tox. 1 H304"}
+    ]
+    res = ClassificationEngine.calculate_mixture_hazards(components, kinematik_viskozite=12.0)
+    assert "H304" in res["h_ifadeleri"]
+    assert "GHS08" in res["piktogramlar"]
+    assert any("Aspirasyon Zararı" in s["zararlilik_sinifi"] for s in res["siniflandirmalar"])
+
+
+def test_aspiration_hazard_suppressed_with_high_viscosity():
+    """%15 H304 olmasına rağmen 40°C kinematik viskozite 50 mm²/s > 20.5 -> H304 olarak SINIFLANDIRILMAMALIDIR (SEA Ek-1 Bölüm 3.10)"""
+    components = [
+        {"ad": "Aromatik Ağır Nafta", "konsantrasyon": "%15", "siniflandirma": "Asp. Tox. 1 H304"}
+    ]
+    res = ClassificationEngine.calculate_mixture_hazards(components, kinematik_viskozite=50.0)
+    assert "H304" not in res["h_ifadeleri"]
+    assert not any("Aspirasyon Zararı" in s["zararlilik_sinifi"] for s in res["siniflandirmalar"])
+    assert any("20.5 mm²/s" in step for step in res["calculation_steps"])
+
+

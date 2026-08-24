@@ -47,12 +47,19 @@ T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı **KKDİK Yönetme
 ├── backend/                       # FastAPI Backend Servisi
 │   ├── app/
 │   │   ├── data/                 # H/P İfadeleri, H->P Haritası, Hammadde Kütüphanesi & Piktogramlar
-│   │   ├── models/               # SQLAlchemy DB Modelleri (SQLite)
+│   │   ├── models/               # SQLAlchemy DB Modelleri & Structured Regulatory Substance Modelleri
 │   │   ├── routers/              # /api/products, /api/references, /api/ai Endpoint'leri
 │   │   ├── schemas/              # 16 Bölümlük KKDİK Pydantic v2 Veri Modelleri
-│   │   ├── services/             # ClassificationEngine, ProductService, ValidatorService, ExportServices, AI/Translation
+│   │   ├── services/
+│   │   │   ├── regulatory_engine/# v2.0 RegulatoryPipeline, LabelGenerator (Strategy Pattern)
+│   │   │   ├── rules/            # Flammable, Aspiration, AcuteTox, SkinEye, CMR, STOT, Aquatic, Supplemental Kuralları
+│   │   │   ├── classification_engine.py # v2.0 Engine Adapter
+│   │   │   ├── validator_service.py     # Semantik & KKDİK Ek-2 Kural Denetleyicisi
+│   │   │   ├── export_docx_service.py   # Kurumsal Word Dışa Aktarma
+│   │   │   ├── export_pdf_service.py    # Kurumsal PDF Dışa Aktarma
+│   │   │   └── translation_service.py   # AI & Deterministik Çeviri Motoru
 │   │   └── templates/            # Antetli GBF Şablonu, Fonts & Piktogramlar
-│   └── tests/                    # 65 Adet Kapsamlı Otomatize Pytest Test Paketi
+│   └── tests/                    # 73 Adet Kapsamlı Otomatize Pytest Test Paketi
 │
 ├── frontend/                      # React 19 + Vite Frontend Sihirbazı
 │   ├── src/

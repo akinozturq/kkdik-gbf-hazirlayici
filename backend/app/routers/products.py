@@ -411,6 +411,7 @@ class CalculatePreviewRequest(BaseModel):
     bilesenler: List[dict]
     parlama_noktasi: Optional[float] = None
     kaynama_noktasi: Optional[float] = None
+    kinematik_viskozite: Optional[float] = None
 
 
 @router.post(
@@ -428,17 +429,20 @@ def calculate_product_hazards(product_id: int, db: Session = Depends(get_db)):
     sds = product.sds_data or {}
     bilesenler = sds.get("b3_bilesim", {}).get("karisim", {}).get("bilesenler", [])
 
-    b9 = sds.get("b9_fiziksel_kimyasal_ozellikler", {}).get("b9_1", {})
+    b9 = sds.get("b9_fiziksel_kimyasal_ozellikler", {}).get("b9_1", {}) or sds.get("b9_fiziksel_kimyasal", {}).get("b9_1", {})
     fp_str = b9.get("parlama_noktasi")
-    bp_str = b9.get("kaynama_noktasi_araligi")
+    bp_str = b9.get("kaynama_noktasi_araligi") or b9.get("kaynama_noktasi")
+    visk_str = b9.get("kinematik_viskozite") or b9.get("akiskanlik")
 
-    fp_val = ClassificationEngine.parse_concentration(fp_str) if fp_str else None
-    bp_val = ClassificationEngine.parse_concentration(bp_str) if bp_str else None
+    fp_val = ClassificationEngine.parse_float_safe(fp_str)
+    bp_val = ClassificationEngine.parse_float_safe(bp_str)
+    visk_val = ClassificationEngine.parse_float_safe(visk_str)
 
     result = ClassificationEngine.calculate_mixture_hazards(
         bilesenler=bilesenler,
         parlama_noktasi=fp_val,
-        kaynama_noktasi=bp_val
+        kaynama_noktasi=bp_val,
+        kinematik_viskozite=visk_val
     )
     return result
 
@@ -458,16 +462,20 @@ def apply_calculated_hazards(product_id: int, db: Session = Depends(get_db)):
     sds = copy.deepcopy(product.sds_data or {})
     bilesenler = sds.get("b3_bilesim", {}).get("karisim", {}).get("bilesenler", [])
 
-    b9 = sds.get("b9_fiziksel_kimyasal_ozellikler", {}).get("b9_1", {})
+    b9 = sds.get("b9_fiziksel_kimyasal_ozellikler", {}).get("b9_1", {}) or sds.get("b9_fiziksel_kimyasal", {}).get("b9_1", {})
     fp_str = b9.get("parlama_noktasi")
-    bp_str = b9.get("kaynama_noktasi_araligi")
-    fp_val = ClassificationEngine.parse_concentration(fp_str) if fp_str else None
-    bp_val = ClassificationEngine.parse_concentration(bp_str) if bp_str else None
+    bp_str = b9.get("kaynama_noktasi_araligi") or b9.get("kaynama_noktasi")
+    visk_str = b9.get("kinematik_viskozite") or b9.get("akiskanlik")
+
+    fp_val = ClassificationEngine.parse_float_safe(fp_str)
+    bp_val = ClassificationEngine.parse_float_safe(bp_str)
+    visk_val = ClassificationEngine.parse_float_safe(visk_str)
 
     result = ClassificationEngine.calculate_mixture_hazards(
         bilesenler=bilesenler,
         parlama_noktasi=fp_val,
-        kaynama_noktasi=bp_val
+        kaynama_noktasi=bp_val,
+        kinematik_viskozite=visk_val
     )
 
     if not sds.get("b2_zarar_tanimi"):
