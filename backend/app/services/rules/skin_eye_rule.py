@@ -36,6 +36,12 @@ class SkinEyeRule(BaseHazardRule):
         c_eye_dam_1 = 0.0
         c_eye_irrit_2 = 0.0
 
+        # SCL Tetikleyicileri
+        scl_skin_corr = None
+        scl_skin_irrit = None
+        scl_eye_dam = None
+        scl_eye_irrit = None
+
         for s in substances:
             conc = s.concentration.value
             if conc <= 0:
@@ -43,6 +49,22 @@ class SkinEyeRule(BaseHazardRule):
 
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
             hazard_classes_str = " ".join([h.hazard_class for h in s.hazards])
+
+            # SCL Kontrolleri
+            for h in s.hazards:
+                if h.scl is not None:
+                    if h.h_code == "H314" or "Skin Corr" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_skin_corr = (s.name, conc, h.scl, h.category or "1")
+                    elif h.h_code == "H315" or "Skin Irrit" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_skin_irrit = (s.name, conc, h.scl)
+                    elif h.h_code == "H318" or "Eye Dam" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_eye_dam = (s.name, conc, h.scl)
+                    elif h.h_code == "H319" or "Eye Irrit" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_eye_irrit = (s.name, conc, h.scl)
 
             # Cilt Aşınması
             if "H314" in codes or "Skin Corr." in hazard_classes_str:
@@ -73,7 +95,21 @@ class SkinEyeRule(BaseHazardRule):
         is_skin_corr_1 = False
         is_skin_irrit_2 = False
 
-        if total_skin_corr_1 >= 5.0:
+        if scl_skin_corr is not None:
+            is_skin_corr_1 = True
+            sub_name, sub_c, sub_scl, sub_cat = scl_skin_corr
+            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            result.hazards.append(ClassifiedHazard(
+                zararlilik_sinifi="Cilt Aşınması / Tahrişi",
+                kategori=cat_name,
+                h_kodu="H314"
+            ))
+            result.piktogramlar.append("GHS05")
+            result.uyari_kelimesi = "Tehlike"
+            result.calculation_notes.append(
+                f"• Cilt Aşınması (SCL): [{sub_name}] %{sub_c:.1f} >= SCL (%{sub_scl:.1f}) -> Spesifik Konsantrasyon Sınırı ile sınıflandırıldı: {cat_name} (H314)"
+            )
+        elif total_skin_corr_1 >= 5.0:
             is_skin_corr_1 = True
             if c_skin_corr_1a >= 5.0:
                 skin_cat = "Kategori 1A"
@@ -94,6 +130,20 @@ class SkinEyeRule(BaseHazardRule):
             result.calculation_notes.append(
                 f"• Cilt Aşınması: ∑(Skin Corr. 1) = %{total_skin_corr_1:.1f} >= %5.0 -> Sınıflandırıldı: {skin_cat} (H314)"
             )
+        elif scl_skin_irrit is not None:
+            is_skin_irrit_2 = True
+            sub_name, sub_c, sub_scl = scl_skin_irrit
+            result.hazards.append(ClassifiedHazard(
+                zararlilik_sinifi="Cilt Aşınması / Tahrişi",
+                kategori="Kategori 2",
+                h_kodu="H315"
+            ))
+            result.piktogramlar.append("GHS07")
+            if result.uyari_kelimesi != "Tehlike":
+                result.uyari_kelimesi = "Dikkat"
+            result.calculation_notes.append(
+                f"• Cilt Tahrişi (SCL): [{sub_name}] %{sub_c:.1f} >= SCL (%{sub_scl:.1f}) -> Spesifik Konsantrasyon Sınırı ile sınıflandırıldı: Kategori 2 (H315)"
+            )
         elif 1.0 <= total_skin_corr_1 < 5.0 or (10.0 * total_skin_corr_1 + c_skin_irrit_2) >= 10.0:
             is_skin_irrit_2 = True
             skin_sum = (10.0 * total_skin_corr_1 + c_skin_irrit_2)
@@ -111,7 +161,19 @@ class SkinEyeRule(BaseHazardRule):
 
         # 2. GÖZ HASARI / TAHRİŞİ (EYE DAMAGE / IRRITATION)
         if not is_skin_corr_1:
-            if c_eye_dam_1 >= 3.0:
+            if scl_eye_dam is not None:
+                sub_name, sub_c, sub_scl = scl_eye_dam
+                result.hazards.append(ClassifiedHazard(
+                    zararlilik_sinifi="Ciddi Göz Hasarı / Göz Tahrişi",
+                    kategori="Kategori 1",
+                    h_kodu="H318"
+                ))
+                result.piktogramlar.append("GHS05")
+                result.uyari_kelimesi = "Tehlike"
+                result.calculation_notes.append(
+                    f"• Göz Hasarı (SCL): [{sub_name}] %{sub_c:.1f} >= SCL (%{sub_scl:.1f}) -> Spesifik Konsantrasyon Sınırı ile sınıflandırıldı: Kategori 1 (H318)"
+                )
+            elif c_eye_dam_1 >= 3.0:
                 result.hazards.append(ClassifiedHazard(
                     zararlilik_sinifi="Ciddi Göz Hasarı / Göz Tahrişi",
                     kategori="Kategori 1",
@@ -121,6 +183,19 @@ class SkinEyeRule(BaseHazardRule):
                 result.uyari_kelimesi = "Tehlike"
                 result.calculation_notes.append(
                     f"• Göz Hasarı: ∑(Eye Dam. 1) = %{c_eye_dam_1:.1f} >= %3.0 -> Sınıflandırıldı: Kategori 1 (H318)"
+                )
+            elif scl_eye_irrit is not None:
+                sub_name, sub_c, sub_scl = scl_eye_irrit
+                result.hazards.append(ClassifiedHazard(
+                    zararlilik_sinifi="Ciddi Göz Hasarı / Göz Tahrişi",
+                    kategori="Kategori 2",
+                    h_kodu="H319"
+                ))
+                result.piktogramlar.append("GHS07")
+                if result.uyari_kelimesi != "Tehlike":
+                    result.uyari_kelimesi = "Dikkat"
+                result.calculation_notes.append(
+                    f"• Göz Tahrişi (SCL): [{sub_name}] %{sub_c:.1f} >= SCL (%{sub_scl:.1f}) -> Spesifik Konsantrasyon Sınırı ile sınıflandırıldı: Kategori 2 (H319)"
                 )
             elif (10.0 * c_eye_dam_1 + c_eye_irrit_2) >= 10.0 or (1.0 <= c_eye_dam_1 < 3.0):
                 eye_sum = (10.0 * c_eye_dam_1 + c_eye_irrit_2)

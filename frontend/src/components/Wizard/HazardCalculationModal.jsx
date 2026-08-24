@@ -164,6 +164,26 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('status')}
+            style={{
+              padding: '12px 18px',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              color: activeTab === 'status' ? '#2563eb' : '#64748b',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'status' ? '2px solid #2563eb' : '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Info size={16} />
+            Veri Yeterlilik Durumu ({result?.rule_results?.length || 8} Kural)
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('steps')}
             style={{
               padding: '12px 18px',
@@ -376,6 +396,79 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && result && activeTab === 'status' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.82rem', color: '#1e40af' }}>
+                <span style={{ fontWeight: 700 }}>🔍 Veri Yeterlilik ve Karar Denetim Özeti:</span>
+                <p style={{ margin: '4px 0 0', color: '#1e3a8a' }}>
+                  Aşağıdaki tabloda her bir mevzuat kuralının (SEA Ek-1) girdi verilerinin yeterliliği ve karara varma durumu listelenmektedir.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(result.rule_results || []).map((rule, idx) => {
+                  const isSufficient = rule.data_status === 'SUFFICIENT';
+                  const isInsufficient = rule.data_status === 'INSUFFICIENT_DATA';
+                  const statusBg = isSufficient ? '#dcfce7' : isInsufficient ? '#fef3c7' : '#f1f5f9';
+                  const statusColor = isSufficient ? '#166534' : isInsufficient ? '#92400e' : '#475569';
+                  const statusLabel = isSufficient ? 'Yeterli Veri' : isInsufficient ? 'Eksik Test Verisi' : 'Uygulanamaz';
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>
+                            {rule.rule_name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              background: statusBg,
+                              color: statusColor,
+                            }}
+                          >
+                            {statusLabel}
+                          </span>
+                        </div>
+                        {rule.hazards && rule.hazards.length > 0 && (
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            {rule.hazards.map((h, hIdx) => (
+                              <span key={hIdx} className="badge badge-danger" style={{ fontSize: '0.72rem', fontWeight: 700 }}>
+                                {h.h_kodu || h.zararlilik_sinifi}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {rule.calculation_notes && rule.calculation_notes.length > 0 && (
+                        <div style={{ fontSize: '0.78rem', color: '#475569', background: '#f8fafc', padding: '6px 10px', borderRadius: '6px', marginTop: '4px' }}>
+                          {rule.calculation_notes.map((note, nIdx) => (
+                            <div key={nIdx}>{note}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

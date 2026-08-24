@@ -54,6 +54,10 @@ class CMRRule(BaseHazardRule):
         repr_h360_codes: Set[str] = set()
         repr_h361_codes: Set[str] = set()
 
+        scl_muta = None
+        scl_carc = None
+        scl_repr = None
+
         for s in substances:
             conc = s.concentration.value
             if conc <= 0:
@@ -61,6 +65,19 @@ class CMRRule(BaseHazardRule):
 
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
             hazard_classes_str = " ".join([h.hazard_class for h in s.hazards])
+
+            # SCL Kontrolleri
+            for h in s.hazards:
+                if h.scl is not None:
+                    if h.h_code in ["H340", "H341"] or "Muta" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_muta = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H340")
+                    elif h.h_code in ["H350", "H350i", "H351"] or "Carc" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_carc = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H350")
+                    elif any(h.h_code.startswith(p) for p in ["H360", "H361"]) or "Repr" in h.hazard_class:
+                        if conc >= h.scl:
+                            scl_repr = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H360D")
 
             # Mutajenite
             if "H340" in codes:
@@ -97,7 +114,18 @@ class CMRRule(BaseHazardRule):
 
         # 1. MUTAJENİTE
         total_muta1 = c_muta1a + c_muta1b
-        if total_muta1 >= 0.1:
+        if scl_muta is not None:
+            sub_name, sub_c, sub_scl, sub_cat, sub_h = scl_muta
+            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            result.hazards.append(ClassifiedHazard(
+                zararlilik_sinifi="Eşey Hücre Mutajenitesi",
+                kategori=cat_name,
+                h_kodu=sub_h
+            ))
+            result.piktogramlar.append("GHS08")
+            result.uyari_kelimesi = "Tehlike" if "1" in cat_name else "Dikkat"
+            result.calculation_notes.append(f"• Mutajenite (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {cat_name} ({sub_h})")
+        elif total_muta1 >= 0.1:
             muta_cat = "Kategori 1A" if c_muta1a >= 0.1 else "Kategori 1B"
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Eşey Hücre Mutajenitesi",
@@ -120,7 +148,18 @@ class CMRRule(BaseHazardRule):
 
         # 2. KANSEROJENLİK
         total_carc1 = c_carc1a + c_carc1b
-        if total_carc1 >= 0.1:
+        if scl_carc is not None:
+            sub_name, sub_c, sub_scl, sub_cat, sub_h = scl_carc
+            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            result.hazards.append(ClassifiedHazard(
+                zararlilik_sinifi="Kanserojenite",
+                kategori=cat_name,
+                h_kodu=sub_h
+            ))
+            result.piktogramlar.append("GHS08")
+            result.uyari_kelimesi = "Tehlike" if "1" in cat_name else "Dikkat"
+            result.calculation_notes.append(f"• Kanserojenite (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {cat_name} ({sub_h})")
+        elif total_carc1 >= 0.1:
             carc_cat = "Kategori 1A" if c_carc1a >= 0.1 else "Kategori 1B"
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Kanserojenite",
@@ -143,7 +182,23 @@ class CMRRule(BaseHazardRule):
 
         # 3. ÜREME TOKSİSİTESİ
         total_repr1 = c_repr1a + c_repr1b
-        if total_repr1 >= 0.3:
+        if scl_repr is not None:
+            sub_name, sub_c, sub_scl, sub_cat, sub_h = scl_repr
+            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            h_repr = sub_h
+            if "1" in cat_name and repr_h360_codes:
+                h_repr = self.resolve_repro_h_code(repr_h360_codes, "H360")
+            elif "2" in cat_name and repr_h361_codes:
+                h_repr = self.resolve_repro_h_code(repr_h361_codes, "H361")
+            result.hazards.append(ClassifiedHazard(
+                zararlilik_sinifi="Üreme Sistemi Toksisitesi",
+                kategori=cat_name,
+                h_kodu=h_repr
+            ))
+            result.piktogramlar.append("GHS08")
+            result.uyari_kelimesi = "Tehlike" if "1" in cat_name else "Dikkat"
+            result.calculation_notes.append(f"• Üreme Toksisitesi (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {cat_name} ({h_repr})")
+        elif total_repr1 >= 0.3:
             repr_cat = "Kategori 1A" if c_repr1a >= 0.3 else "Kategori 1B"
             h_repr = self.resolve_repro_h_code(repr_h360_codes, "H360")
             result.hazards.append(ClassifiedHazard(

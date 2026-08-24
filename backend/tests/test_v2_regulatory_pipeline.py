@@ -148,3 +148,56 @@ def test_v2_pipeline_full_execution():
     assert result.uyari_kelimesi == "Tehlike"
     assert len(result.p_ifadeleri) > 0
     assert len(result.calculation_steps) > 5
+
+
+def test_regulatory_parser_rich_string():
+    """Zengin sınıflandırma metninden SCL, M-Factor, Class ve Category doğru ayrıştırılmalıdır."""
+    from app.services.regulatory_engine.parser import RegulatoryClassificationParser
+    text = "Skin Corr. 1B H314 (SCL >= 1%), Eye Dam. 1 H318 (SCL >= 3%), Aquatic Chronic 1 H410 (M=10)"
+    entries = RegulatoryClassificationParser.parse_classification_string(text)
+
+    assert len(entries) == 3
+    # Skin Corr 1B
+    e1 = next(e for e in entries if e.h_code == "H314")
+    assert e1.hazard_class == "Skin Corr."
+    assert e1.category == "1B"
+    assert e1.scl == 1.0
+
+    # Eye Dam 1
+    e2 = next(e for e in entries if e.h_code == "H318")
+    assert e2.hazard_class == "Eye Dam."
+    assert e2.scl == 3.0
+
+    # Aquatic Chronic 1
+    e3 = next(e for e in entries if e.h_code == "H410")
+    assert e3.m_factor_chronic == 10.0
+
+
+def test_scl_skin_corrosion_trigger():
+    """Normalde %5 gereken Skin Corr 1B, SCL=%1 olan maddede %2 konsantrasyonda tetiklenmelidir."""
+    from app.services.classification_engine import ClassificationEngine
+    components = [
+        {
+            "ad": "Özel Aşındırıcı Asit",
+            "konsantrasyon": "%2",
+            "siniflandirma": "Skin Corr. 1B H314 (SCL >= 1%)"
+        }
+    ]
+    res = ClassificationEngine.calculate_mixture_hazards(components)
+    assert "H314" in res["h_ifadeleri"]
+    assert "GHS05" in res["piktogramlar"]
+    assert any("Kategori 1B" in s["kategori"] for s in res["siniflandirmalar"])
+    assert any("SCL (%1.0)" in step for step in res["calculation_steps"])
+
+
+def test_data_status_insufficient_for_flammable():
+    """Parlama noktası verisi yokken FlammableLiquidRule data_status == 'INSUFFICIENT_DATA' vermelidir."""
+    from app.services.classification_engine import ClassificationEngine
+    components = [
+        {"ad": "Aseton", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 2 H225"}
+    ]
+    res = ClassificationEngine.calculate_mixture_hazards(components, parlama_noktasi=None)
+    assert "H225" not in res["h_ifadeleri"]
+    assert "data_status_summary" in res
+    assert res["data_status_summary"]["FlammableLiquidRule"] == "INSUFFICIENT_DATA"
+

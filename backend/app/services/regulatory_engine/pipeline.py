@@ -133,18 +133,27 @@ class RegulatoryPipeline:
     def adapt_raw_components(cls, raw_bilesenler: List[Dict[str, Any]]) -> List[StructuredSubstance]:
         """
         Bölüm 3.2 ham dict listesini yapılandırılmış StructuredSubstance listesine dönüştürür.
+        Zengin sınıflandırma metinlerini RegulatoryClassificationParser ile ayrıştırır.
         """
+        from app.services.regulatory_engine.parser import RegulatoryClassificationParser
         substances: List[StructuredSubstance] = []
         for comp in raw_bilesenler:
             name = comp.get("ad") or "Bileşen"
             conc_model = cls.parse_concentration_model(comp.get("konsantrasyon"))
             sinif_str = comp.get("siniflandirma") or ""
-            codes = cls.extract_h_codes(sinif_str)
 
-            # Zararlılık profilleri
-            hazards: List[HazardEntry] = []
-            for c in codes:
-                hazards.append(HazardEntry(hazard_class=sinif_str, category="", h_code=c))
+            # Yapılandırılmış Zararlılık Profilleri (SCL, M-Factor, Category dahil)
+            parsed_hazards = RegulatoryClassificationParser.parse_classification_string(sinif_str)
+            codes = [h.h_code for h in parsed_hazards if h.h_code]
+            if not codes:
+                codes = cls.extract_h_codes(sinif_str)
+
+            # SCL açıkça comp dict içinde verilmişse ez
+            explicit_scl = cls.parse_float_safe(comp.get("scl"))
+            if explicit_scl is not None:
+                for h in parsed_hazards:
+                    if h.scl is None:
+                        h.scl = explicit_scl
 
             # Akut toksisite & soluma
             ate_oral = cls.parse_float_safe(comp.get("akut_toksisite_oral"))
@@ -168,12 +177,24 @@ class RegulatoryPipeline:
             m_akut = cls.parse_float_safe(comp.get("m_faktoru_akut"))
             m_kronik = cls.parse_float_safe(comp.get("m_faktoru_kronik"))
 
+            # Parsed hazard içinden M-factor desteği
+            if m_akut is None:
+                for h in parsed_hazards:
+                    if h.m_factor_acute is not None:
+                        m_akut = h.m_factor_acute
+                        break
+            if m_kronik is None:
+                for h in parsed_hazards:
+                    if h.m_factor_chronic is not None:
+                        m_kronik = h.m_factor_chronic
+                        break
+
             substances.append(StructuredSubstance(
                 name=name,
                 cas_no=comp.get("cas_no"),
                 ec_no=comp.get("ec_no"),
                 concentration=conc_model,
-                hazards=hazards,
+                hazards=parsed_hazards,
                 raw_h_codes=codes,
                 ate_oral=ate_oral,
                 ate_dermal=ate_dermal,

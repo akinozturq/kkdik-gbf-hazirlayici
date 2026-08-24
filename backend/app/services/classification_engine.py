@@ -105,5 +105,7 @@ class ClassificationEngine:
             "piktogramlar": result.piktogramlar,
             "uyari_kelimesi": result.uyari_kelimesi,
             "p_ifadeleri": result.p_ifadeleri,
-            "calculation_steps": result.calculation_steps
+            "calculation_steps": result.calculation_steps,
+            "rule_results": [r.model_dump() for r in result.rule_results],
+            "data_status_summary": {r.rule_name: r.data_status for r in result.rule_results}
         }
