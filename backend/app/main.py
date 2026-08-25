@@ -6,14 +6,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, run_auto_migrations
 from app.routers import products_router, references_router, ai_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Uygulama başlangıcında veritabanı tablolarını oluştur
-    Base.metadata.create_all(bind=engine)
+    # Uygulama başlangıcında veritabanı tablolarını ve kolon migrasyonlarını çalıştır
+    run_auto_migrations()
     yield
 
 
