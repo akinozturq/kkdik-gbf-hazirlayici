@@ -62,17 +62,17 @@ class RegulatoryClassificationParser:
         "H335": ("STOT SE", "3"),
         "H336": ("STOT SE", "3"),
         "H304": ("Asp. Tox.", "1"),
-        "H340": ("Muta.", "1B"),
+        "H340": ("Muta.", "CATEGORY_UNRESOLVED"),
         "H341": ("Muta.", "2"),
-        "H350": ("Carc.", "1B"),
-        "H350i": ("Carc.", "1A"),
+        "H350": ("Carc.", "CATEGORY_UNRESOLVED"),
+        "H350i": ("Carc.", "CATEGORY_UNRESOLVED"),
         "H351": ("Carc.", "2"),
-        "H360": ("Repr.", "1B"),
-        "H360F": ("Repr.", "1B"),
-        "H360D": ("Repr.", "1B"),
-        "H360FD": ("Repr.", "1B"),
-        "H360Fd": ("Repr.", "1B"),
-        "H360Df": ("Repr.", "1B"),
+        "H360": ("Repr.", "CATEGORY_UNRESOLVED"),
+        "H360F": ("Repr.", "CATEGORY_UNRESOLVED"),
+        "H360D": ("Repr.", "CATEGORY_UNRESOLVED"),
+        "H360FD": ("Repr.", "CATEGORY_UNRESOLVED"),
+        "H360Fd": ("Repr.", "CATEGORY_UNRESOLVED"),
+        "H360Df": ("Repr.", "CATEGORY_UNRESOLVED"),
         "H361": ("Repr.", "2"),
         "H361f": ("Repr.", "2"),
         "H361d": ("Repr.", "2"),
@@ -211,9 +211,18 @@ class RegulatoryClassificationParser:
                     h_cls = detected_class or cls.H_CODE_TO_CLASS.get(norm_code, ("Genel", ""))[0]
                     h_cat = detected_cat or cls.H_CODE_TO_CLASS.get(norm_code, ("", ""))[1]
 
-                    # Özel 1A/1B ayrımı
-                    if norm_code in ["H350", "H340", "H360"] and "1A" in seg.upper():
-                        h_cat = "1A"
+                    # REG-008: CMR 1A / 1B ayrımı
+                    # H340, H350, H360 gibi kodlar kendi başlarına 1A/1B ayrımını taşımazlar.
+                    # Girdi metninde açıkça '1A' veya '1B' belirtilmemişse kategori CATEGORY_UNRESOLVED olmalıdır.
+                    if norm_code in ["H350", "H340", "H350i"] or norm_code.startswith("H360"):
+                        if "1A" in seg.upper():
+                            h_cat = "1A"
+                        elif "1B" in seg.upper():
+                            h_cat = "1B"
+                        elif detected_cat in ["1A", "1B"]:
+                            h_cat = detected_cat
+                        else:
+                            h_cat = "CATEGORY_UNRESOLVED"
                     elif norm_code == "H314":
                         if "1A" in seg.upper():
                             h_cat = "1A"
@@ -234,10 +243,13 @@ class RegulatoryClassificationParser:
                         euh066_source="explicit_code" if is_euh066 else None
                     ))
             elif detected_class:
-                # H-kodu olmasa dahi sınıflandırma metni girilmişse (örn. 'Skin Corr. 1B')
+                # H-kodu olmasa dahi sınıflandırma metni girilmişse (örn. 'Skin Corr. 1B', 'Carc. 1')
+                cat = detected_cat
+                if detected_class in ["Carc.", "Muta.", "Repr."] and cat in ["1", ""]:
+                    cat = "CATEGORY_UNRESOLVED"
                 entries.append(HazardEntry(
                     hazard_class=detected_class,
-                    category=detected_cat,
+                    category=cat,
                     h_code="",
                     scl=scl_val
                 ))

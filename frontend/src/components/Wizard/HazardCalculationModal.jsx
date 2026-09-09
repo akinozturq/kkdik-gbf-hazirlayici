@@ -336,7 +336,29 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                         return (
                           <tr key={idx} style={isIndeterminate ? { background: '#fffdf5' } : undefined}>
                             <td style={{ fontWeight: 600 }}>{s.zararlilik_sinifi}</td>
-                            <td>{s.kategori}</td>
+                            <td>
+                              {s.kategori === 'CATEGORY_UNRESOLVED' ? (
+                                <span
+                                  title="Bileşen verisinde Kategori 1A / 1B alt kategorisi belirtilmemiş; ham H-kodu üzerinden alt kategori çözümlenemiyor."
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    background: '#fee2e2',
+                                    color: '#991b1b',
+                                    border: '1px solid #fecaca',
+                                  }}
+                                >
+                                  ⚠️ CATEGORY_UNRESOLVED
+                                </span>
+                              ) : (
+                                s.kategori
+                              )}
+                            </td>
                             <td>
                               <span className="badge badge-danger" style={{ fontSize: '0.76rem', fontWeight: 700 }}>
                                 {s.h_kodu}

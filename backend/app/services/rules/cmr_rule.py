@@ -47,8 +47,19 @@ class CMRRule(BaseHazardRule):
         c_carc1b = 0.0
         c_carc2 = 0.0
 
+        c_muta1a = 0.0
+        c_muta1b = 0.0
+        c_muta1_unresolved = 0.0
+        c_muta2 = 0.0
+
+        c_carc1a = 0.0
+        c_carc1b = 0.0
+        c_carc1_unresolved = 0.0
+        c_carc2 = 0.0
+
         c_repr1a = 0.0
         c_repr1b = 0.0
+        c_repr1_unresolved = 0.0
         c_repr2 = 0.0
 
         repr_h360_codes: Set[str] = set()
@@ -73,46 +84,53 @@ class CMRRule(BaseHazardRule):
             # SCL Kontrolleri
             for h in s.hazards:
                 if h.scl is not None:
+                    cat_val = h.category if h.category and h.category != "CATEGORY_UNRESOLVED" else "CATEGORY_UNRESOLVED"
                     if h.h_code in ["H340", "H341"] or "Muta" in h.hazard_class:
                         has_scl_muta = True
                         if conc >= h.scl:
-                            scl_muta = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H340")
+                            scl_muta = (s.name, conc, h.scl, cat_val, h.h_code or "H340")
                     elif h.h_code in ["H350", "H350i", "H351"] or "Carc" in h.hazard_class:
                         has_scl_carc = True
                         if conc >= h.scl:
-                            scl_carc = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H350")
+                            scl_carc = (s.name, conc, h.scl, cat_val, h.h_code or "H350")
                     elif any(h.h_code.startswith(p) for p in ["H360", "H361"]) or "Repr" in h.hazard_class:
                         has_scl_repr = True
                         if conc >= h.scl:
-                            scl_repr = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H360D")
+                            scl_repr = (s.name, conc, h.scl, cat_val, h.h_code or "H360D")
 
             # Mutajenite
             if not has_scl_muta:
-                if "H340" in codes:
+                if "H340" in codes or any("Muta" in h.hazard_class and ("1" in (h.category or "") or (h.category or "") == "CATEGORY_UNRESOLVED") for h in s.hazards):
                     if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
                         c_muta1a += conc
-                    else:
+                    elif any("1B" in (h.category or "").upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
                         c_muta1b += conc
+                    else:
+                        c_muta1_unresolved += conc
                 if "H341" in codes:
                     c_muta2 += conc
 
             # Kanserojenlik
             if not has_scl_carc:
-                if "H350" in codes or "H350i" in codes:
+                if "H350" in codes or "H350i" in codes or any("Carc" in h.hazard_class and ("1" in (h.category or "") or (h.category or "") == "CATEGORY_UNRESOLVED") for h in s.hazards):
                     if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
                         c_carc1a += conc
-                    else:
+                    elif any("1B" in (h.category or "").upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
                         c_carc1b += conc
+                    else:
+                        c_carc1_unresolved += conc
                 if "H351" in codes:
                     c_carc2 += conc
 
             # Üreme Toksisitesi
             if not has_scl_repr:
-                if any(c.startswith("H360") for c in codes):
+                if any(c.startswith("H360") for c in codes) or any("Repr" in h.hazard_class and ("1" in (h.category or "") or (h.category or "") == "CATEGORY_UNRESOLVED") for h in s.hazards):
                     if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
                         c_repr1a += conc
-                    else:
+                    elif any("1B" in (h.category or "").upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
                         c_repr1b += conc
+                    else:
+                        c_repr1_unresolved += conc
                     for c in codes:
                         if c.startswith("H360"):
                             repr_h360_codes.add(c)
@@ -123,20 +141,29 @@ class CMRRule(BaseHazardRule):
                             repr_h361_codes.add(c)
 
         # 1. MUTAJENİTE
-        total_muta1 = c_muta1a + c_muta1b
+        total_muta1 = c_muta1a + c_muta1b + c_muta1_unresolved
         if scl_muta is not None:
             sub_name, sub_c, sub_scl, sub_cat, sub_h = scl_muta
-            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            cat_name = "CATEGORY_UNRESOLVED" if sub_cat == "CATEGORY_UNRESOLVED" else (
+                f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            )
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Eşey Hücre Mutajenitesi",
                 kategori=cat_name,
                 h_kodu=sub_h
             ))
             result.piktogramlar.append("GHS08")
-            result.uyari_kelimesi = "Tehlike" if "1" in cat_name else "Dikkat"
-            result.calculation_notes.append(f"• Mutajenite (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {cat_name} ({sub_h})")
+            result.uyari_kelimesi = "Tehlike"
+            note_label = "1A/1B (CATEGORY_UNRESOLVED)" if cat_name == "CATEGORY_UNRESOLVED" else cat_name
+            result.calculation_notes.append(f"• Mutajenite (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {note_label} ({sub_h})")
         elif total_muta1 >= 0.1:
-            muta_cat = "Kategori 1A" if c_muta1a >= 0.1 else "Kategori 1B"
+            if c_muta1a >= 0.1:
+                muta_cat = "Kategori 1A"
+            elif c_muta1b >= 0.1 and c_muta1_unresolved == 0:
+                muta_cat = "Kategori 1B"
+            else:
+                muta_cat = "CATEGORY_UNRESOLVED"
+
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Eşey Hücre Mutajenitesi",
                 kategori=muta_cat,
@@ -144,7 +171,13 @@ class CMRRule(BaseHazardRule):
             ))
             result.piktogramlar.append("GHS08")
             result.uyari_kelimesi = "Tehlike"
-            result.calculation_notes.append(f"• Mutajenite: ∑(Muta 1) = %{total_muta1:.1f} >= %0.1 -> Sınıflandırıldı: {muta_cat} (H340)")
+            if muta_cat == "CATEGORY_UNRESOLVED":
+                result.calculation_notes.append(
+                    f"• Mutajenite: ∑(Muta 1) = %{total_muta1:.1f} >= %0.1 -> Sınıflandırıldı: CATEGORY_UNRESOLVED (H340) "
+                    "[Bileşen verisinde 1A/1B alt kategorisi belirtilmediğinden H340 üzerinden kesin alt kategori çözümlenemedi]"
+                )
+            else:
+                result.calculation_notes.append(f"• Mutajenite: ∑(Muta 1) = %{total_muta1:.1f} >= %0.1 -> Sınıflandırıldı: {muta_cat} (H340)")
         elif c_muta2 >= 1.0:
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Eşey Hücre Mutajenitesi",
@@ -157,20 +190,29 @@ class CMRRule(BaseHazardRule):
             result.calculation_notes.append(f"• Mutajenite: ∑(Muta 2) = %{c_muta2:.1f} >= %1.0 -> Sınıflandırıldı: Kategori 2 (H341)")
 
         # 2. KANSEROJENLİK
-        total_carc1 = c_carc1a + c_carc1b
+        total_carc1 = c_carc1a + c_carc1b + c_carc1_unresolved
         if scl_carc is not None:
             sub_name, sub_c, sub_scl, sub_cat, sub_h = scl_carc
-            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            cat_name = "CATEGORY_UNRESOLVED" if sub_cat == "CATEGORY_UNRESOLVED" else (
+                f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            )
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Kanserojenite",
                 kategori=cat_name,
                 h_kodu=sub_h
             ))
             result.piktogramlar.append("GHS08")
-            result.uyari_kelimesi = "Tehlike" if "1" in cat_name else "Dikkat"
-            result.calculation_notes.append(f"• Kanserojenite (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {cat_name} ({sub_h})")
+            result.uyari_kelimesi = "Tehlike"
+            note_label = "1A/1B (CATEGORY_UNRESOLVED)" if cat_name == "CATEGORY_UNRESOLVED" else cat_name
+            result.calculation_notes.append(f"• Kanserojenite (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {note_label} ({sub_h})")
         elif total_carc1 >= 0.1:
-            carc_cat = "Kategori 1A" if c_carc1a >= 0.1 else "Kategori 1B"
+            if c_carc1a >= 0.1:
+                carc_cat = "Kategori 1A"
+            elif c_carc1b >= 0.1 and c_carc1_unresolved == 0:
+                carc_cat = "Kategori 1B"
+            else:
+                carc_cat = "CATEGORY_UNRESOLVED"
+
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Kanserojenite",
                 kategori=carc_cat,
@@ -178,7 +220,13 @@ class CMRRule(BaseHazardRule):
             ))
             result.piktogramlar.append("GHS08")
             result.uyari_kelimesi = "Tehlike"
-            result.calculation_notes.append(f"• Kanserojenite: ∑(Carc 1) = %{total_carc1:.1f} >= %0.1 -> Sınıflandırıldı: {carc_cat} (H350)")
+            if carc_cat == "CATEGORY_UNRESOLVED":
+                result.calculation_notes.append(
+                    f"• Kanserojenite: ∑(Carc 1) = %{total_carc1:.1f} >= %0.1 -> Sınıflandırıldı: CATEGORY_UNRESOLVED (H350) "
+                    "[Bileşen verisinde 1A/1B alt kategorisi belirtilmediğinden H350 üzerinden kesin alt kategori çözümlenemedi]"
+                )
+            else:
+                result.calculation_notes.append(f"• Kanserojenite: ∑(Carc 1) = %{total_carc1:.1f} >= %0.1 -> Sınıflandırıldı: {carc_cat} (H350)")
         elif c_carc2 >= 1.0:
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Kanserojenite",
@@ -191,12 +239,14 @@ class CMRRule(BaseHazardRule):
             result.calculation_notes.append(f"• Kanserojenite: ∑(Carc 2) = %{c_carc2:.1f} >= %1.0 -> Sınıflandırıldı: Kategori 2 (H351)")
 
         # 3. ÜREME TOKSİSİTESİ
-        total_repr1 = c_repr1a + c_repr1b
+        total_repr1 = c_repr1a + c_repr1b + c_repr1_unresolved
         if scl_repr is not None:
             sub_name, sub_c, sub_scl, sub_cat, sub_h = scl_repr
-            cat_name = f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            cat_name = "CATEGORY_UNRESOLVED" if sub_cat == "CATEGORY_UNRESOLVED" else (
+                f"Kategori {sub_cat}" if "Kategori" not in sub_cat else sub_cat
+            )
             h_repr = sub_h
-            if "1" in cat_name and repr_h360_codes:
+            if ("1" in cat_name or cat_name == "CATEGORY_UNRESOLVED") and repr_h360_codes:
                 h_repr = self.resolve_repro_h_code(repr_h360_codes, "H360")
             elif "2" in cat_name and repr_h361_codes:
                 h_repr = self.resolve_repro_h_code(repr_h361_codes, "H361")
@@ -206,10 +256,17 @@ class CMRRule(BaseHazardRule):
                 h_kodu=h_repr
             ))
             result.piktogramlar.append("GHS08")
-            result.uyari_kelimesi = "Tehlike" if "1" in cat_name else "Dikkat"
-            result.calculation_notes.append(f"• Üreme Toksisitesi (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {cat_name} ({h_repr})")
+            result.uyari_kelimesi = "Tehlike"
+            note_label = "1A/1B (CATEGORY_UNRESOLVED)" if cat_name == "CATEGORY_UNRESOLVED" else cat_name
+            result.calculation_notes.append(f"• Üreme Toksisitesi (SCL): [{sub_name}] %{sub_c:.2f} >= SCL (%{sub_scl:.2f}) -> {note_label} ({h_repr})")
         elif total_repr1 >= 0.3:
-            repr_cat = "Kategori 1A" if c_repr1a >= 0.3 else "Kategori 1B"
+            if c_repr1a >= 0.3:
+                repr_cat = "Kategori 1A"
+            elif c_repr1b >= 0.3 and c_repr1_unresolved == 0:
+                repr_cat = "Kategori 1B"
+            else:
+                repr_cat = "CATEGORY_UNRESOLVED"
+
             h_repr = self.resolve_repro_h_code(repr_h360_codes, "H360")
             result.hazards.append(ClassifiedHazard(
                 zararlilik_sinifi="Üreme Sistemi Toksisitesi",
@@ -218,7 +275,13 @@ class CMRRule(BaseHazardRule):
             ))
             result.piktogramlar.append("GHS08")
             result.uyari_kelimesi = "Tehlike"
-            result.calculation_notes.append(f"• Üreme Toksisitesi: ∑(Repr 1) = %{total_repr1:.1f} >= %0.3 -> Sınıflandırıldı: {repr_cat} ({h_repr})")
+            if repr_cat == "CATEGORY_UNRESOLVED":
+                result.calculation_notes.append(
+                    f"• Üreme Toksisitesi: ∑(Repr 1) = %{total_repr1:.1f} >= %0.3 -> Sınıflandırıldı: CATEGORY_UNRESOLVED ({h_repr}) "
+                    "[Bileşen verisinde 1A/1B alt kategorisi belirtilmediğinden H360 üzerinden kesin alt kategori çözümlenemedi]"
+                )
+            else:
+                result.calculation_notes.append(f"• Üreme Toksisitesi: ∑(Repr 1) = %{total_repr1:.1f} >= %0.3 -> Sınıflandırıldı: {repr_cat} ({h_repr})")
         elif c_repr2 >= 3.0:
             h_repr = self.resolve_repro_h_code(repr_h361_codes, "H361")
             result.hazards.append(ClassifiedHazard(

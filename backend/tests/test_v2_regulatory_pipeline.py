@@ -524,6 +524,95 @@ def test_reg007_scalar_scl_broadcast_prevention():
     assert sub_single.hazards[0].scl == 1.5
 
 
+def test_reg008_cmr_category_unresolved():
+    """
+    REG-008: CMR'de H-code -> kategori dönüşümü doğrulaması.
+    H340, H350, H360 kodları 1A/1B ayrımını kendi başlarına taşımazlar.
+    1. Sadece 'H350' geldiğinde parser varsayılan 1B üretmemeli, 'CATEGORY_UNRESOLVED' üretmelidir.
+    2. %0.2 konsantrasyonda 'H350' içeren karışım 'Kategori 1B' değil, 'CATEGORY_UNRESOLVED' olarak sınıflandırılmalıdır.
+    3. Açıkça 'Carc. 1A H350' verilmişse 'Kategori 1A', 'Carc. 1B H350' verilmişse 'Kategori 1B' olmalıdır.
+    4. Mutajenite (H340) ve Üreme Toksisitesi (H360) için de aynı kategori çözümsüzlük tespiti yapılmalıdır.
+    """
+    from app.services.regulatory_engine.parser import RegulatoryClassificationParser
+    from app.services.classification_engine import ClassificationEngine
+
+    # 1. Parser düzeyinde doğrulama
+    # Yalın H350
+    p_h350 = RegulatoryClassificationParser.parse_classification_string("H350")
+    assert len(p_h350) == 1
+    assert p_h350[0].hazard_class == "Carc."
+    assert p_h350[0].category == "CATEGORY_UNRESOLVED"
+
+    # Yalın H340
+    p_h340 = RegulatoryClassificationParser.parse_classification_string("H340")
+    assert len(p_h340) == 1
+    assert p_h340[0].hazard_class == "Muta."
+    assert p_h340[0].category == "CATEGORY_UNRESOLVED"
+
+    # Yalın H360D
+    p_h360 = RegulatoryClassificationParser.parse_classification_string("H360D")
+    assert len(p_h360) == 1
+    assert p_h360[0].hazard_class == "Repr."
+    assert p_h360[0].category == "CATEGORY_UNRESOLVED"
+
+    # Açıkça 1A veya 1B belirtilmişse
+    p_carc_1a = RegulatoryClassificationParser.parse_classification_string("Carc. 1A H350")
+    assert p_carc_1a[0].category == "1A"
+    p_carc_1b = RegulatoryClassificationParser.parse_classification_string("Carc. 1B H350")
+    assert p_carc_1b[0].category == "1B"
+
+    # 2. Sınıflandırma motoru düzeyinde doğrulama:
+    # A. Yalın H350 (%0.2) -> CATEGORY_UNRESOLVED
+    res_unresolved = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Belirsiz Kanserojen Madde", "konsantrasyon": "%0.2", "siniflandirma": "H350"}
+    ])
+    assert "H350" in res_unresolved["h_ifadeleri"]
+    assert "GHS08" in res_unresolved["piktogramlar"]
+    assert res_unresolved["uyari_kelimesi"] == "Tehlike"
+    assert any(
+        s["zararlilik_sinifi"] == "Kanserojenite" and s["kategori"] == "CATEGORY_UNRESOLVED"
+        for s in res_unresolved["siniflandirmalar"]
+    )
+    assert any("CATEGORY_UNRESOLVED" in step for step in res_unresolved["calculation_steps"])
+
+    # B. Açıkça Carc. 1A H350 (%0.2) -> Kategori 1A
+    res_1a = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Kanserojen Madde 1A", "konsantrasyon": "%0.2", "siniflandirma": "Carc. 1A H350"}
+    ])
+    assert any(
+        s["zararlilik_sinifi"] == "Kanserojenite" and s["kategori"] == "Kategori 1A"
+        for s in res_1a["siniflandirmalar"]
+    )
+
+    # C. Açıkça Carc. 1B H350 (%0.2) -> Kategori 1B
+    res_1b = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Kanserojen Madde 1B", "konsantrasyon": "%0.2", "siniflandirma": "Carc. 1B H350"}
+    ])
+    assert any(
+        s["zararlilik_sinifi"] == "Kanserojenite" and s["kategori"] == "Kategori 1B"
+        for s in res_1b["siniflandirmalar"]
+    )
+
+    # D. Yalın H340 (%0.2) -> CATEGORY_UNRESOLVED
+    res_muta = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Belirsiz Mutajen Madde", "konsantrasyon": "%0.2", "siniflandirma": "H340"}
+    ])
+    assert any(
+        s["zararlilik_sinifi"] == "Eşey Hücre Mutajenitesi" and s["kategori"] == "CATEGORY_UNRESOLVED"
+        for s in res_muta["siniflandirmalar"]
+    )
+
+    # E. Yalın H360 (%0.5) -> CATEGORY_UNRESOLVED
+    res_repr = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Belirsiz Üreme Toksik Madde", "konsantrasyon": "%0.5", "siniflandirma": "H360D"}
+    ])
+    assert any(
+        s["zararlilik_sinifi"] == "Üreme Sistemi Toksisitesi" and s["kategori"] == "CATEGORY_UNRESOLVED"
+        for s in res_repr["siniflandirmalar"]
+    )
+
+
+
 
 
 
