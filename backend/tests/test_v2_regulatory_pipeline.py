@@ -369,6 +369,61 @@ def test_reg004_euh066_explicit_requirement():
     assert "EUH066" not in res4["euh_ifadeleri"]
 
 
+def test_reg005_euh204_decoupled_from_h334_threshold():
+    """
+    REG-005: EUH204 ve H334 ayrık karar yolları:
+    1. İzosiyanat var ama H334 yok (prepolimer/H317) -> EUH204 tetiklenir, H334 tetiklenmez.
+    2. İzosiyanat var ve H334 >= %0.2 -> Hem H334 hem EUH204 tetiklenir.
+    3. İzosiyanat yok ve H334 >= %0.2 -> H334 tetiklenir, EUH204 tetiklenmez.
+    4. İzosiyanat var ve %0.1 <= H334 < %0.2 -> EUH204 tetiklenir, H334 tetiklenmez.
+    5. İzosiyanat yok ve %0.1 <= H334 < %0.2 -> EUH208 tetiklenir, EUH204 ve H334 tetiklenmez.
+    """
+    from app.services.classification_engine import ClassificationEngine
+
+    # Senaryo 1: İzosiyanat var ama H334 yok (HDI prepolimer, H317 + H332)
+    comp_iso_no_h334 = [
+        {"ad": "Alifatik Poliizosiyanat HDI Reçine", "konsantrasyon": "%5", "siniflandirma": "Skin Sens. 1 H317, Acute Tox. 4 H332"}
+    ]
+    res1 = ClassificationEngine.calculate_mixture_hazards(comp_iso_no_h334)
+    assert "EUH204" in res1["euh_ifadeleri"]
+    assert "H334" not in res1["h_ifadeleri"]
+    assert "H317" in res1["h_ifadeleri"]
+
+    # Senaryo 2: İzosiyanat var ve H334 >= 0.2% (%2.0 MDI) -> Hem H334 hem EUH204
+    comp_iso_high_h334 = [
+        {"ad": "Polimerik MDI İzosiyanat", "konsantrasyon": "%2.0", "siniflandirma": "Resp. Sens. 1 H334, Carc. 2 H351"}
+    ]
+    res2 = ClassificationEngine.calculate_mixture_hazards(comp_iso_high_h334)
+    assert "H334" in res2["h_ifadeleri"]
+    assert "EUH204" in res2["euh_ifadeleri"]
+
+    # Senaryo 3: İzosiyanat yok ve H334 >= 0.2% (%0.5 Enzim) -> H334 var, EUH204 yok
+    comp_no_iso_high_h334 = [
+        {"ad": "Proteaz Enzimi", "konsantrasyon": "%0.5", "siniflandirma": "Resp. Sens. 1 H334"}
+    ]
+    res3 = ClassificationEngine.calculate_mixture_hazards(comp_no_iso_high_h334)
+    assert "H334" in res3["h_ifadeleri"]
+    assert "EUH204" not in res3["euh_ifadeleri"]
+
+    # Senaryo 4: İzosiyanat var ve %0.15 H334 -> EUH204 var, H334 yok
+    comp_iso_sub_threshold = [
+        {"ad": "MDI Monomer", "konsantrasyon": "%0.15", "siniflandirma": "Resp. Sens. 1 H334"}
+    ]
+    res4 = ClassificationEngine.calculate_mixture_hazards(comp_iso_sub_threshold)
+    assert "EUH204" in res4["euh_ifadeleri"]
+    assert "H334" not in res4["h_ifadeleri"]
+
+    # Senaryo 5: İzosiyanat yok ve %0.15 H334 -> EUH208 var, EUH204 yok, H334 yok
+    comp_no_iso_sub_threshold = [
+        {"ad": "Glutaraldehit Çözeltisi", "konsantrasyon": "%0.15", "siniflandirma": "Resp. Sens. 1 H334"}
+    ]
+    res5 = ClassificationEngine.calculate_mixture_hazards(comp_no_iso_sub_threshold)
+    assert "H334" not in res5["h_ifadeleri"]
+    assert "EUH204" not in res5["euh_ifadeleri"]
+    assert "EUH208" in res5["euh_ifadeleri"]
+
+
+
 
 
 
