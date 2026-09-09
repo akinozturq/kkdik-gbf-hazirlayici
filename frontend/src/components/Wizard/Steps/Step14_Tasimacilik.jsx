@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { api } from '../../../api/client';
 import FieldHelper from '../../Common/FieldHelper';
-import { Truck, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Truck, Sparkles, CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 
 export default function Step14_Tasimacilik() {
   const { sdsData, updateSdsField, currentProduct } = useApp();
   const [calculating, setCalculating] = useState(false);
-  const [calcRationale, setCalcRationale] = useState(null);
+  const [suggestionResult, setSuggestionResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
   const b14 = sdsData?.b14_tasimacilik || {};
@@ -35,11 +35,11 @@ export default function Step14_Tasimacilik() {
         updateSdsField(['b14_tasimacilik', 'b14_4_ambalajlama_grubu'], res.b14_4_ambalajlama_grubu || '');
         updateSdsField(['b14_tasimacilik', 'b14_5_cevresel_zararlar'], res.b14_5_cevresel_zararlar || '');
         updateSdsField(['b14_tasimacilik', 'b14_6_kullanici_ozel_onlemler'], res.b14_6_kullanici_ozel_onlemler || '');
-        setCalcRationale(res.aciklama || 'ADR kurallarına göre hesaplandı.');
+        setSuggestionResult(res);
       }
     } catch (err) {
-      console.error('Taşımacılık hesaplama hatası:', err);
-      setErrorMsg('Hesaplama sırasında bir hata oluştu: ' + (err.message || err));
+      console.error('Taşımacılık öneri hatası:', err);
+      setErrorMsg('Öneri hesaplama sırasında bir hata oluştu: ' + (err.message || err));
     } finally {
       setCalculating(false);
     }
@@ -51,43 +51,112 @@ export default function Step14_Tasimacilik() {
         <span>14. Taşımacılık Bilgisi (ADR / RID / IMDG / IATA)</span>
         <button
           type="button"
-          className="btn btn-primary btn-sm"
+          className="btn btn-sm"
           onClick={handleAutoCalculateTransport}
           disabled={calculating}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          title="Bölüm 9 test verileri (Parlama/Kaynama Noktası) ve Bölüm 2 sınıflarından ADR/UN bilgilerini otomatik türet"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#fef3c7',
+            color: '#92400e',
+            border: '1px solid #f59e0b',
+            fontWeight: 700,
+            borderRadius: '6px',
+            padding: '6px 12px',
+            cursor: 'pointer',
+          }}
+          title="Bölüm 9 test verileri ve Bölüm 2 sınıflarından ADR/UN taslak önerisi üret (TMGD doğrulaması gerektirir)"
         >
           {calculating ? (
             <>
-              <Sparkles size={14} className="spin-animate" /> Hesaplanıyor...
+              <Sparkles size={14} className="spin-animate" /> Öneri Hesaplanıyor...
             </>
           ) : (
             <>
-              <Truck size={14} /> Otomatik ADR / UN Sınıflandırması Hesapla
+              <Truck size={14} /> ⚠️ ADR / UN Taşımacılık Taslak Önerisi Al
             </>
           )}
         </button>
       </div>
 
-      {calcRationale && (
+      {/* TMGD / Yasal Sorumluluk Bilgilendirme Banner'ı */}
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '12px 16px',
+          background: '#fffbeb',
+          border: '1px solid #fde68a',
+          borderRadius: '8px',
+          fontSize: '0.82rem',
+          color: '#92400e',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start',
+        }}
+      >
+        <AlertTriangle size={20} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <strong style={{ display: 'block', fontSize: '0.86rem', color: '#b45309', marginBottom: '2px' }}>
+            ⚠️ Taşımacılık Sorumluluğu ve Uzman Denetimi Bildirimi (ADR / TMGD)
+          </strong>
+          Bölüm 14 alanları yasal sevkiyat beyanlarıdır. Sistemdeki öneri butonu, ürün adı ve GHS verilerini tarayan bir <strong>Taslak Öneri Asistanı</strong>dır. Kesin sevkiyat sınıflandırması, ambalaj tipi ve tünel kısıtlamaları <strong>Tehlikeli Madde Güvenlik Danışmanı (TMGD)</strong> onayı ile kesinleştirilmelidir.
+        </div>
+      </div>
+
+      {suggestionResult && (
         <div
           style={{
             marginBottom: '16px',
-            padding: '10px 14px',
-            background: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            borderRadius: '6px',
-            color: '#065f46',
+            padding: '14px 18px',
+            background: '#fffdf5',
+            border: '1px solid #f59e0b',
+            borderRadius: '8px',
             fontSize: '0.84rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
+            color: '#78350f',
+            boxShadow: '0 2px 6px rgba(245,158,11,0.1)',
           }}
         >
-          <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
-          <div>
-            <strong>ADR Karar Motoru Sonucu:</strong> {calcRationale}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={18} color="#d97706" />
+              <strong style={{ fontSize: '0.9rem', color: '#92400e' }}>
+                {suggestionResult.status_label || '⚠️ ADR Taşımacılık Taslak Önerisi'}
+              </strong>
+            </div>
+            {suggestionResult.special_provisions && suggestionResult.special_provisions.length > 0 && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.74rem', color: '#b45309', fontWeight: 600 }}>Özel Hükümler:</span>
+                {suggestionResult.special_provisions.map((sp, spIdx) => (
+                  <span
+                    key={spIdx}
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      background: '#fef3c7',
+                      color: '#b45309',
+                      borderRadius: '4px',
+                      border: '1px solid #fde68a',
+                    }}
+                    title="İlgili ADR Özel Hükmü"
+                  >
+                    {sp}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
+
+          <div style={{ color: '#92400e', lineHeight: 1.5, marginBottom: '6px' }}>
+            {suggestionResult.aciklama}
+          </div>
+
+          {suggestionResult.disclaimer && (
+            <div style={{ fontSize: '0.76rem', color: '#b45309', fontStyle: 'italic', borderTop: '1px dashed #fde68a', paddingTop: '6px' }}>
+              {suggestionResult.disclaimer}
+            </div>
+          )}
         </div>
       )}
 

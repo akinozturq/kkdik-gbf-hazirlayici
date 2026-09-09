@@ -174,3 +174,37 @@ def test_transport_engine_pure_paint():
     assert res["b14_4_ambalajlama_grubu"] == "PG II"
 
 
+def test_transport_engine_advisory_suggestion_metadata():
+    """
+    REG-006: Taşımacılık motoru sonuçları 'kesin ADR kararı' olarak değil,
+    'Taslak Öneri' (Advisory Suggestion) olarak etiketlenmelidir.
+    """
+    sds_data = {
+        "b9_fiziksel_kimyasal": {
+            "b9_1": {
+                "parlama_noktasi": "18",
+                "kaynama_noktasi_araligi": "80"
+            }
+        },
+        "b2_zarar_tanimi": {
+            "b2_2": {
+                "h_ifadeleri": ["H225"]
+            }
+        },
+        "b3_bilesim": {
+            "bilesenler": [
+                {"ad": "Boya Çözücüsü", "konsantrasyon": 100}
+            ]
+        }
+    }
+
+    res = transport_engine.evaluate_transport(sds_data, urun_adi="Epoksi Tiner")
+    assert res["is_suggestion"] is True
+    assert res["status"] == "SUGGESTION"
+    assert "TMGD" in res["disclaimer"]
+    assert "Taslak Öneri" in res["status_label"]
+    assert "SP 163" in res["special_provisions"]
+    assert res["adr_table_a_reference"] == "ADR Bölüm 3.2 Tablo A (UN 1263)"
+
+
+
