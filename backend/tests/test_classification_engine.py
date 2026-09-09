@@ -100,7 +100,7 @@ def test_thinner_solvent_mixture():
         {"ad": "Butil Asetat", "konsantrasyon": "%25", "siniflandirma": "Flam. Liq. 3 H226, STOT SE 3 H336, EUH066"},
         {"ad": "Ksilen", "konsantrasyon": "%10", "siniflandirma": "Flam. Liq. 3 H226, Acute Tox. 4 H312, Acute Tox. 4 H332, Skin Irrit. 2 H315"}
     ]
-    res = ClassificationEngine.calculate_mixture_hazards(components, parlama_noktasi=10.0, kaynama_noktasi=75.0)
+    res = ClassificationEngine.calculate_mixture_hazards(components, parlama_noktasi=10.0, kaynama_noktasi=75.0, kinematik_viskozite=1.5)
     
     assert "H225" in res["h_ifadeleri"]
     assert "H304" in res["h_ifadeleri"]

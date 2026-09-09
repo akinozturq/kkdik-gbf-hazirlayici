@@ -255,3 +255,42 @@ def test_concentration_range_three_valued_logic():
     assert len(res3["siniflandirmalar"]) == 0
 
 
+def test_reg002_aspiration_hazard_three_cases():
+    """
+    REG-002: Aspirasyon toksisitesi için doğru kural modeli:
+    1. >=10% + viscosity <= 20.5 mm²/s -> H304 (Kat 1)
+    2. >=10% + viscosity > 20.5 mm²/s -> H304 yok (Sınıflandırılmaz)
+    3. >=10% + viscosity UNKNOWN (None) -> INSUFFICIENT_DATA (H304 verilmez)
+    """
+    from app.services.classification_engine import ClassificationEngine
+
+    components = [
+        {
+            "ad": "Hidrokarbon Solvent",
+            "konsantrasyon": "%12",
+            "siniflandirma": "Asp. Tox. 1 H304"
+        }
+    ]
+
+    # Durum 1: >=10% ve viskozite <= 20.5 -> H304
+    res_low = ClassificationEngine.calculate_mixture_hazards(components, kinematik_viskozite=15.0)
+    assert "H304" in res_low["h_ifadeleri"]
+    assert "GHS08" in res_low["piktogramlar"]
+    assert res_low["data_status_summary"]["AspirationHazardRule"] == "SUFFICIENT"
+    assert any("Aspirasyon Zararı" in s["zararlilik_sinifi"] for s in res_low["siniflandirmalar"])
+
+    # Durum 2: >=10% ve viskozite > 20.5 -> H304 yok
+    res_high = ClassificationEngine.calculate_mixture_hazards(components, kinematik_viskozite=25.0)
+    assert "H304" not in res_high["h_ifadeleri"]
+    assert not any("Aspirasyon Zararı" in s["zararlilik_sinifi"] for s in res_high["siniflandirmalar"])
+    assert res_high["data_status_summary"]["AspirationHazardRule"] == "SUFFICIENT"
+
+    # Durum 3: >=10% ve viskozite bilinmiyor (None) -> INSUFFICIENT_DATA ve H304 YOK
+    res_unknown = ClassificationEngine.calculate_mixture_hazards(components, kinematik_viskozite=None)
+    assert "H304" not in res_unknown["h_ifadeleri"]
+    assert not any("Aspirasyon Zararı" in s["zararlilik_sinifi"] for s in res_unknown["siniflandirmalar"])
+    assert res_unknown["data_status_summary"]["AspirationHazardRule"] == "INSUFFICIENT_DATA"
+    assert any("INSUFFICIENT_DATA" in step for step in res_unknown["calculation_steps"])
+
+
+

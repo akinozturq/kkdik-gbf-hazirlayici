@@ -34,6 +34,7 @@ class AspirationHazardRule(BaseHazardRule):
 
         if c_asp_tox_1 >= 10.0:
             if visk is not None:
+                result.data_status = "SUFFICIENT"
                 if visk <= 20.5:
                     result.hazards.append(ClassifiedHazard(
                         zararlilik_sinifi="Aspirasyon Zararı",
@@ -50,19 +51,16 @@ class AspirationHazardRule(BaseHazardRule):
                         f"• Aspirasyon Zararı: Karışımda %{c_asp_tox_1:.1f} Asp. Tox. 1 bileşeni bulunmasına rağmen, 40°C kinematik viskozite ({visk:.1f} mm²/s > 20.5 mm²/s) eşiğin üzerinde olduğu için H304 olarak SINIFLANDIRILMAMIŞTIR (SEA Ek-1 Bölüm 3.10.3.3.1)."
                     )
             else:
-                result.hazards.append(ClassifiedHazard(
-                    zararlilik_sinifi="Aspirasyon Zararı",
-                    kategori="Kategori 1",
-                    h_kodu="H304"
-                ))
-                result.piktogramlar.append("GHS08")
-                result.uyari_kelimesi = "Tehlike"
+                result.data_status = "INSUFFICIENT_DATA"
                 result.calculation_notes.append(
-                    f"• Aspirasyon Zararı: ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} >= %10.0 -> Sınıflandırıldı: Kategori 1 (H304). (Not: Bölüm 9.1'de viskozite girilmediğinden viskozitenin <= 20.5 mm²/s olduğu varsayılmıştır; ölçülen viskozite > 20.5 mm²/s ise H304 uygulanmaz)."
+                    f"• Aspirasyon Zararı: Karışımda ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} >= %10.0 bileşen bulunmasına rağmen 40°C kinematik viskozite test verisi girilmediğinden (Bilinmiyor / UNKNOWN) sınıflandırma yapılamamıştır (INSUFFICIENT_DATA). ECHA ve SEA Ek-1 Bölüm 3.10 uyarınca kinematik viskozitenin <= 20.5 mm²/s olduğu test edilip doğrulanmalıdır."
                 )
         elif c_asp_tox_1 > 0:
+            result.data_status = "SUFFICIENT"
             result.calculation_notes.append(
                 f"• Aspirasyon Zararı: ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} < %10.0 -> Eşik değer aşılmadı."
             )
+        else:
+            result.data_status = "NOT_APPLICABLE"
 
         return result

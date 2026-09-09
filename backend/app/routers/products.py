@@ -526,7 +526,8 @@ def calculate_preview(req: CalculatePreviewRequest):
     return ClassificationEngine.calculate_mixture_hazards(
         bilesenler=req.bilesenler,
         parlama_noktasi=req.parlama_noktasi,
-        kaynama_noktasi=req.kaynama_noktasi
+        kaynama_noktasi=req.kaynama_noktasi,
+        kinematik_viskozite=req.kinematik_viskozite
     )
 
 
