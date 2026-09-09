@@ -247,3 +247,71 @@ class ClassificationResult(BaseModel):
     has_indeterminate: bool = Field(False, description="Karışım genelinde aralık belirsizliği (INDETERMINATE) var mı?")
     indeterminate_hazards: List[Dict[str, Any]] = Field(default_factory=list, description="Aralığa bağlı belirsiz sınıflandırmalar")
 
+
+class HazardThreshold(BaseModel):
+    """
+    CLP / SEA Eşik ve Limit Abstraction Modeli.
+    Cut-off (ilgili bileşen kesme sınırı), GCL (Genel Konsantrasyon Sınırı)
+    ve SCL (Spesifik Konsantrasyon Sınırı) ayrımını ve hiyerarşisini modeller.
+    """
+    hazard_class: str = Field(..., description="Zararlılık sınıfı (örn. 'Skin Corr.', 'Eye Irrit.')")
+    category: Optional[str] = Field(None, description="Kategori (örn. '1', '1A', '2')")
+    h_code: Optional[str] = Field(None, description="İlgili H-kodu (örn. 'H314', 'H315', 'H318', 'H319')")
+    cut_off: float = Field(1.0, description="Genel kesme sınırı (cut-off limit, varsayılan %1.0)")
+    gcl: float = Field(..., description="Genel Konsantrasyon Sınırı (GCL - Generic Concentration Limit)")
+    scl: Optional[float] = Field(None, description="Varsa Spesifik Konsantrasyon Sınırı (SCL)")
+
+    @property
+    def effective_cutoff(self) -> float:
+        """
+        CLP Madde 11(3) ve ECHA Rehberi uyarınca:
+        Eğer SCL < cut_off ise, ilgili bileşen kesme sınırı SCL değerine düşer.
+        Aksi takdirde genel cut-off (%1.0) geçerlidir.
+        """
+        if self.scl is not None and self.scl < self.cut_off:
+            return self.scl
+        return self.cut_off
+
+    @property
+    def effective_limit(self) -> float:
+        """
+        Sınıflandırma için geçerli olan eşik (SCL varsa SCL, yoksa GCL).
+        """
+        if self.scl is not None:
+            return self.scl
+        return self.gcl
+
+    def is_relevant(self, concentration: float) -> bool:
+        """
+        Konsantrasyonun toplanabilirlik/hesaplama havuzuna dahil edilip edilmeyeceğini belirler.
+        concentration >= effective_cutoff olmalıdır.
+        """
+        return concentration >= self.effective_cutoff
+
+    def triggers_classification(self, concentration: float) -> bool:
+        """
+        Tekil olarak eşiği aşıp aşmadığını kontrol eder (örn. SCL veya tekil bileşen kuralı).
+        """
+        return concentration >= self.effective_limit
+
+    @classmethod
+    def create(
+        cls,
+        hazard_class: str,
+        category: Optional[str] = None,
+        h_code: Optional[str] = None,
+        cut_off: float = 1.0,
+        gcl: float = 0.0,
+        scl: Optional[float] = None,
+    ) -> "HazardThreshold":
+        return cls(
+            hazard_class=hazard_class,
+            category=category,
+            h_code=h_code,
+            cut_off=cut_off,
+            gcl=gcl,
+            scl=scl,
+        )
+
+    model_config = ConfigDict(populate_by_name=True)
+

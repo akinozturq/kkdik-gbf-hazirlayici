@@ -674,6 +674,119 @@ def test_reg009_aquatic_m_factor_audit_trail():
     assert any("value=10, effective_value=10, source='EXPLICIT'" in step for step in res_m_10["calculation_steps"])
 
 
+def test_reg010_skin_eye_cut_off_and_threshold_abstraction():
+    """
+    REG-010: Cilt ve Göz kurallarında Relevant Component Cut-off ve
+    Eşik Abstraction Modeli (HazardThreshold & RegulatoryThresholdProvider) doğrulaması.
+    """
+    from app.models.regulatory import HazardThreshold
+    from app.services.regulatory_engine.thresholds import RegulatoryThresholdProvider
+    from app.services.classification_engine import ClassificationEngine
+
+    # 1. HazardThreshold Modeli & Eşik Hiyerarşisi Birim Testleri:
+    # A. Standart cut-off (1.0%), GCL (10.0%), SCL yok
+    t_default = HazardThreshold(hazard_class="Skin Irrit.", category="2", h_code="H315", cut_off=1.0, gcl=10.0)
+    assert t_default.effective_cutoff == 1.0
+    assert t_default.effective_limit == 10.0
+    assert not t_default.is_relevant(0.8)
+    assert t_default.is_relevant(1.0)
+    assert not t_default.triggers_classification(9.9)
+    assert t_default.triggers_classification(10.0)
+
+    # B. SCL > cut-off (örn. SCL = 15.0%)
+    t_high_scl = HazardThreshold(hazard_class="Skin Irrit.", category="2", h_code="H315", cut_off=1.0, gcl=10.0, scl=15.0)
+    assert t_high_scl.effective_cutoff == 1.0
+    assert t_high_scl.effective_limit == 15.0
+    assert not t_high_scl.is_relevant(0.9)
+    assert t_high_scl.is_relevant(1.0)
+    assert not t_high_scl.triggers_classification(14.9)
+    assert t_high_scl.triggers_classification(15.0)
+
+    # C. SCL < cut-off (örn. CLP Madde 11(3) uyarınca SCL = 0.5% -> effective_cutoff SCL'e düşer)
+    t_low_scl = HazardThreshold(hazard_class="Skin Irrit.", category="2", h_code="H315", cut_off=1.0, gcl=10.0, scl=0.5)
+    assert t_low_scl.effective_cutoff == 0.5
+    assert t_low_scl.effective_limit == 0.5
+    assert not t_low_scl.is_relevant(0.4)
+    assert t_low_scl.is_relevant(0.5)
+    assert not t_low_scl.triggers_classification(0.4)
+    assert t_low_scl.triggers_classification(0.5)
+
+    # 2. RegulatoryThresholdProvider Fabrika Testleri:
+    t_corr = RegulatoryThresholdProvider.get_skin_corr_threshold(category="1B")
+    assert t_corr.hazard_class == "Skin Corr."
+    assert t_corr.category == "1B"
+    assert t_corr.cut_off == 1.0
+    assert t_corr.gcl == 5.0
+
+    t_irrit = RegulatoryThresholdProvider.get_skin_irrit_threshold()
+    assert t_irrit.cut_off == 1.0
+    assert t_irrit.gcl == 10.0
+
+    t_eye = RegulatoryThresholdProvider.get_eye_dam_threshold()
+    assert t_eye.cut_off == 1.0
+    assert t_eye.gcl == 3.0
+
+    t_code = RegulatoryThresholdProvider.get_threshold_by_code("H318")
+    assert t_code.h_code == "H318"
+    assert t_code.gcl == 3.0
+
+    # 3. Kural Motoru Toplanabilirlik & Cut-off Denetimi:
+    # A. Eşik altı birikimli safsızlıkların elenmesi (Accumulated sub-cutoff impurities excluded):
+    # 15 farklı bileşen, her biri %0.8 H315 (toplam = %12.0 >= %10.0)
+    # Saf toplanabilirlikte %12 >= %10 H315 verirdi; cut-off (%1.0) ile her biri elenmeli!
+    sub_threshold_mixture = [
+        {"ad": f"Safsızlık {i}", "konsantrasyon": "%0.8", "siniflandirma": "Skin Irrit. 2 H315"}
+        for i in range(15)
+    ]
+    res_sub = ClassificationEngine.calculate_mixture_hazards(sub_threshold_mixture)
+    assert "H315" not in res_sub["h_ifadeleri"]
+    assert any("Kesme Sınırı (Cut-off)" in step for step in res_sub["calculation_steps"])
+    assert any("Safsızlık 0" in step and "toplanabilirlik havuzuna dahil edilmedi" in step for step in res_sub["calculation_steps"])
+
+    # B. Cut-off üzerindeki ilgili bileşenlerin toplanması:
+    # 2 bileşen, her biri %6.0 H315 (toplam = %12.0 >= %10.0). Her ikisi de %6 >= %1 cut-off.
+    relevant_mixture = [
+        {"ad": "Bileşen A", "konsantrasyon": "%6.0", "siniflandirma": "Skin Irrit. 2 H315"},
+        {"ad": "Bileşen B", "konsantrasyon": "%6.0", "siniflandirma": "Skin Irrit. 2 H315"},
+    ]
+    res_rel = ClassificationEngine.calculate_mixture_hazards(relevant_mixture)
+    assert "H315" in res_rel["h_ifadeleri"]
+
+    # C. Düşük SCL ile Kesme Sınırının Otomatik Düşmesi (SCL = 0.5% < cut-off 1.0%):
+    # Konsantrasyon %0.6 -> effective_cutoff (%0.5) üzerinde ve SCL (%0.5) üzerinde -> H315 tetiklenir
+    comp_low_scl_active = [{
+        "ad": "Hassas Tahriş Edici",
+        "konsantrasyon": "%0.6",
+        "siniflandirma": "Skin Irrit. 2 H315",
+        "structured_scls": [{"hazard_class": "Skin Irrit.", "category": "2", "h_code": "H315", "scl": 0.5}]
+    }]
+    res_low_active = ClassificationEngine.calculate_mixture_hazards(comp_low_scl_active)
+    assert "H315" in res_low_active["h_ifadeleri"]
+
+    # Konsantrasyon %0.3 -> effective_cutoff (%0.5) altında -> Elenir, H315 tetiklenmez
+    comp_low_scl_inactive = [{
+        "ad": "Hassas Tahriş Edici",
+        "konsantrasyon": "%0.3",
+        "siniflandirma": "Skin Irrit. 2 H315",
+        "structured_scls": [{"hazard_class": "Skin Irrit.", "category": "2", "h_code": "H315", "scl": 0.5}]
+    }]
+    res_low_inactive = ClassificationEngine.calculate_mixture_hazards(comp_low_scl_inactive)
+    assert "H315" not in res_low_inactive["h_ifadeleri"]
+    assert any("cut-off eşiğinin (%0.5) altında" in step for step in res_low_inactive["calculation_steps"])
+
+    # D. Göz Hasarı (Eye Dam 1) eşik altı safsızlık denetimi:
+    # 4 bileşen, her biri %0.8 H318 (toplam = %3.2 >= %3.0 GCL).
+    # Her biri %0.8 < %1.0 cut-off olduğundan hiçbiri toplanmamalı ve H318 çıkmamalı.
+    eye_sub_mixture = [
+        {"ad": f"Göz Safsızlığı {i}", "konsantrasyon": "%0.8", "siniflandirma": "Eye Dam. 1 H318"}
+        for i in range(4)
+    ]
+    res_eye = ClassificationEngine.calculate_mixture_hazards(eye_sub_mixture)
+    assert "H318" not in res_eye["h_ifadeleri"]
+    assert "H319" not in res_eye["h_ifadeleri"]
+    assert any("Ciddi Göz Hasarı için ilgili cut-off eşiğinin (%1.0) altında" in step for step in res_eye["calculation_steps"])
+
+
 
 
 

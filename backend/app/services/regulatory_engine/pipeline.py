@@ -148,10 +148,11 @@ class RegulatoryPipeline:
         birden fazla zararlılık içeren bileşenlerde körlemesine dağıtılmasını engeller.
         """
         # 1. Yapılandırılmış SCL girdisi kontrolü
-        # 'scl_entries', 'scls', 'specific_concentration_limits' veya dict/list 'scl'
+        # 'scl_entries', 'scls', 'structured_scls', 'specific_concentration_limits' veya dict/list 'scl'
         scl_source = (
             comp.get("scl_entries") or
             comp.get("scls") or
+            comp.get("structured_scls") or
             comp.get("specific_concentration_limits")
         )
         raw_scl = comp.get("scl")

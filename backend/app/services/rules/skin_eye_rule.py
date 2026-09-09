@@ -3,14 +3,16 @@ Cilt Aşınması/Tahrişi ve Göz Hasarı/Tahrişi Kural Stratejisi
 (Skin and Eye Corrosion/Irritation Rule - SEA Ek-1 Bölüm 3.2 & 3.3)
 """
 
-from typing import List
+from typing import List, Optional
 from app.models.regulatory import StructuredSubstance, CalculationContext, RuleResult, ClassifiedHazard
 from app.services.rules.base_rule import BaseHazardRule
+from app.services.regulatory_engine.thresholds import RegulatoryThresholdProvider
 
 
 class SkinEyeRule(BaseHazardRule):
     """
     SEA Ek-1 Tablo 3.2.3 & 3.3.3 Toplanabilirlik Kuralları:
+    - İlgili Bileşen Kesme Sınırı (Relevant Component Cut-off Limit: varsayılan %1.0, SCL < %1.0 ise SCL)
     - Skin Corr 1A / 1B / 1C ayrımı (Σ Skin Corr >= %5 -> Kat 1)
     - 10 x Σ Skin Corr 1 + Σ Skin Irrit 2 >= %10 -> Cilt Tahrişi Kat 2 (H315)
     - Σ Eye Dam 1 + Σ Skin Corr 1 >= %3 -> Göz Hasarı Kat 1 (H318)
@@ -50,58 +52,99 @@ class SkinEyeRule(BaseHazardRule):
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
             hazard_classes_str = " ".join([h.hazard_class for h in s.hazards])
 
-            # SCL Kontrolleri
-            has_scl_skin_corr = False
-            has_scl_skin_irrit = False
-            has_scl_eye_dam = False
-            has_scl_eye_irrit = False
+            # Hedefli SCL kayıtları
+            scl_corr_h = next((h for h in s.hazards if h.scl is not None and (h.h_code == "H314" or "Skin Corr" in h.hazard_class)), None)
+            scl_irrit_h = next((h for h in s.hazards if h.scl is not None and (h.h_code == "H315" or "Skin Irrit" in h.hazard_class)), None)
+            scl_eye_dam_h = next((h for h in s.hazards if h.scl is not None and (h.h_code == "H318" or "Eye Dam" in h.hazard_class)), None)
+            scl_eye_irrit_h = next((h for h in s.hazards if h.scl is not None and (h.h_code == "H319" or "Eye Irrit" in h.hazard_class)), None)
 
-            for h in s.hazards:
-                if h.scl is not None:
-                    if h.h_code == "H314" or "Skin Corr" in h.hazard_class:
-                        has_scl_skin_corr = True
-                        if conc >= h.scl:
-                            scl_skin_corr = (s.name, conc, h.scl, h.category or "1")
-                    elif h.h_code == "H315" or "Skin Irrit" in h.hazard_class:
-                        has_scl_skin_irrit = True
-                        if conc >= h.scl:
-                            scl_skin_irrit = (s.name, conc, h.scl)
-                    elif h.h_code == "H318" or "Eye Dam" in h.hazard_class:
-                        has_scl_eye_dam = True
-                        if conc >= h.scl:
-                            scl_eye_dam = (s.name, conc, h.scl)
-                    elif h.h_code == "H319" or "Eye Irrit" in h.hazard_class:
-                        has_scl_eye_irrit = True
-                        if conc >= h.scl:
-                            scl_eye_irrit = (s.name, conc, h.scl)
-
-            # Cilt Aşınması
+            # 1. CİLT AŞINMASI (SKIN CORROSION)
+            added_eye_dam_from_corr = False
             if "H314" in codes or "Skin Corr." in hazard_classes_str:
-                if not has_scl_skin_corr:
-                    if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
-                        c_skin_corr_1a += conc
-                    elif any("1B" in (h.category or "").upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
-                        c_skin_corr_1b += conc
-                    elif any("1C" in (h.category or "").upper() for h in s.hazards) or "1C" in hazard_classes_str.upper():
-                        c_skin_corr_1c += conc
+                corr_cat = scl_corr_h.category if scl_corr_h and scl_corr_h.category else "1"
+                if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
+                    corr_cat = "1A"
+                elif any("1B" in (h.category or "").upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
+                    corr_cat = "1B"
+                elif any("1C" in (h.category or "").upper() for h in s.hazards) or "1C" in hazard_classes_str.upper():
+                    corr_cat = "1C"
+
+                thresh_corr = RegulatoryThresholdProvider.get_skin_corr_threshold(
+                    scl=scl_corr_h.scl if scl_corr_h else None,
+                    category=corr_cat
+                )
+
+                if not thresh_corr.is_relevant(conc):
+                    result.calculation_notes.append(
+                        f"• Kesme Sınırı (Cut-off): [{s.name}] %{conc:.2f} konsantrasyonu, Cilt Aşınması için ilgili cut-off eşiğinin (%{thresh_corr.effective_cutoff:.1f}) altında olduğundan toplanabilirlik havuzuna dahil edilmedi."
+                    )
+                else:
+                    if scl_corr_h is not None:
+                        if thresh_corr.triggers_classification(conc) and scl_skin_corr is None:
+                            scl_skin_corr = (s.name, conc, scl_corr_h.scl, scl_corr_h.category or corr_cat)
                     else:
-                        c_skin_corr_1_gen += conc
-                    c_eye_dam_1 += conc  # Skin Corr 1 genel havuzu otomatik Eye Dam 1 sayılır
+                        if corr_cat == "1A":
+                            c_skin_corr_1a += conc
+                        elif corr_cat == "1B":
+                            c_skin_corr_1b += conc
+                        elif corr_cat == "1C":
+                            c_skin_corr_1c += conc
+                        else:
+                            c_skin_corr_1_gen += conc
+                        c_eye_dam_1 += conc  # Skin Corr 1 genel havuzu otomatik Eye Dam 1 sayılır
+                        added_eye_dam_from_corr = True
 
-            # Cilt Tahrişi
-            if "H315" in codes:
-                if not has_scl_skin_irrit:
-                    c_skin_irrit_2 += conc
+            # 2. CİLT TAHRİŞİ (SKIN IRRITATION)
+            if "H315" in codes or "Skin Irrit" in hazard_classes_str:
+                thresh_irrit = RegulatoryThresholdProvider.get_skin_irrit_threshold(
+                    scl=scl_irrit_h.scl if scl_irrit_h else None
+                )
 
-            # Göz Hasarı
-            if "H318" in codes:
-                if not has_scl_eye_dam:
-                    c_eye_dam_1 += conc
+                if not thresh_irrit.is_relevant(conc):
+                    result.calculation_notes.append(
+                        f"• Kesme Sınırı (Cut-off): [{s.name}] %{conc:.2f} konsantrasyonu, Cilt Tahrişi için ilgili cut-off eşiğinin (%{thresh_irrit.effective_cutoff:.1f}) altında olduğundan toplanabilirlik havuzuna dahil edilmedi."
+                    )
+                else:
+                    if scl_irrit_h is not None:
+                        if thresh_irrit.triggers_classification(conc) and scl_skin_irrit is None:
+                            scl_skin_irrit = (s.name, conc, scl_irrit_h.scl)
+                    else:
+                        c_skin_irrit_2 += conc
 
-            # Göz Tahrişi
-            if "H319" in codes:
-                if not has_scl_eye_irrit:
-                    c_eye_irrit_2 += conc
+            # 3. GÖZ HASARI (SERIOUS EYE DAMAGE)
+            if "H318" in codes or "Eye Dam" in hazard_classes_str:
+                thresh_eye_dam = RegulatoryThresholdProvider.get_eye_dam_threshold(
+                    scl=scl_eye_dam_h.scl if scl_eye_dam_h else None
+                )
+
+                if not thresh_eye_dam.is_relevant(conc):
+                    result.calculation_notes.append(
+                        f"• Kesme Sınırı (Cut-off): [{s.name}] %{conc:.2f} konsantrasyonu, Ciddi Göz Hasarı için ilgili cut-off eşiğinin (%{thresh_eye_dam.effective_cutoff:.1f}) altında olduğundan toplanabilirlik havuzuna dahil edilmedi."
+                    )
+                else:
+                    if scl_eye_dam_h is not None:
+                        if thresh_eye_dam.triggers_classification(conc) and scl_eye_dam is None:
+                            scl_eye_dam = (s.name, conc, scl_eye_dam_h.scl)
+                    else:
+                        if not added_eye_dam_from_corr:
+                            c_eye_dam_1 += conc
+
+            # 4. GÖZ TAHRİŞİ (EYE IRRITATION)
+            if "H319" in codes or "Eye Irrit" in hazard_classes_str:
+                thresh_eye_irrit = RegulatoryThresholdProvider.get_eye_irrit_threshold(
+                    scl=scl_eye_irrit_h.scl if scl_eye_irrit_h else None
+                )
+
+                if not thresh_eye_irrit.is_relevant(conc):
+                    result.calculation_notes.append(
+                        f"• Kesme Sınırı (Cut-off): [{s.name}] %{conc:.2f} konsantrasyonu, Göz Tahrişi için ilgili cut-off eşiğinin (%{thresh_eye_irrit.effective_cutoff:.1f}) altında olduğundan toplanabilirlik havuzuna dahil edilmedi."
+                    )
+                else:
+                    if scl_eye_irrit_h is not None:
+                        if thresh_eye_irrit.triggers_classification(conc) and scl_eye_irrit is None:
+                            scl_eye_irrit = (s.name, conc, scl_eye_irrit_h.scl)
+                    else:
+                        c_eye_irrit_2 += conc
 
         # 1. CİLT AŞINMASI (SKIN CORROSION)
         total_skin_corr_1 = c_skin_corr_1a + c_skin_corr_1b + c_skin_corr_1c + c_skin_corr_1_gen
