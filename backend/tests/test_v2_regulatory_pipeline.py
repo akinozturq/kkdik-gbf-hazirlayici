@@ -329,5 +329,46 @@ def test_reg003_flammable_liquid_boiling_point_requirement():
     assert any("INSUFFICIENT_DATA" in step for step in res_unknown["calculation_steps"])
 
 
+def test_reg004_euh066_explicit_requirement():
+    """
+    REG-004: EUH066 değerlendirmesi:
+    1. Yalnızca H304 veya H336 taşıyan maddeler (sezgisel solvent varsayımı) EUH066 tetiklemez.
+    2. Açıkça EUH066 taşıyan maddeler EUH066 tetikler.
+    3. Cilt Aşınması / Tahrişi olan karışımlarda EUH066 CLP Ek-2 uyarınca bastırılır.
+    """
+    from app.services.classification_engine import ClassificationEngine
+
+    # Durum 1: %20 H304 maddesi (EUH066 içermiyor) -> EUH066 tetiklenmemelidir
+    comp_asp = [
+        {"ad": "Mineral Yağ", "konsantrasyon": "%20", "siniflandirma": "Asp. Tox. 1 H304"}
+    ]
+    res1 = ClassificationEngine.calculate_mixture_hazards(comp_asp, kinematik_viskozite=10.0)
+    assert "EUH066" not in res1["euh_ifadeleri"]
+
+    # Durum 2: %20 H336 maddesi (EUH066 içermiyor) -> EUH066 tetiklenmemelidir
+    comp_stot = [
+        {"ad": "Solvent Y", "konsantrasyon": "%20", "siniflandirma": "STOT SE 3 H336"}
+    ]
+    res2 = ClassificationEngine.calculate_mixture_hazards(comp_stot)
+    assert "EUH066" not in res2["euh_ifadeleri"]
+
+    # Durum 3: Açıkça EUH066 içeren madde -> EUH066 tetiklenmelidir
+    comp_explicit = [
+        {"ad": "Etil Asetat", "konsantrasyon": "%20", "siniflandirma": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, STOT SE 3 H336, EUH066"}
+    ]
+    res3 = ClassificationEngine.calculate_mixture_hazards(comp_explicit, parlama_noktasi=-4.0, kaynama_noktasi=77.0)
+    assert "EUH066" in res3["euh_ifadeleri"]
+
+    # Durum 4: Açıkça EUH066 var ancak karışım Skin Corr 1B -> EUH066 bastırılır
+    comp_suppressed = [
+        {"ad": "Etil Asetat", "konsantrasyon": "%20", "siniflandirma": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, EUH066"},
+        {"ad": "Aşındırıcı Asit", "konsantrasyon": "%10", "siniflandirma": "Skin Corr. 1B H314"}
+    ]
+    res4 = ClassificationEngine.calculate_mixture_hazards(comp_suppressed, parlama_noktasi=-4.0, kaynama_noktasi=77.0)
+    assert "H314" in res4["h_ifadeleri"]
+    assert "EUH066" not in res4["euh_ifadeleri"]
+
+
+
 
 

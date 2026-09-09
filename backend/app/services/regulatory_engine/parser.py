@@ -212,13 +212,16 @@ class RegulatoryClassificationParser:
                         elif "1C" in seg.upper():
                             h_cat = "1C"
 
+                    is_euh066 = (norm_code == "EUH066" or "EUH066" in seg.upper())
                     entries.append(HazardEntry(
                         hazard_class=h_cls,
                         category=h_cat,
                         h_code=norm_code,
                         scl=scl_val,
                         m_factor_acute=m_factor if "Acute" in h_cls or norm_code == "H400" else None,
-                        m_factor_chronic=m_factor if "Chronic" in h_cls or norm_code == "H410" else None
+                        m_factor_chronic=m_factor if "Chronic" in h_cls or norm_code == "H410" else None,
+                        has_euh066=is_euh066,
+                        euh066_source="explicit_code" if is_euh066 else None
                     ))
             elif detected_class:
                 # H-kodu olmasa dahi sınıflandırma metni girilmişse (örn. 'Skin Corr. 1B')

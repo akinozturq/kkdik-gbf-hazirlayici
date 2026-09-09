@@ -190,6 +190,18 @@ class RegulatoryPipeline:
                         m_kronik = h.m_factor_chronic
                         break
 
+            sub_has_euh066 = bool(
+                "EUH066" in codes or
+                comp.get("has_euh066") or
+                any(h.has_euh066 or h.h_code == "EUH066" for h in parsed_hazards) or
+                "EUH066" in sinif_str.upper()
+            )
+            sub_euh066_source = (
+                comp.get("euh066_source") or
+                next((h.euh066_source for h in parsed_hazards if h.has_euh066 and h.euh066_source), None) or
+                ("explicit_classification" if sub_has_euh066 else None)
+            )
+
             substances.append(StructuredSubstance(
                 name=name,
                 cas_no=comp.get("cas_no"),
@@ -197,6 +209,8 @@ class RegulatoryPipeline:
                 concentration=conc_model,
                 hazards=parsed_hazards,
                 raw_h_codes=codes,
+                has_euh066=sub_has_euh066,
+                euh066_source=sub_euh066_source,
                 ate_oral=ate_oral,
                 ate_dermal=ate_dermal,
                 inhalation=inhal_model,

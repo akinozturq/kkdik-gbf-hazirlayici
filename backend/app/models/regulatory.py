@@ -36,6 +36,8 @@ class HazardEntry(BaseModel):
     scl: Optional[float] = Field(None, description="Varsa Spesifik Konsantrasyon Sınırı (SCL - %)")
     m_factor_acute: Optional[float] = Field(None, description="Sucul Akut 1 M-faktörü")
     m_factor_chronic: Optional[float] = Field(None, description="Sucul Kronik 1 M-faktörü")
+    has_euh066: bool = Field(False, description="Bu zararlılık veya bileşen açıkça EUH066 taşıyor mu?")
+    euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/uygulanabilirlik bilgisi ('explicit_code', 'annex_vi', 'supplier_sds')")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -61,6 +63,8 @@ class StructuredSubstance(BaseModel):
     concentration: ConcentrationValue = Field(..., description="Nitelikli konsantrasyon nesnesi")
     hazards: List[HazardEntry] = Field(default_factory=list, description="Ayrıştırılmış zararlılık listesi")
     raw_h_codes: List[str] = Field(default_factory=list, description="H-kodları listesi")
+    has_euh066: bool = Field(False, description="Bileşen açıkça EUH066 taşıyor mu?")
+    euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/dayanak bilgisi")
     
     # Akut toksisite değerleri
     ate_oral: Optional[float] = Field(None, description="Oral ATE (mg/kg)")

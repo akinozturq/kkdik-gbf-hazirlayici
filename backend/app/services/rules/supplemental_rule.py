@@ -10,8 +10,13 @@ from app.services.rules.base_rule import BaseHazardRule
 
 class SupplementalHazardRule(BaseHazardRule):
     """
-    - EUH066: Anlamlı solvent içeriği (>= %10) veya açıkça EUH066 içeren bileşen bulunması,
-      ancak karışımın Cilt Tahrişi Kat 2 veya Cilt Aşınması Kat 1 olmaması durumunda verilir.
+    SEA Ek-4 / CLP Ek-2 Bölüm 1.1.7:
+    - EUH066 ('Tekrarlı maruziyette ciltte kuruluğa ve çatlaklara yol açabilir'):
+      Bileşenlerin resmi sınıflandırmasında açıkça EUH066 bulunması durumunda uygulanır.
+      Sezgisel solvent tahmin yöntemi (H224/H225/H226/H304/H336) devre dışı bırakılmıştır;
+      yalnızca açık (explicit) sınıflandırma verisine dayanır.
+    - Karışım Cilt Aşınması (Kat 1 / H314) veya Cilt Tahrişi (Kat 2 / H315) olarak
+      sınıflandırılmışsa, CLP Ek-2 uyarınca EUH066 etikete eklenmez (daha şiddetli zarar önceliklidir).
     """
 
     @property
@@ -25,9 +30,7 @@ class SupplementalHazardRule(BaseHazardRule):
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
 
-        c_solvent_total = 0.0
-        has_explicit_euh066 = False
-
+        euh066_substances: List[str] = []
         c_skin_corr_1 = 0.0
         c_skin_irrit_2 = 0.0
 
@@ -38,26 +41,40 @@ class SupplementalHazardRule(BaseHazardRule):
 
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
 
-            # Solvent göstergeleri
-            if any(c in codes for c in ["H224", "H225", "H226", "H304", "H336"]):
-                c_solvent_total += conc
+            # Açık (explicit) EUH066 kontrolü
+            has_sub_euh066 = (
+                s.has_euh066 or
+                "EUH066" in codes or
+                any(h.has_euh066 or h.h_code == "EUH066" for h in s.hazards)
+            )
 
-            if "EUH066" in codes:
-                has_explicit_euh066 = True
+            if has_sub_euh066:
+                euh066_substances.append(f"{s.name} (%{conc:g})")
 
             if "H314" in codes:
                 c_skin_corr_1 += conc
             if "H315" in codes:
                 c_skin_irrit_2 += conc
 
-        # Cilt tahrişi veya aşınması eşik kontrolü
+        # Cilt tahrişi veya aşınması eşik kontrolü (CLP Ek-2 Madde 1.1.7)
         is_skin_corr_1 = (c_skin_corr_1 >= 5.0)
         is_skin_irrit_2 = (10.0 * c_skin_corr_1 + c_skin_irrit_2 >= 10.0) or (1.0 <= c_skin_corr_1 < 5.0)
 
-        if (has_explicit_euh066 or c_solvent_total >= 10.0) and not is_skin_irrit_2 and not is_skin_corr_1:
-            result.euh_codes.append("EUH066")
+        if euh066_substances:
+            if is_skin_corr_1 or is_skin_irrit_2:
+                result.calculation_notes.append(
+                    f"• İlave Bilgi (EUH066): Karışımda açıkça EUH066 taşıyan bileşenler ({', '.join(euh066_substances)}) bulunmasına rağmen, "
+                    "karışım Cilt Aşınması/Tahrişi olarak sınıflandırıldığından CLP Ek-2 uyarınca EUH066 etikete eklenmemiştir."
+                )
+            else:
+                result.euh_codes.append("EUH066")
+                result.calculation_notes.append(
+                    f"• İlave Zararlılık (EUH066): Açıkça EUH066 ('Tekrarlı maruziyette ciltte kuruluğa ve çatlaklara yol açabilir') taşıyan "
+                    f"bileşen(ler) tespit edildi: {', '.join(euh066_substances)}. Karışım Cilt Tahrişi/Aşınması kriterlerini karşılamadığından EUH066 etikete eklendi."
+                )
+        else:
             result.calculation_notes.append(
-                f"• İlave Bilgi: Anlamlı solvent içeriği (%{c_solvent_total:.1f}) mevcut olup Cilt Tahrişi Kat 2 sınırının altında kaldığı için EUH066 eklendi."
+                "• İlave Zararlılık (EUH066): Karışımdaki bileşenlerde açıkça EUH066 zararlılığı bulunmadığından EUH066 atanmadı (Sezgisel solvent varsayımı devre dışıdır)."
             )
 
         return result
