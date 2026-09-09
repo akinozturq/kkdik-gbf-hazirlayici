@@ -293,4 +293,41 @@ def test_reg002_aspiration_hazard_three_cases():
     assert any("INSUFFICIENT_DATA" in step for step in res_unknown["calculation_steps"])
 
 
+def test_reg003_flammable_liquid_boiling_point_requirement():
+    """
+    REG-003: Parlama noktası < 23°C olduğunda kaynama noktası gereksinimi:
+    1. FP < 23°C ve BP <= 35°C -> Cat 1 (H224)
+    2. FP < 23°C ve BP > 35°C -> Cat 2 (H225)
+    3. FP < 23°C ve BP UNKNOWN (None) -> INSUFFICIENT_DATA (H224/H225 verilmez)
+    """
+    from app.services.classification_engine import ClassificationEngine
+
+    components = [
+        {"ad": "Uçucu Çözücü", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 2 H225"}
+    ]
+
+    # Durum 1: FP < 23 ve BP <= 35 -> H224 (Kat 1)
+    res_cat1 = ClassificationEngine.calculate_mixture_hazards(components, parlama_noktasi=15.0, kaynama_noktasi=30.0)
+    assert "H224" in res_cat1["h_ifadeleri"]
+    assert "GHS02" in res_cat1["piktogramlar"]
+    assert res_cat1["data_status_summary"]["FlammableLiquidRule"] == "SUFFICIENT"
+    assert any("Kategori 1" in s["kategori"] for s in res_cat1["siniflandirmalar"])
+
+    # Durum 2: FP < 23 ve BP > 35 -> H225 (Kat 2)
+    res_cat2 = ClassificationEngine.calculate_mixture_hazards(components, parlama_noktasi=15.0, kaynama_noktasi=56.0)
+    assert "H225" in res_cat2["h_ifadeleri"]
+    assert "GHS02" in res_cat2["piktogramlar"]
+    assert res_cat2["data_status_summary"]["FlammableLiquidRule"] == "SUFFICIENT"
+    assert any("Kategori 2" in s["kategori"] for s in res_cat2["siniflandirmalar"])
+
+    # Durum 3: FP < 23 ve BP Bilinmiyor (None) -> INSUFFICIENT_DATA ve H224/H225 atanmaz
+    res_unknown = ClassificationEngine.calculate_mixture_hazards(components, parlama_noktasi=15.0, kaynama_noktasi=None)
+    assert "H224" not in res_unknown["h_ifadeleri"]
+    assert "H225" not in res_unknown["h_ifadeleri"]
+    assert not any("Alevlenir Sıvılar" in s["zararlilik_sinifi"] for s in res_unknown["siniflandirmalar"])
+    assert res_unknown["data_status_summary"]["FlammableLiquidRule"] == "INSUFFICIENT_DATA"
+    assert any("INSUFFICIENT_DATA" in step for step in res_unknown["calculation_steps"])
+
+
+
 

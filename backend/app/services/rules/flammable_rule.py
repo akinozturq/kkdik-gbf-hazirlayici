@@ -38,29 +38,38 @@ class FlammableLiquidRule(BaseHazardRule):
 
         if fp is not None:
             if fp < 23.0:
-                if bp is not None and bp <= 35.0:
-                    result.hazards.append(ClassifiedHazard(
-                        zararlilik_sinifi="Alevlenir Sıvılar",
-                        kategori="Kategori 1",
-                        h_kodu="H224"
-                    ))
-                    result.piktogramlar.append("GHS02")
-                    result.uyari_kelimesi = "Tehlike"
-                    result.calculation_notes.append(
-                        f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C < 23°C) ve Kaynama Noktası ({bp}°C <= 35°C) -> Kategori 1 (H224)"
-                    )
+                if bp is not None:
+                    if bp <= 35.0:
+                        result.data_status = "SUFFICIENT"
+                        result.hazards.append(ClassifiedHazard(
+                            zararlilik_sinifi="Alevlenir Sıvılar",
+                            kategori="Kategori 1",
+                            h_kodu="H224"
+                        ))
+                        result.piktogramlar.append("GHS02")
+                        result.uyari_kelimesi = "Tehlike"
+                        result.calculation_notes.append(
+                            f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C < 23°C) ve Kaynama Noktası ({bp}°C <= 35°C) -> Kategori 1 (H224)"
+                        )
+                    else:
+                        result.data_status = "SUFFICIENT"
+                        result.hazards.append(ClassifiedHazard(
+                            zararlilik_sinifi="Alevlenir Sıvılar",
+                            kategori="Kategori 2",
+                            h_kodu="H225"
+                        ))
+                        result.piktogramlar.append("GHS02")
+                        result.uyari_kelimesi = "Tehlike"
+                        result.calculation_notes.append(
+                            f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C < 23°C) ve Kaynama Noktası ({bp}°C > 35°C) -> Kategori 2 (H225)"
+                        )
                 else:
-                    result.hazards.append(ClassifiedHazard(
-                        zararlilik_sinifi="Alevlenir Sıvılar",
-                        kategori="Kategori 2",
-                        h_kodu="H225"
-                    ))
-                    result.piktogramlar.append("GHS02")
-                    result.uyari_kelimesi = "Tehlike"
+                    result.data_status = "INSUFFICIENT_DATA"
                     result.calculation_notes.append(
-                        f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C < 23°C) ve Kaynama Noktası ({bp or '>35'}°C > 35°C) -> Kategori 2 (H225)"
+                        f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C < 23°C) ölçülmüş olmasına rağmen başlangıç kaynama noktası girilmediğinden (Bilinmiyor / UNKNOWN) Kategori 1 (H224, KN <= 35°C) ile Kategori 2 (H225, KN > 35°C) arasında kesin ayrım yapılamamıştır (INSUFFICIENT_DATA). SEA Ek-1 Tablo 2.6.1 uyarınca kaynama noktası test verisi girilmelidir."
                     )
             elif 23.0 <= fp <= 60.0:
+                result.data_status = "SUFFICIENT"
                 result.hazards.append(ClassifiedHazard(
                     zararlilik_sinifi="Alevlenir Sıvılar",
                     kategori="Kategori 3",
@@ -72,6 +81,7 @@ class FlammableLiquidRule(BaseHazardRule):
                     f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C, 23°C <= PN <= 60°C) -> Kategori 3 (H226)"
                 )
             else:
+                result.data_status = "SUFFICIENT"
                 result.calculation_notes.append(
                     f"• Alevlenir Sıvı: Parlama Noktası ({fp}°C > 60°C) -> Alevlenir sınıflandırma kriterini karşılamıyor."
                 )
