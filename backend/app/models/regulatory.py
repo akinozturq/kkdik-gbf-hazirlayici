@@ -79,6 +79,29 @@ class MFactor(BaseModel):
         )
 
 
+class STOTSE3Effect(BaseModel):
+    """
+    CLP / SEA Bölüm 3.8.3 uyarınca STOT SE 3 mekanizma ve uygulanabilirlik modeli.
+    Solunum Yolu Tahrişi (RTI - H335) ve Narkotik Etkiler (NE - H336) iki bağımsız fizyolojik
+    etkidir; toplanabilirlik havuzları, veri kaynakları ve uygulanabilirlik koşulları ayrı modellenir.
+    """
+    effect_type: Literal["respiratory_tract_irritation", "narcotic_effects"] = Field(
+        ..., description="Etki tipi: 'respiratory_tract_irritation' (RTI - H335) veya 'narcotic_effects' (NE - H336)"
+    )
+    h_code: str = Field(..., description="İlgili H-kodu ('H335' veya 'H336')")
+    source: Literal["CLASSIFICATION", "ANNEX_VI", "SUPPLIER_SDS", "EXPOSURE_DATA", "DEFAULT"] = Field(
+        "CLASSIFICATION", description="Veri kaynağı veya dayanağı"
+    )
+    is_applicable: bool = Field(
+        True, description="Karışımın fiziksel formu/maruziyet senaryosuna göre bu etki uygulanabilir mi?"
+    )
+    applicability_note: Optional[str] = Field(
+        None, description="Uygulanabilirlik veya hariç tutma gerekçesi"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class HazardEntry(BaseModel):
     """
     Bir bileşenin tekil zararlılık sınıfı profili.
@@ -94,6 +117,7 @@ class HazardEntry(BaseModel):
     m_chronic_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Kronik M-faktörü ve denetim izi")
     has_euh066: bool = Field(False, description="Bu zararlılık veya bileşen açıkça EUH066 taşıyor mu?")
     euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/uygulanabilirlik bilgisi ('explicit_code', 'annex_vi', 'supplier_sds')")
+    stot_effect: Optional[STOTSE3Effect] = Field(None, description="STOT SE 3 etki ve kaynak modeli (H335/H336)")
 
     @property
     def m_acute(self) -> MFactor:

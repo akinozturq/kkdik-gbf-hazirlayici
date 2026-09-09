@@ -63,6 +63,50 @@ class RegulatoryThresholdProvider:
             "cut_off": 1.0,
             "gcl": 10.0,
         },
+        # STOT SE (SEA Ek-1 Tablo 1.1 & 3.8.3)
+        "STOT_SE_1": {
+            "hazard_class": "STOT SE",
+            "category": "1",
+            "h_code": "H370",
+            "cut_off": 1.0,
+            "gcl": 10.0,
+        },
+        "STOT_SE_2": {
+            "hazard_class": "STOT SE",
+            "category": "2",
+            "h_code": "H371",
+            "cut_off": 1.0,
+            "gcl": 10.0,
+        },
+        "STOT_SE_3_RTI": {
+            "hazard_class": "STOT SE",
+            "category": "3",
+            "h_code": "H335",
+            "cut_off": 1.0,
+            "gcl": 20.0,
+        },
+        "STOT_SE_3_NE": {
+            "hazard_class": "STOT SE",
+            "category": "3",
+            "h_code": "H336",
+            "cut_off": 1.0,
+            "gcl": 20.0,
+        },
+        # STOT RE (SEA Ek-1 Tablo 1.1 & 3.9.4)
+        "STOT_RE_1": {
+            "hazard_class": "STOT RE",
+            "category": "1",
+            "h_code": "H372",
+            "cut_off": 1.0,
+            "gcl": 10.0,
+        },
+        "STOT_RE_2": {
+            "hazard_class": "STOT RE",
+            "category": "2",
+            "h_code": "H373",
+            "cut_off": 1.0,
+            "gcl": 10.0,
+        },
     }
 
     @classmethod
@@ -116,6 +160,50 @@ class RegulatoryThresholdProvider:
         )
 
     @classmethod
+    def get_stot_se_threshold(
+        cls,
+        category: str,
+        effect_type: Optional[str] = None,
+        scl: Optional[float] = None
+    ) -> HazardThreshold:
+        cat_str = str(category).upper().replace("KATEGORI", "").replace("KAT", "").strip()
+        if cat_str == "1":
+            base = cls.DEFAULT_THRESHOLDS["STOT_SE_1"]
+        elif cat_str == "2":
+            base = cls.DEFAULT_THRESHOLDS["STOT_SE_2"]
+        else:
+            if effect_type in ["narcotic_effects", "ne", "h336", "H336"]:
+                base = cls.DEFAULT_THRESHOLDS["STOT_SE_3_NE"]
+            else:
+                base = cls.DEFAULT_THRESHOLDS["STOT_SE_3_RTI"]
+
+        return HazardThreshold(
+            hazard_class=base["hazard_class"],
+            category=base["category"],
+            h_code=base["h_code"],
+            cut_off=base["cut_off"],
+            gcl=base["gcl"],
+            scl=scl,
+        )
+
+    @classmethod
+    def get_stot_re_threshold(cls, category: str, scl: Optional[float] = None) -> HazardThreshold:
+        cat_str = str(category).upper().replace("KATEGORI", "").replace("KAT", "").strip()
+        if cat_str == "1":
+            base = cls.DEFAULT_THRESHOLDS["STOT_RE_1"]
+        else:
+            base = cls.DEFAULT_THRESHOLDS["STOT_RE_2"]
+
+        return HazardThreshold(
+            hazard_class=base["hazard_class"],
+            category=base["category"],
+            h_code=base["h_code"],
+            cut_off=base["cut_off"],
+            gcl=base["gcl"],
+            scl=scl,
+        )
+
+    @classmethod
     def get_threshold_by_code(cls, h_code: str, scl: Optional[float] = None) -> Optional[HazardThreshold]:
         code = h_code.strip().upper()
         if code == "H314":
@@ -126,4 +214,16 @@ class RegulatoryThresholdProvider:
             return cls.get_eye_dam_threshold(scl=scl)
         elif code == "H319":
             return cls.get_eye_irrit_threshold(scl=scl)
+        elif code == "H370":
+            return cls.get_stot_se_threshold("1", scl=scl)
+        elif code == "H371":
+            return cls.get_stot_se_threshold("2", scl=scl)
+        elif code == "H335":
+            return cls.get_stot_se_threshold("3", effect_type="respiratory_tract_irritation", scl=scl)
+        elif code == "H336":
+            return cls.get_stot_se_threshold("3", effect_type="narcotic_effects", scl=scl)
+        elif code == "H372":
+            return cls.get_stot_re_threshold("1", scl=scl)
+        elif code == "H373":
+            return cls.get_stot_re_threshold("2", scl=scl)
         return None

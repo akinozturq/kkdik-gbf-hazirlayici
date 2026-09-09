@@ -787,6 +787,114 @@ def test_reg010_skin_eye_cut_off_and_threshold_abstraction():
     assert any("Ciddi Göz Hasarı için ilgili cut-off eşiğinin (%1.0) altında" in step for step in res_eye["calculation_steps"])
 
 
+def test_reg011_stot_se3_rti_ne_and_cutoff_abstraction():
+    """
+    REG-011: STOT SE 3 mekanizmalarının ayrıştırılması:
+    - Solunum Yolu Tahrişi (RTI - H335) ve Narkotik Etkiler (NE - H336) bağımsız toplanabilirlik
+    - İlgili Bileşen Kesme Sınırı (Cut-off %1.0) denetimi
+    - Spesifik Konsantrasyon Sınırı (SCL) desteği
+    - Uygulanabilirlik (Applicability) denetimi
+    - STOT RE 2 GCL %10.0 kontrolü
+    """
+    from app.models.regulatory import STOTSE3Effect, HazardThreshold, StructuredSubstance, ConcentrationValue, HazardEntry, CalculationContext
+    from app.services.regulatory_engine.thresholds import RegulatoryThresholdProvider
+    from app.services.classification_engine import ClassificationEngine
+    from app.services.rules.stot_rule import STOTRule
+
+    # 1. RegulatoryThresholdProvider STOT eşik testleri
+    t_rti = RegulatoryThresholdProvider.get_stot_se_threshold("3", effect_type="respiratory_tract_irritation")
+    assert t_rti.h_code == "H335"
+    assert t_rti.cut_off == 1.0
+    assert t_rti.gcl == 20.0
+
+    t_ne = RegulatoryThresholdProvider.get_stot_se_threshold("3", effect_type="narcotic_effects")
+    assert t_ne.h_code == "H336"
+    assert t_ne.cut_off == 1.0
+    assert t_ne.gcl == 20.0
+
+    t_re2 = RegulatoryThresholdProvider.get_stot_re_threshold("2")
+    assert t_re2.h_code == "H373"
+    assert t_re2.gcl == 10.0
+
+    # 2. STOT SE 3 Kesme Sınırı (Cut-off) Denetimi:
+    # 25 adet safsızlık bileşeni, her biri %0.8 H336 (toplam = %20.0 >= %20.0 GCL).
+    # Her biri %0.8 < %1.0 cut-off olduğundan toplanmamalı ve H336 tetiklenmemelidir!
+    sub_cutoff_ne = [
+        {"ad": f"Solvent Safsızlığı {i}", "konsantrasyon": "%0.8", "siniflandirma": "STOT SE 3 H336"}
+        for i in range(25)
+    ]
+    res_cutoff = ClassificationEngine.calculate_mixture_hazards(sub_cutoff_ne)
+    assert "H336" not in res_cutoff["h_ifadeleri"]
+    assert any("Narkotik Etkiler - H336" in step and "toplanabilirlik havuzuna dahil edilmedi" in step for step in res_cutoff["calculation_steps"])
+
+    # 3. RTI (H335) ve NE (H336) Birbirinden Bağımsız Toplanabilirlik:
+    # %15 H335 + %15 H336 -> Toplam %30 olmasına rağmen iki etki ayrı toplanmalıdır; her ikisi de %15 < %20 olduğundan ne H335 ne de H336 tetiklenmelidir!
+    independent_mixture = [
+        {"ad": "Tahriş Edici Gaz", "konsantrasyon": "%15", "siniflandirma": "STOT SE 3 H335"},
+        {"ad": "Narkotik Solvent", "konsantrasyon": "%15", "siniflandirma": "STOT SE 3 H336"},
+    ]
+    res_indep = ClassificationEngine.calculate_mixture_hazards(independent_mixture)
+    assert "H335" not in res_indep["h_ifadeleri"]
+    assert "H336" not in res_indep["h_ifadeleri"]
+
+    # B. Sadece biri eşiği aştığında (%22 H335 + %10 H336):
+    mixed_active = [
+        {"ad": "Tahriş Edici Gaz", "konsantrasyon": "%22", "siniflandirma": "STOT SE 3 H335"},
+        {"ad": "Narkotik Solvent", "konsantrasyon": "%10", "siniflandirma": "STOT SE 3 H336"},
+    ]
+    res_active = ClassificationEngine.calculate_mixture_hazards(mixed_active)
+    assert "H335" in res_active["h_ifadeleri"]
+    assert "H336" not in res_active["h_ifadeleri"]
+
+    # 4. STOT SE 3 Spesifik Konsantrasyon Sınırı (SCL) Desteği:
+    # H335 için SCL = 5.0% olan bileşen %6 konsantrasyonda (genel sınır %20'nin altında ama SCL üzerinde)
+    comp_scl_rti = [{
+        "ad": "Yüksek Potensli Solunum Tahriş Edici",
+        "konsantrasyon": "%6",
+        "siniflandirma": "STOT SE 3 H335",
+        "structured_scls": [{"hazard_class": "STOT SE", "category": "3", "h_code": "H335", "scl": 5.0}]
+    }]
+    res_scl = ClassificationEngine.calculate_mixture_hazards(comp_scl_rti)
+    assert "H335" in res_scl["h_ifadeleri"]
+    assert any("STOT SE 3 (RTI - SCL)" in step and "%6.0 >= SCL (%5.0)" in step for step in res_scl["calculation_steps"])
+
+    # 5. Uygulanabilirlik (Applicability) Kısıtlaması:
+    # Bileşen %25 H335 içeriyor ancak aerosol/solunabilir toz fazında olmadığı için uygulanabilir değil
+    sub_non_applicable = StructuredSubstance(
+        name="Granül Katı Madde",
+        concentration=ConcentrationValue(value=25.0, qualifier="exact"),
+        hazards=[
+            HazardEntry(
+                hazard_class="STOT SE",
+                category="3",
+                h_code="H335",
+                stot_effect=STOTSE3Effect(
+                    effect_type="respiratory_tract_irritation",
+                    h_code="H335",
+                    source="SUPPLIER_SDS",
+                    is_applicable=False,
+                    applicability_note="Büyük granül form, solunabilir toz oluşmaz"
+                )
+            )
+        ],
+        raw_h_codes=["H335"]
+    )
+    rule_res = STOTRule().evaluate(CalculationContext(), [sub_non_applicable])
+    assert not any(h.h_kodu == "H335" for h in rule_res.hazards)
+    assert any("uygulanabilirlik koşullarını sağlamadığından hariç tutuldu" in note for note in rule_res.calculation_notes)
+
+    # 6. STOT RE 2 Eşik Düzeltmesi (GCL = %10.0):
+    # %5 STOT RE 2 bileşeni (eski hatalı >= %1.0 mantığında yanlışlıkla çıkardı; artık çıkmamalıdır)
+    comp_re2_sub = [{"ad": "Organ Zehiri B", "konsantrasyon": "%5", "siniflandirma": "STOT RE 2 H373"}]
+    res_re2_sub = ClassificationEngine.calculate_mixture_hazards(comp_re2_sub)
+    assert "H373" not in res_re2_sub["h_ifadeleri"]
+
+    # %12 STOT RE 2 bileşeni (>= %10.0 olduğundan tetiklenmelidir)
+    comp_re2_active = [{"ad": "Organ Zehiri B", "konsantrasyon": "%12", "siniflandirma": "STOT RE 2 H373"}]
+    res_re2_active = ClassificationEngine.calculate_mixture_hazards(comp_re2_active)
+    assert "H373" in res_re2_active["h_ifadeleri"]
+
+
 
 
 

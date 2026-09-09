@@ -6,7 +6,7 @@ ve M-Faktörü değerlerini ayrıştıran parser motoru.
 
 import re
 from typing import List, Dict, Any, Optional, Tuple
-from app.models.regulatory import HazardEntry
+from app.models.regulatory import HazardEntry, STOTSE3Effect
 
 
 class RegulatoryClassificationParser:
@@ -232,6 +232,20 @@ class RegulatoryClassificationParser:
                             h_cat = "1C"
 
                     is_euh066 = (norm_code == "EUH066" or "EUH066" in seg.upper())
+                    stot_eff = None
+                    if norm_code == "H335":
+                        stot_eff = STOTSE3Effect(
+                            effect_type="respiratory_tract_irritation",
+                            h_code="H335",
+                            source="CLASSIFICATION"
+                        )
+                    elif norm_code == "H336":
+                        stot_eff = STOTSE3Effect(
+                            effect_type="narcotic_effects",
+                            h_code="H336",
+                            source="CLASSIFICATION"
+                        )
+
                     entries.append(HazardEntry(
                         hazard_class=h_cls,
                         category=h_cat,
@@ -240,7 +254,8 @@ class RegulatoryClassificationParser:
                         m_factor_acute=m_factor if "Acute" in h_cls or norm_code == "H400" else None,
                         m_factor_chronic=m_factor if "Chronic" in h_cls or norm_code == "H410" else None,
                         has_euh066=is_euh066,
-                        euh066_source="explicit_code" if is_euh066 else None
+                        euh066_source="explicit_code" if is_euh066 else None,
+                        stot_effect=stot_eff
                     ))
             elif detected_class:
                 # H-kodu olmasa dahi sınıflandırma metni girilmişse (örn. 'Skin Corr. 1B', 'Carc. 1')
