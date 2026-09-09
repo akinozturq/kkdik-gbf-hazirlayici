@@ -29,6 +29,14 @@ class SupplementalHazardRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = [
+            "SEA Ek-4",
+            "CLP Annex II Section 1.1.7"
+        ]
+        result.assumptions = [
+            "EUH066 ('Tekrarlı maruziyette ciltte kuruluğa ve çatlaklara yol açabilir') yalnızca bileşenlerin resmi sınıflandırmasında açıkça EUH066 bulunması halinde tetiklenir.",
+            "Karışım Cilt Aşınması (Kat 1) veya Cilt Tahrişi (Kat 2) olarak sınıflandırılmışsa CLP Ek-2 uyarınca EUH066 etikete eklenmez."
+        ]
 
         euh066_substances: List[str] = []
         c_skin_corr_1 = 0.0
@@ -76,5 +84,36 @@ class SupplementalHazardRule(BaseHazardRule):
             result.calculation_notes.append(
                 "• İlave Zararlılık (EUH066): Karışımdaki bileşenlerde açıkça EUH066 zararlılığı bulunmadığından EUH066 atanmadı (Sezgisel solvent varsayımı devre dışıdır)."
             )
+
+        result.evidence = {
+            "euh066_substances": euh066_substances,
+            "c_skin_corr_1": round(c_skin_corr_1, 2),
+            "c_skin_irrit_2": round(c_skin_irrit_2, 2),
+            "is_skin_corrosive_or_irritant": bool(is_skin_corr_1 or is_skin_irrit_2),
+        }
+
+        result.calculations = [
+            {
+                "parameter": "euh066_present",
+                "value": len(euh066_substances) > 0,
+            },
+            {
+                "parameter": "skin_corrosive_or_irritant",
+                "value": bool(is_skin_corr_1 or is_skin_irrit_2),
+            }
+        ]
+
+        if "EUH066" in result.euh_codes:
+            result.status = "SUFFICIENT"
+            result.decision = "EUH066"
+            result.reason = "EUH066 taşıyan bileşen mevcut ve karışım cilt aşındırıcı/tahriş edici değil."
+        elif euh066_substances:
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "EUH066 bileşenleri mevcut ancak karışım Cilt Aşınması/Tahrişi olarak sınıflandırıldığından öncelik kuralı gereği eklenmedi."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "Açıkça EUH066 taşıyan bileşen bulunmamaktadır."
 
         return result

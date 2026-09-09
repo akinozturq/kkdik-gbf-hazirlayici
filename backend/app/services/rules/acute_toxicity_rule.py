@@ -37,6 +37,14 @@ class AcuteToxicityRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = [
+            "SEA Ek-1 Bölüm 3.1.3.6 (Karışımların ATE Formülü)",
+            "CLP Annex I Table 3.1.1 & 3.1.2"
+        ]
+        result.assumptions = [
+            "Harmonik Formül: 100 / ATE_mix = Σ(Ci / ATEi).",
+            "Deneysel ATE girilmemiş bileşenlerde mevzuat dönüşüm değerleri (SEA Ek-1 Tablo 3.1.2) uygulanır."
+        ]
 
         ate_oral_sum = 0.0
         ate_dermal_sum = 0.0
@@ -166,6 +174,46 @@ class AcuteToxicityRule(BaseHazardRule):
         if has_inhal_dust_inputs and ate_inhal_dust_sum > 0:
             ate_dust_mix = 100.0 / ate_inhal_dust_sum
             self._classify_inhal_dust(ate_dust_mix, result)
+
+        oral_ate_val = (100.0 / ate_oral_sum) if (has_oral_inputs and ate_oral_sum > 0) else None
+        dermal_ate_val = (100.0 / ate_dermal_sum) if (has_dermal_inputs and ate_dermal_sum > 0) else None
+        vapour_ate_val = (100.0 / ate_inhal_vapour_sum) if (has_inhal_vapour_inputs and ate_inhal_vapour_sum > 0) else None
+        gas_ate_val = (100.0 / ate_inhal_gas_sum) if (has_inhal_gas_inputs and ate_inhal_gas_sum > 0) else None
+        dust_ate_val = (100.0 / ate_inhal_dust_sum) if (has_inhal_dust_inputs and ate_inhal_dust_sum > 0) else None
+
+        result.evidence = {
+            "ate_oral_mix": round(oral_ate_val, 2) if oral_ate_val is not None else None,
+            "ate_dermal_mix": round(dermal_ate_val, 2) if dermal_ate_val is not None else None,
+            "ate_inhal_vapour_mix": round(vapour_ate_val, 2) if vapour_ate_val is not None else None,
+            "ate_inhal_gas_mix": round(gas_ate_val, 2) if gas_ate_val is not None else None,
+            "ate_inhal_dust_mix": round(dust_ate_val, 2) if dust_ate_val is not None else None,
+        }
+
+        calcs = []
+        if oral_ate_val is not None:
+            calcs.append({"route": "oral", "formula": "100 / sum(Ci/ATEi)", "calculated_ate": round(oral_ate_val, 2)})
+        if dermal_ate_val is not None:
+            calcs.append({"route": "dermal", "formula": "100 / sum(Ci/ATEi)", "calculated_ate": round(dermal_ate_val, 2)})
+        if vapour_ate_val is not None:
+            calcs.append({"route": "inhal_vapour", "formula": "100 / sum(Ci/ATEi)", "calculated_ate": round(vapour_ate_val, 2)})
+        if gas_ate_val is not None:
+            calcs.append({"route": "inhal_gas", "formula": "100 / sum(Ci/ATEi)", "calculated_ate": round(gas_ate_val, 2)})
+        if dust_ate_val is not None:
+            calcs.append({"route": "inhal_dust", "formula": "100 / sum(Ci/ATEi)", "calculated_ate": round(dust_ate_val, 2)})
+        result.calculations = calcs
+
+        if result.hazards:
+            result.status = "SUFFICIENT"
+            result.decision = "; ".join(f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards)
+            result.reason = "Hesaplanan ATE_mix değerleri ilgili maruz kalma yollarında toksisite eşiklerini aştı."
+        elif (has_oral_inputs or has_dermal_inputs or has_inhal_vapour_inputs or has_inhal_gas_inputs or has_inhal_dust_inputs):
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "Akut toksik bileşenler için hesaplanan ATE_mix değerleri Kategori 1-4 aralıklarının üzerinde (zararsız aralıkta)."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "Akut toksisite sınıflandırmasına sahip bileşen bulunmamaktadır."
 
         return result
 

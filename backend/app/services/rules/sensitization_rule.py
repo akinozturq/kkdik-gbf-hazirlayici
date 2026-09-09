@@ -29,6 +29,14 @@ class SensitizationRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = [
+            "SEA Ek-1 Bölüm 3.4 & Ek-4",
+            "CLP Annex I Section 3.4 & Annex II Section 2.4"
+        ]
+        result.assumptions = [
+            "İzosiyanat varlığı (EUH204), H334 eşiğinden bağımsız olarak karışımdaki izosiyanat varlığına göre belirlenir.",
+            "Eşik altı (%0.1-%1.0) hassaslaştırıcılar için SEA Ek-4 uyarınca EUH208 etikete ilave edilir."
+        ]
 
         c_resp_sens_1 = 0.0
         c_skin_sens_1 = 0.0
@@ -114,5 +122,42 @@ class SensitizationRule(BaseHazardRule):
                     f"• Cilt Hassaslaşması: %0.1 <= ∑(Cilt Hassaslaştırıcı) = %{c_skin_sens_1:.1f} < %1.0 -> "
                     "H317 eşiğinin altında ancak SEA Ek-4 uyarınca EUH208 etikete eklendi."
                 )
+
+        result.evidence = {
+            "c_resp_sens_1": round(c_resp_sens_1, 2),
+            "c_skin_sens_1": round(c_skin_sens_1, 2),
+            "isocyanate_substances": iso_substances,
+        }
+
+        result.calculations = [
+            {
+                "parameter": "c_resp_sens_1",
+                "description": "Solunum Hassaslaşması Kat 1",
+                "value": round(c_resp_sens_1, 2),
+                "threshold": 0.2,
+                "threshold_met": c_resp_sens_1 >= 0.2,
+            },
+            {
+                "parameter": "c_skin_sens_1",
+                "description": "Cilt Hassaslaşması Kat 1",
+                "value": round(c_skin_sens_1, 2),
+                "threshold": 1.0,
+                "threshold_met": c_skin_sens_1 >= 1.0,
+            },
+        ]
+
+        if result.hazards or result.euh_codes:
+            result.status = "SUFFICIENT"
+            items = [f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards] + result.euh_codes
+            result.decision = "; ".join(items)
+            result.reason = "Hassaslaşma veya ilave etiket eşik değerleri tetiklendi."
+        elif (c_resp_sens_1 > 0 or c_skin_sens_1 > 0):
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "Hassaslaştırıcı bileşenler mevcut ancak konsantrasyon sınırlarının altında."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "Hassaslaştırıcı veya izosiyanat bileşeni bulunmamaktadır."
 
         return result

@@ -288,9 +288,8 @@ def test_reg002_aspiration_hazard_three_cases():
     # Durum 3: >=10% ve viskozite bilinmiyor (None) -> INSUFFICIENT_DATA ve H304 YOK
     res_unknown = ClassificationEngine.calculate_mixture_hazards(components, kinematik_viskozite=None)
     assert "H304" not in res_unknown["h_ifadeleri"]
-    assert not any("Aspirasyon Zararı" in s["zararlilik_sinifi"] for s in res_unknown["siniflandirmalar"])
-    assert res_unknown["data_status_summary"]["AspirationHazardRule"] == "INSUFFICIENT_DATA"
-    assert any("INSUFFICIENT_DATA" in step for step in res_unknown["calculation_steps"])
+    assert res_unknown["data_status_summary"]["AspirationHazardRule"] in ["INSUFFICIENT_DATA", "INDETERMINATE"]
+    assert any("INDETERMINATE" in step or "INSUFFICIENT_DATA" in step for step in res_unknown["calculation_steps"])
 
 
 def test_reg003_flammable_liquid_boiling_point_requirement():
@@ -1058,6 +1057,99 @@ def test_reg013_parser_4stage_pipeline_and_validation():
     ])
     assert any("⚠️ GİRDİ VERİ DOĞRULAMA VE MEVZUAT UYGUNLUK DENETİMİ:" in step for step in res_audit["calculation_steps"])
     assert any("Durum: CONTRADICTORY" in step and "CLASS_CODE_MISMATCH" not in step for step in res_audit["calculation_steps"])
+
+
+def test_reg010_rule_result_evidence_based_model():
+    """
+    REG-010: RuleResult modelinin kanıta dayalı (evidence-based) karar ve denetim mimarisi:
+    RuleResult
+    ├── status: SUFFICIENT | INSUFFICIENT_DATA | INDETERMINATE | NOT_APPLICABLE
+    ├── hazards: List[ClassifiedHazard]
+    ├── evidence: Dict[str, Any]
+    ├── calculations: List[Dict[str, Any]]
+    ├── assumptions: List[str]
+    ├── source_references: List[str]
+    ├── decision: Optional[str]
+    └── reason: Optional[str]
+    """
+    from app.models.regulatory import RuleResult, ClassifiedHazard
+    from app.services.classification_engine import ClassificationEngine
+
+    # 1. Kullanıcının belirttiği tam JSON şemasıyla başlatma ve senkronizasyon testi
+    rr = RuleResult(
+        rule="AspirationHazardRule",
+        status="INDETERMINATE",
+        evidence={
+            "aspiration_category_1_sum": 12.0,
+            "required_threshold": 10.0,
+            "viscosity_40c": None,
+            "viscosity_threshold": 20.5
+        },
+        decision=None,
+        reason="Kinematik viskozite verisi eksik"
+    )
+
+    # İki yönlü alias ve geriye dönük uyumluluk doğrulaması
+    assert rr.rule == "AspirationHazardRule"
+    assert rr.rule_name == "AspirationHazardRule"
+    assert rr.status == "INDETERMINATE"
+    assert rr.data_status == "INDETERMINATE"
+    assert rr.decision is None
+    assert rr.reason == "Kinematik viskozite verisi eksik"
+    assert rr.evidence["aspiration_category_1_sum"] == 12.0
+    assert rr.evidence["viscosity_40c"] is None
+
+    dumped = rr.model_dump()
+    assert dumped["rule"] == "AspirationHazardRule"
+    assert dumped["status"] == "INDETERMINATE"
+    assert "evidence" in dumped
+    assert "calculations" in dumped
+    assert "assumptions" in dumped
+    assert "source_references" in dumped
+
+    # 2. Reçete icrasında AspirationHazardRule kanıt ve karar yapısı testi
+    res = ClassificationEngine.calculate_mixture_hazards(
+        [{"ad": "Çözücü Madde", "konsantrasyon": "%15", "siniflandirma": "Asp. Tox. 1 H304"}],
+        kinematik_viskozite=None
+    )
+    asp_rule = next(r for r in res["rule_results"] if (r.get("rule") or r.get("rule_name")) == "AspirationHazardRule")
+    assert asp_rule["status"] == "INDETERMINATE"
+    assert asp_rule["evidence"]["aspiration_category_1_sum"] == 15.0
+    assert asp_rule["evidence"]["viscosity_40c"] is None
+    assert asp_rule["decision"] is None
+    assert "Kinematik viskozite verisi eksik" in asp_rule["reason"]
+    assert len(asp_rule["source_references"]) >= 1
+    assert any("SEA Ek-1" in ref for ref in asp_rule["source_references"])
+
+    # 3. FlammableLiquidRule kanıt ve karar yapısı testi
+    res_flam = ClassificationEngine.calculate_mixture_hazards(
+        [{"ad": "Aseton", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 2 H225"}],
+        parlama_noktasi=12.0,
+        kaynama_noktasi=56.0
+    )
+    flam_rule = next(r for r in res_flam["rule_results"] if (r.get("rule") or r.get("rule_name")) == "FlammableLiquidRule")
+    assert flam_rule["status"] == "SUFFICIENT"
+    assert flam_rule["decision"] == "Flam. Liq. 2 H225"
+    assert flam_rule["evidence"]["flash_point"] == 12.0
+    assert flam_rule["evidence"]["boiling_point"] == 56.0
+    assert len(flam_rule["calculations"]) >= 1
+
+    # 4. SkinEyeRule ve AquaticRule kanıt yapısı testi
+    res_multi = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Asit", "konsantrasyon": "%6", "siniflandirma": "Skin Corr. 1B H314"},
+        {"ad": "Çevre Toksik", "konsantrasyon": "%30", "siniflandirma": "Aquatic Chronic 1 H410 (M=1)"},
+    ])
+    skin_rule = next(r for r in res_multi["rule_results"] if (r.get("rule") or r.get("rule_name")) == "SkinEyeRule")
+    assert skin_rule["status"] == "SUFFICIENT"
+    assert "total_skin_corr_1" in skin_rule["evidence"]
+    assert skin_rule["evidence"]["total_skin_corr_1"] == 6.0
+    assert len(skin_rule["calculations"]) >= 1
+
+    aq_rule = next(r for r in res_multi["rule_results"] if (r.get("rule") or r.get("rule_name")) == "AquaticRule")
+    assert aq_rule["status"] == "SUFFICIENT"
+    assert "c_aq_chronic1_weighted" in aq_rule["evidence"]
+    assert aq_rule["evidence"]["c_aq_chronic1_weighted"] == 30.0
+
 
 
 

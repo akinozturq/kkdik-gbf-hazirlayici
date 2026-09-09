@@ -557,6 +557,8 @@ class RegulatoryPipeline:
 
             res_max.hazards = evaluated_hazards
             res_max.has_indeterminate = has_rule_indeterminate
+            if has_rule_indeterminate:
+                res_max.status = "INDETERMINATE"
             rule_results.append(res_max)
 
             for euh in res_max.euh_codes:

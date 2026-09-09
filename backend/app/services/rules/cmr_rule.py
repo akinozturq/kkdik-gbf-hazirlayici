@@ -38,6 +38,14 @@ class CMRRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = [
+            "SEA Ek-1 Bölüm 3.5, 3.6 & 3.7",
+            "CLP Annex I Table 3.5.2, 3.6.2 & 3.7.2"
+        ]
+        result.assumptions = [
+            "CMR tehlike sınıflarında toplanabilirlik uygulanmaz; her bileşenin genel veya özel konsantrasyon sınırını bağımsız olarak aşması gerekir.",
+            "Bileşenin CMR alt kategorisi (1A/1B) teyit edilemiyorsa CATEGORY_UNRESOLVED olarak işaretlenir."
+        ]
 
         c_muta1a = 0.0
         c_muta1b = 0.0
@@ -293,5 +301,53 @@ class CMRRule(BaseHazardRule):
             if result.uyari_kelimesi != "Tehlike":
                 result.uyari_kelimesi = "Dikkat"
             result.calculation_notes.append(f"• Üreme Toksisitesi: ∑(Repr 2) = %{c_repr2:.1f} >= %3.0 -> Sınıflandırıldı: Kategori 2 ({h_repr})")
+
+        result.evidence = {
+            "c_muta1a": round(c_muta1a, 2),
+            "c_muta1b": round(c_muta1b, 2),
+            "c_muta1_unresolved": round(c_muta1_unresolved, 2),
+            "c_muta2": round(c_muta2, 2),
+            "c_carc1a": round(c_carc1a, 2),
+            "c_carc1b": round(c_carc1b, 2),
+            "c_carc1_unresolved": round(c_carc1_unresolved, 2),
+            "c_carc2": round(c_carc2, 2),
+            "c_repr1a": round(c_repr1a, 2),
+            "c_repr1b": round(c_repr1b, 2),
+            "c_repr1_unresolved": round(c_repr1_unresolved, 2),
+            "c_repr2": round(c_repr2, 2),
+        }
+
+        result.calculations = [
+            {"parameter": "muta1_sum", "value": round(c_muta1a + c_muta1b + c_muta1_unresolved, 2), "threshold": 0.1},
+            {"parameter": "muta2_sum", "value": round(c_muta2, 2), "threshold": 1.0},
+            {"parameter": "carc1_sum", "value": round(c_carc1a + c_carc1b + c_carc1_unresolved, 2), "threshold": 0.1},
+            {"parameter": "carc2_sum", "value": round(c_carc2, 2), "threshold": 1.0},
+            {"parameter": "repr1_sum", "value": round(c_repr1a + c_repr1b + c_repr1_unresolved, 2), "threshold": 0.3},
+            {"parameter": "repr2_sum", "value": round(c_repr2, 2), "threshold": 3.0},
+        ]
+
+        has_unresolved = any(h.kategori == "CATEGORY_UNRESOLVED" for h in result.hazards)
+        has_any_cmr = (
+            (c_muta1a + c_muta1b + c_muta1_unresolved + c_muta2) > 0 or
+            (c_carc1a + c_carc1b + c_carc1_unresolved + c_carc2) > 0 or
+            (c_repr1a + c_repr1b + c_repr1_unresolved + c_repr2) > 0
+        )
+
+        if has_unresolved:
+            result.status = "INDETERMINATE"
+            result.decision = "; ".join(f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards)
+            result.reason = "CMR bileşeni eşiği aştı ancak alt kategori (1A/1B) veri kaynağında eksik olduğu için kesinleştirilemedi (CATEGORY_UNRESOLVED)."
+        elif result.hazards:
+            result.status = "SUFFICIENT"
+            result.decision = "; ".join(f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards)
+            result.reason = "CMR konsantrasyon sınırları aşıldı."
+        elif has_any_cmr:
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "CMR bileşenleri mevcut ancak konsantrasyon sınırlarının altında."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "CMR zararlılığı taşıyan bileşen bulunmamaktadır."
 
         return result

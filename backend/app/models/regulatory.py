@@ -3,8 +3,8 @@ KKDİK ve SEA Yönetmeliği v2.0 Yapısal Regülatif Veri Modelleri
 (Structured Regulatory Substance & Calculation Context Models)
 """
 
-from typing import List, Optional, Literal, Dict, Any, Set
-from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional, Literal, Dict, Any, Set, Union
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 class ConcentrationValue(BaseModel):
@@ -448,18 +448,92 @@ class ClassifiedHazard(BaseModel):
 
 class RuleResult(BaseModel):
     """
-    Tek bir kural stratejisinin ürettiği sonuç.
+    Tek bir kural stratejisinin ürettiği kanıta dayalı (evidence-based) düzenleyici karar ve denetim sonucu.
+    SEA Ek-1 ve ECHA rehberlerine uygun yapısal denetim izi (audit trail) sağlar.
     """
     rule_name: str = Field(..., description="Kural adı (örn. 'FlammableLiquidRule')")
+    rule: Optional[str] = Field(None, description="Kural adı alias (örn. 'AspirationHazardRule')")
+
+    status: Literal["SUFFICIENT", "INSUFFICIENT_DATA", "INDETERMINATE", "NOT_APPLICABLE"] = Field(
+        "SUFFICIENT",
+        description="Kural değerlendirme durumu: SUFFICIENT | INSUFFICIENT_DATA | INDETERMINATE | NOT_APPLICABLE"
+    )
+    data_status: Literal["SUFFICIENT", "INSUFFICIENT_DATA", "INDETERMINATE", "NOT_APPLICABLE"] = Field(
+        "SUFFICIENT",
+        description="Geriye dönük uyumluluk için veri yeterlilik durumu"
+    )
+
     hazards: List[ClassifiedHazard] = Field(default_factory=list, description="Atanan tehlikeler")
+    evidence: Union[Dict[str, Any], List[Any]] = Field(
+        default_factory=dict,
+        description="Karar için kullanılan kanıtlar, konsantrasyon toplamları ve test verileri"
+    )
+    calculations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Adım adım formüller ve hesaplanan matematiksel değerler"
+    )
+    assumptions: List[str] = Field(
+        default_factory=list,
+        description="Hesaplama ve değerlendirme varsayımları"
+    )
+    source_references: List[str] = Field(
+        default_factory=list,
+        description="Mevzuat ve kılavuz referansları (SEA Ek-1, CLP Annex I vb.)"
+    )
+    decision: Optional[str] = Field(
+        None,
+        description="Alınan nihai karar / sınıflandırma kodu (örn. 'Asp. Tox. 1 H304') veya None"
+    )
+    reason: Optional[str] = Field(
+        None,
+        description="Kararın veya belirsizliğin (INDETERMINATE / INSUFFICIENT_DATA) gerekçesi"
+    )
+
     euh_codes: List[str] = Field(default_factory=list, description="Tetiklenen EUH kodları")
     piktogramlar: List[str] = Field(default_factory=list, description="Önerilen GHS piktogramları")
     uyari_kelimesi: Optional[str] = Field(None, description="'Tehlike' veya 'Dikkat'")
     calculation_notes: List[str] = Field(default_factory=list, description="Adım adım denetim açıklamaları")
-    data_status: Literal["SUFFICIENT", "INSUFFICIENT_DATA", "NOT_APPLICABLE"] = Field(
-        "SUFFICIENT", description="Veri yeterlilik ve güvenilirlik durumu"
-    )
     has_indeterminate: bool = Field(False, description="Kural kapsamında aralığa bağlı belirsizlik (INDETERMINATE) var mı?")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_fields_before(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # rule <-> rule_name
+            if "rule" in data and not data.get("rule_name"):
+                data["rule_name"] = data["rule"]
+            elif "rule_name" in data and not data.get("rule"):
+                data["rule"] = data["rule_name"]
+
+            # status <-> data_status
+            if "status" in data and "data_status" not in data:
+                data["data_status"] = data["status"]
+            elif "data_status" in data and "status" not in data:
+                data["status"] = data["data_status"]
+        return data
+
+    @model_validator(mode="after")
+    def _sync_fields_after(self) -> "RuleResult":
+        if not self.rule:
+            self.rule = self.rule_name
+        if not self.rule_name:
+            self.rule_name = self.rule
+        if self.status and not self.data_status:
+            self.data_status = self.status
+        elif self.data_status and not self.status:
+            self.status = self.data_status
+        return self
+
+    def __setattr__(self, name: str, value: Any):
+        super().__setattr__(name, value)
+        if name == "status" and getattr(self, "data_status", None) != value:
+            super().__setattr__("data_status", value)
+        elif name == "data_status" and getattr(self, "status", None) != value:
+            super().__setattr__("status", value)
+        elif name == "rule_name" and getattr(self, "rule", None) != value:
+            super().__setattr__("rule", value)
+        elif name == "rule" and getattr(self, "rule_name", None) != value:
+            super().__setattr__("rule_name", value)
 
 
 class ClassificationResult(BaseModel):

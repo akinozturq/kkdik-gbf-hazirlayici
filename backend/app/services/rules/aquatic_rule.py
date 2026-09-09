@@ -28,6 +28,14 @@ class AquaticRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = [
+            "SEA Ek-1 Bölüm 4.1 Tablo 4.1.1 & 4.1.2",
+            "CLP Annex I Table 4.1.1 & 4.1.2"
+        ]
+        result.assumptions = [
+            "Toplama yöntemi (Summation method) kademeli olarak Akut 1 -> Kronik 1 -> Kronik 2 -> Kronik 3 -> Kronik 4 şeklinde değerlendirilir.",
+            "M faktörü belirtilmemişse denetim izi için source='DEFAULT' ile M=1 kabul edilir."
+        ]
 
         c_aq_acute1 = 0.0
         c_aq_chronic1 = 0.0
@@ -129,5 +137,68 @@ class AquaticRule(BaseHazardRule):
                 h_kodu="H413"
             ))
             result.calculation_notes.append(f"• Sucul Çevre (Kronik): Toplam Kronik = %{chr4_sum:.1f} >= %25.0 -> Sınıflandırıldı: Sucul Kronik 4 (H413)")
+
+        chr2_val = 10.0 * c_aq_chronic1 + c_aq_chronic2
+        chr3_val = 100.0 * c_aq_chronic1 + 10.0 * c_aq_chronic2 + c_aq_chronic3
+        chr4_val = c_aq_chronic1 + c_aq_chronic2 + c_aq_chronic3 + c_aq_chronic4
+
+        result.evidence = {
+            "c_aq_acute1_weighted": round(c_aq_acute1, 2),
+            "c_aq_chronic1_weighted": round(c_aq_chronic1, 2),
+            "c_aq_chronic2": round(c_aq_chronic2, 2),
+            "c_aq_chronic3": round(c_aq_chronic3, 2),
+            "c_aq_chronic4": round(c_aq_chronic4, 2),
+        }
+
+        result.calculations = [
+            {
+                "parameter": "c_aq_acute1_weighted",
+                "description": "∑(M x Akut 1)",
+                "value": round(c_aq_acute1, 2),
+                "threshold": 25.0,
+                "threshold_met": c_aq_acute1 >= 25.0,
+            },
+            {
+                "parameter": "c_aq_chronic1_weighted",
+                "description": "∑(M x Kronik 1)",
+                "value": round(c_aq_chronic1, 2),
+                "threshold": 25.0,
+                "threshold_met": c_aq_chronic1 >= 25.0,
+            },
+            {
+                "parameter": "chr2_sum",
+                "description": "(10 x ∑M x Kronik 1) + ∑Kronik 2",
+                "value": round(chr2_val, 2),
+                "threshold": 25.0,
+                "threshold_met": chr2_val >= 25.0,
+            },
+            {
+                "parameter": "chr3_sum",
+                "description": "(100 x ∑M x Kronik 1) + (10 x ∑Kronik 2) + ∑Kronik 3",
+                "value": round(chr3_val, 2),
+                "threshold": 25.0,
+                "threshold_met": chr3_val >= 25.0,
+            },
+            {
+                "parameter": "chr4_sum",
+                "description": "Toplam Kronik (∑Kronik 1-4)",
+                "value": round(chr4_val, 2),
+                "threshold": 25.0,
+                "threshold_met": chr4_val >= 25.0,
+            },
+        ]
+
+        if result.hazards:
+            result.status = "SUFFICIENT"
+            result.decision = "; ".join(f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards)
+            result.reason = "Sucul toplanabilirlik veya M-faktörü ağırlıklı konsantrasyon eşikleri (%25.0) aşıldı."
+        elif (c_aq_acute1 > 0 or chr4_val > 0):
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "Sucul zararlılık bileşenleri mevcut ancak %25.0 toplanabilirlik eşik değerleri aşılmadı."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "Sucul çevre zararlılığı taşıyan bileşen bulunmamaktadır."
 
         return result

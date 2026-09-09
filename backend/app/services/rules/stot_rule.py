@@ -34,6 +34,14 @@ class STOTRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = [
+            "SEA Ek-1 Bölüm 3.8 & 3.9",
+            "CLP Annex I Table 3.8.3 & 3.9.3"
+        ]
+        result.assumptions = [
+            "STOT SE 3 (H335 RTI ve H336 NE) bağımsız olarak değerlendirilir ve birbirine eklenmez (GCL: %20.0).",
+            "İlgili bileşen kesme sınırı (Cut-off) %1.0 altındaki bileşenler toplanabilirlik havuzuna dahil edilmez."
+        ]
 
         c_stot_se1 = 0.0
         c_stot_se2 = 0.0
@@ -296,5 +304,78 @@ class STOTRule(BaseHazardRule):
             if result.uyari_kelimesi != "Tehlike":
                 result.uyari_kelimesi = "Dikkat"
             result.calculation_notes.append(f"• STOT RE: ∑(STOT RE 2) = %{c_stot_re2:.1f} >= %10.0 -> Sınıflandırıldı: Kategori 2 (H373)")
+
+        result.evidence = {
+            "c_stot_se1": round(c_stot_se1, 2),
+            "c_stot_se2": round(c_stot_se2, 2),
+            "c_stot_se3_335": round(c_stot_se3_335, 2),
+            "c_stot_se3_336": round(c_stot_se3_336, 2),
+            "c_stot_re1": round(c_stot_re1, 2),
+            "c_stot_re2": round(c_stot_re2, 2),
+            "scl_stot_se1": scl_stot_se1,
+            "scl_stot_se2": scl_stot_se2,
+            "scl_stot_se3_335": scl_stot_se3_335,
+            "scl_stot_se3_336": scl_stot_se3_336,
+            "scl_stot_re1": scl_stot_re1,
+            "scl_stot_re2": scl_stot_re2,
+        }
+
+        result.calculations = [
+            {
+                "parameter": "c_stot_se1",
+                "description": "Toplam STOT SE 1 Konsantrasyonu",
+                "value": round(c_stot_se1, 2),
+                "threshold": 10.0,
+                "threshold_met": c_stot_se1 >= 10.0,
+            },
+            {
+                "parameter": "c_stot_se2",
+                "description": "Toplam STOT SE 2 Konsantrasyonu",
+                "value": round(c_stot_se2, 2),
+                "threshold": 10.0,
+                "threshold_met": c_stot_se2 >= 10.0,
+            },
+            {
+                "parameter": "c_stot_se3_335",
+                "description": "STOT SE 3 Solunum Yolu Tahrişi (RTI - H335)",
+                "value": round(c_stot_se3_335, 2),
+                "threshold": 20.0,
+                "threshold_met": c_stot_se3_335 >= 20.0,
+            },
+            {
+                "parameter": "c_stot_se3_336",
+                "description": "STOT SE 3 Narkotik Etkiler (NE - H336)",
+                "value": round(c_stot_se3_336, 2),
+                "threshold": 20.0,
+                "threshold_met": c_stot_se3_336 >= 20.0,
+            },
+            {
+                "parameter": "c_stot_re1",
+                "description": "Toplam STOT RE 1 Konsantrasyonu",
+                "value": round(c_stot_re1, 2),
+                "threshold": 10.0,
+                "threshold_met": c_stot_re1 >= 10.0,
+            },
+            {
+                "parameter": "c_stot_re2",
+                "description": "Toplam STOT RE 2 Konsantrasyonu",
+                "value": round(c_stot_re2, 2),
+                "threshold": 10.0,
+                "threshold_met": c_stot_re2 >= 10.0,
+            },
+        ]
+
+        if result.hazards:
+            result.status = "SUFFICIENT"
+            result.decision = "; ".join(f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards)
+            result.reason = "STOT eşik veya SCL değerleri aşıldı."
+        elif (c_stot_se1 > 0 or c_stot_se2 > 0 or c_stot_se3_335 > 0 or c_stot_se3_336 > 0 or c_stot_re1 > 0 or c_stot_re2 > 0):
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "STOT bileşenleri mevcut ancak eşik değerler aşılmadı."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "STOT zararlılığı taşıyan bileşen bulunmamaktadır."
 
         return result

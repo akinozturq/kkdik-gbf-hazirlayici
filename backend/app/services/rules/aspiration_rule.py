@@ -24,6 +24,10 @@ class AspirationHazardRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
+        result.source_references = ["SEA Ek-1 Bölüm 3.10.3.3", "CLP Annex I Table 3.10.1"]
+        result.assumptions = [
+            "SEA Ek-1 Bölüm 3.10.3.3: Karışımın Kategori 1 olarak sınıflandırılması için ∑(Asp. Tox. 1) >= %10.0 VE 40°C kinematik viskozite <= 20.5 mm²/s olmalıdır."
+        ]
 
         c_asp_tox_1 = sum(
             s.concentration.value for s in substances
@@ -32,10 +36,36 @@ class AspirationHazardRule(BaseHazardRule):
 
         visk = context.kinematik_viskozite_40c
 
+        result.evidence = {
+            "aspiration_category_1_sum": round(c_asp_tox_1, 2),
+            "required_threshold": 10.0,
+            "viscosity_40c": visk,
+            "viscosity_threshold": 20.5,
+        }
+
+        result.calculations = [
+            {
+                "parameter": "c_asp_tox_1",
+                "description": "Toplam Kategori 1 Aspirasyon Toksisitesi Bileşenleri Konsantrasyonu",
+                "value": round(c_asp_tox_1, 2),
+                "threshold": 10.0,
+                "threshold_met": c_asp_tox_1 >= 10.0,
+            },
+            {
+                "parameter": "kinematik_viskozite_40c",
+                "description": "40°C Kinematik Viskozite (mm²/s)",
+                "value": visk,
+                "threshold": 20.5,
+                "criteria_met": (visk <= 20.5) if visk is not None else None,
+            }
+        ]
+
         if c_asp_tox_1 >= 10.0:
             if visk is not None:
-                result.data_status = "SUFFICIENT"
+                result.status = "SUFFICIENT"
                 if visk <= 20.5:
+                    result.decision = "Asp. Tox. 1 H304"
+                    result.reason = f"∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} >= %10.0 ve 40°C kinematik viskozite ({visk:.1f} mm²/s <= 20.5 mm²/s) kriterlerini sağlıyor."
                     result.hazards.append(ClassifiedHazard(
                         zararlilik_sinifi="Aspirasyon Zararı",
                         kategori="Kategori 1",
@@ -47,20 +77,28 @@ class AspirationHazardRule(BaseHazardRule):
                         f"• Aspirasyon Zararı: ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} >= %10.0 ve 40°C kinematik viskozite ({visk:.1f} mm²/s <= 20.5 mm²/s) -> Sınıflandırıldı: Kategori 1 (H304)"
                     )
                 else:
+                    result.decision = None
+                    result.reason = f"Karışımda %{c_asp_tox_1:.1f} Asp. Tox. 1 bileşeni bulunmasına rağmen, 40°C kinematik viskozite ({visk:.1f} mm²/s > 20.5 mm²/s) eşiğin üzerindedir."
                     result.calculation_notes.append(
                         f"• Aspirasyon Zararı: Karışımda %{c_asp_tox_1:.1f} Asp. Tox. 1 bileşeni bulunmasına rağmen, 40°C kinematik viskozite ({visk:.1f} mm²/s > 20.5 mm²/s) eşiğin üzerinde olduğu için H304 olarak SINIFLANDIRILMAMIŞTIR (SEA Ek-1 Bölüm 3.10.3.3.1)."
                     )
             else:
-                result.data_status = "INSUFFICIENT_DATA"
+                result.status = "INDETERMINATE"
+                result.decision = None
+                result.reason = "Kinematik viskozite verisi eksik"
                 result.calculation_notes.append(
-                    f"• Aspirasyon Zararı: Karışımda ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} >= %10.0 bileşen bulunmasına rağmen 40°C kinematik viskozite test verisi girilmediğinden (Bilinmiyor / UNKNOWN) sınıflandırma yapılamamıştır (INSUFFICIENT_DATA). ECHA ve SEA Ek-1 Bölüm 3.10 uyarınca kinematik viskozitenin <= 20.5 mm²/s olduğu test edilip doğrulanmalıdır."
+                    f"• Aspirasyon Zararı: Karışımda ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} >= %10.0 bileşen bulunmasına rağmen 40°C kinematik viskozite test verisi girilmediğinden (Bilinmiyor / UNKNOWN) sınıflandırma yapılamamıştır (INDETERMINATE / INSUFFICIENT_DATA). ECHA ve SEA Ek-1 Bölüm 3.10 uyarınca kinematik viskozitenin <= 20.5 mm²/s olduğu test edilip doğrulanmalıdır."
                 )
         elif c_asp_tox_1 > 0:
-            result.data_status = "SUFFICIENT"
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = f"∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} < %10.0 eşik değer aşılmadı."
             result.calculation_notes.append(
                 f"• Aspirasyon Zararı: ∑(Asp. Tox. 1) = %{c_asp_tox_1:.1f} < %10.0 -> Eşik değer aşılmadı."
             )
         else:
-            result.data_status = "NOT_APPLICABLE"
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "Aspirasyon zararlılığı taşıyan bileşen bulunmamaktadır."
 
         return result

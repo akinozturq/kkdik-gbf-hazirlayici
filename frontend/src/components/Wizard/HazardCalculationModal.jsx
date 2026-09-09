@@ -496,11 +496,13 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {(result.rule_results || []).map((rule, idx) => {
-                  const isSufficient = rule.data_status === 'SUFFICIENT';
-                  const isInsufficient = rule.data_status === 'INSUFFICIENT_DATA';
-                  const statusBg = isSufficient ? '#dcfce7' : isInsufficient ? '#fef3c7' : '#f1f5f9';
-                  const statusColor = isSufficient ? '#166534' : isInsufficient ? '#92400e' : '#475569';
-                  const statusLabel = isSufficient ? 'Yeterli Veri' : isInsufficient ? 'Eksik Test Verisi' : 'Uygulanamaz';
+                  const statusVal = rule.status || rule.data_status;
+                  const isSufficient = statusVal === 'SUFFICIENT';
+                  const isInsufficient = statusVal === 'INSUFFICIENT_DATA';
+                  const isIndeterminate = statusVal === 'INDETERMINATE';
+                  const statusBg = isSufficient ? '#dcfce7' : isInsufficient ? '#fef3c7' : isIndeterminate ? '#fef3c7' : '#f1f5f9';
+                  const statusColor = isSufficient ? '#166534' : isInsufficient ? '#92400e' : isIndeterminate ? '#b45309' : '#475569';
+                  const statusLabel = isSufficient ? 'Yeterli Veri' : isInsufficient ? 'Eksik Test Verisi' : isIndeterminate ? 'Belirsiz (Eşik/Veri)' : 'Uygulanamaz';
 
                   return (
                     <div
@@ -518,7 +520,7 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>
-                            {rule.rule_name}
+                            {rule.rule || rule.rule_name}
                           </span>
                           <span
                             style={{
@@ -558,6 +560,12 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                           </div>
                         )}
                       </div>
+
+                      {rule.reason && (
+                        <div style={{ fontSize: '0.78rem', color: '#1e293b', fontWeight: 600, background: '#f1f5f9', padding: '6px 10px', borderRadius: '6px', marginTop: '4px' }}>
+                          💡 <strong>Gerekçe:</strong> {rule.reason}
+                        </div>
+                      )}
 
                       {rule.calculation_notes && rule.calculation_notes.length > 0 && (
                         <div style={{ fontSize: '0.78rem', color: '#475569', background: '#f8fafc', padding: '6px 10px', borderRadius: '6px', marginTop: '4px' }}>

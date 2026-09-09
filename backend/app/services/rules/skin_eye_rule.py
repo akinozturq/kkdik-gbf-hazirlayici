@@ -29,7 +29,14 @@ class SkinEyeRule(BaseHazardRule):
         substances: List[StructuredSubstance]
     ) -> RuleResult:
         result = RuleResult(rule_name=self.rule_name)
-
+        result.source_references = [
+            "SEA Ek-1 Bölüm 3.2 & 3.3",
+            "CLP Annex I Table 3.2.3 & 3.3.3"
+        ]
+        result.assumptions = [
+            "SEA Ek-1 additivity ilkesi uyarınca Skin Corr 1 bileşenleri Eye Dam 1 havuzuna %100 oranında katkı sağlar.",
+            "İlgili bileşen kesme sınırı (Cut-off) altındaki bileşenler toplanabilirlik havuzuna dahil edilmez."
+        ]
         c_skin_corr_1a = 0.0
         c_skin_corr_1b = 0.0
         c_skin_corr_1c = 0.0
@@ -266,5 +273,63 @@ class SkinEyeRule(BaseHazardRule):
                 result.calculation_notes.append(
                     f"• Göz Tahrişi: (10 x ∑Eye Dam. 1) + ∑Eye Irrit. 2 = %{eye_sum:.1f} >= %10.0 -> Sınıflandırıldı: Kategori 2 (H319)"
                 )
+
+        result.evidence = {
+            "c_skin_corr_1a": round(c_skin_corr_1a, 2),
+            "c_skin_corr_1b": round(c_skin_corr_1b, 2),
+            "c_skin_corr_1c": round(c_skin_corr_1c, 2),
+            "total_skin_corr_1": round(total_skin_corr_1, 2),
+            "c_skin_irrit_2": round(c_skin_irrit_2, 2),
+            "c_eye_dam_1": round(c_eye_dam_1, 2),
+            "c_eye_irrit_2": round(c_eye_irrit_2, 2),
+            "scl_skin_corr": scl_skin_corr,
+            "scl_skin_irrit": scl_skin_irrit,
+            "scl_eye_dam": scl_eye_dam,
+            "scl_eye_irrit": scl_eye_irrit,
+        }
+
+        result.calculations = [
+            {
+                "parameter": "total_skin_corr_1",
+                "description": "Toplam Cilt Aşınması Kat 1 Konsantrasyonu",
+                "value": round(total_skin_corr_1, 2),
+                "threshold": 5.0,
+                "threshold_met": total_skin_corr_1 >= 5.0,
+            },
+            {
+                "parameter": "skin_irrit_sum",
+                "description": "(10 x ∑Skin Corr. 1) + ∑Skin Irrit. 2",
+                "value": round(10.0 * total_skin_corr_1 + c_skin_irrit_2, 2),
+                "threshold": 10.0,
+                "threshold_met": (10.0 * total_skin_corr_1 + c_skin_irrit_2) >= 10.0,
+            },
+            {
+                "parameter": "c_eye_dam_1",
+                "description": "Toplam Ciddi Göz Hasarı Kat 1 Konsantrasyonu (Skin Corr dahil)",
+                "value": round(c_eye_dam_1, 2),
+                "threshold": 3.0,
+                "threshold_met": c_eye_dam_1 >= 3.0,
+            },
+            {
+                "parameter": "eye_irrit_sum",
+                "description": "(10 x ∑Eye Dam. 1) + ∑Eye Irrit. 2",
+                "value": round(10.0 * c_eye_dam_1 + c_eye_irrit_2, 2),
+                "threshold": 10.0,
+                "threshold_met": (10.0 * c_eye_dam_1 + c_eye_irrit_2) >= 10.0,
+            },
+        ]
+
+        if result.hazards:
+            result.status = "SUFFICIENT"
+            result.decision = "; ".join(f"{h.zararlilik_sinifi} {h.kategori} ({h.h_kodu})" for h in result.hazards)
+            result.reason = "Cilt/Göz toplanabilirlik veya SCL eşik değerleri aşıldı."
+        elif (total_skin_corr_1 > 0 or c_skin_irrit_2 > 0 or c_eye_dam_1 > 0 or c_eye_irrit_2 > 0):
+            result.status = "SUFFICIENT"
+            result.decision = None
+            result.reason = "Cilt/Göz bileşenleri mevcut ancak toplanabilirlik eşik değerleri aşılmadı."
+        else:
+            result.status = "NOT_APPLICABLE"
+            result.decision = None
+            result.reason = "Cilt veya göz zararlılığı taşıyan bileşen bulunmamaktadır."
 
         return result
