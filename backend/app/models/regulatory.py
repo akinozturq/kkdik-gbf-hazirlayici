@@ -25,6 +25,26 @@ class ConcentrationValue(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SpecificConcentrationLimit(BaseModel):
+    """
+    CLP / SEA Spesifik Konsantrasyon Sınırı (SCL) hedefli veri yapısı.
+    Zararlılık sınıfı, kategori ve/veya H-kodu ile tam hedeflenmiş eşleştirme sağlar.
+    Örn:
+    {
+      "hazard_class": "Skin Corr.",
+      "category": "1B",
+      "h_code": "H314",
+      "scl": 2.0
+    }
+    """
+    hazard_class: Optional[str] = Field(None, description="Zararlılık sınıfı adı (örn. 'Skin Corr.')")
+    category: Optional[str] = Field(None, description="Kategori veya alt kategori (örn. '1B')")
+    h_code: Optional[str] = Field(None, description="H-kodu veya EUH-kodu (örn. 'H314')")
+    scl: float = Field(..., description="Spesifik Konsantrasyon Sınırı (SCL - %)")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class HazardEntry(BaseModel):
     """
     Bir bileşenin tekil zararlılık sınıfı profili.
@@ -40,6 +60,28 @@ class HazardEntry(BaseModel):
     euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/uygulanabilirlik bilgisi ('explicit_code', 'annex_vi', 'supplier_sds')")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    def to_scl_entry(self) -> Optional[SpecificConcentrationLimit]:
+        """Zararlılığın SCL değerini hedefli SpecificConcentrationLimit nesnesine dönüştürür."""
+        if self.scl is not None:
+            return SpecificConcentrationLimit(
+                hazard_class=self.hazard_class,
+                category=self.category,
+                h_code=self.h_code,
+                scl=self.scl
+            )
+        return None
+
+    def to_scl_dict(self) -> Optional[Dict[str, Any]]:
+        """Zararlılığın SCL değerini sözlük formatında döner."""
+        if self.scl is not None:
+            return {
+                "hazard_class": self.hazard_class,
+                "category": self.category,
+                "h_code": self.h_code,
+                "scl": self.scl
+            }
+        return None
 
 
 class InhalationExposure(BaseModel):
@@ -75,6 +117,11 @@ class StructuredSubstance(BaseModel):
     is_isocyanate: bool = Field(False, description="İzosiyanat türevi mi?")
     m_factor_acute: Optional[float] = Field(None, description="Sucul Akut 1 M-faktörü")
     m_factor_chronic: Optional[float] = Field(None, description="Sucul Kronik 1 M-faktörü")
+
+    @property
+    def structured_scls(self) -> List[SpecificConcentrationLimit]:
+        """Bileşenin tüm zararlılıklarına ait hedefli SCL kayıtlarını döner."""
+        return [h.to_scl_entry() for h in self.hazards if h.scl is not None]
 
     model_config = ConfigDict(populate_by_name=True)
 

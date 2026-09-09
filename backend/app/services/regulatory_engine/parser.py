@@ -95,11 +95,21 @@ class RegulatoryClassificationParser:
     def extract_scl(cls, text: str) -> Optional[float]:
         """
         Metin içindeki Spesifik Konsantrasyon Sınırını (SCL) çeker.
-        Örn: 'SCL >= 1%', 'C >= 0.3%', 'SCL: 5 %', 'C >= 1.0 %'
+        Örn: 'SCL >= 1%', 'C >= 0.3%', 'SCL: 5 %', 'C >= 1.0 %', '1% <= C < 5%', 'SCL 2%'
         """
         if not text:
             return None
-        match = re.search(r"(?:SCL|C)\s*(?:>=|:|=|>)\s*(\d+(?:\.\d+)?)\s*%?", text, re.IGNORECASE)
+
+        # 1. '1% <= C' formatı (SEA / CLP Ek-6 aralık formatı)
+        match_lower = re.search(r"(\d+(?:\.\d+)?)\s*%?\s*<=\s*C\b", text, re.IGNORECASE)
+        if match_lower:
+            try:
+                return float(match_lower.group(1))
+            except (ValueError, TypeError):
+                pass
+
+        # 2. 'SCL >= 1%', 'C >= 1%', 'SCL: 2%', 'SCL = 2%', 'SCL 2%' formatı
+        match = re.search(r"(?:SCL\s*(?:>=|:|=|>|\s)|C\s*(?:>=|:|=|>))\s*(\d+(?:\.\d+)?)\s*%?", text, re.IGNORECASE)
         if match:
             try:
                 return float(match.group(1))

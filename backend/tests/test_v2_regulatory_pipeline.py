@@ -423,6 +423,108 @@ def test_reg005_euh204_decoupled_from_h334_threshold():
     assert "EUH208" in res5["euh_ifadeleri"]
 
 
+def test_reg007_targeted_scl_architecture():
+    """
+    REG-007: Hedefli SCL Mimarisinin Doğrulaması.
+    Bir bileşende birden fazla zararlılık varken (örn: Skin Corr. 1B H314 SCL=2%, Eye Dam. 1 H318 SCL=5%):
+    1. Sınıflandırma dizesindeki veya 'scl_entries' içindeki SCL değerleri yalnızca ilgili zararlılık sınıfına atanmalıdır.
+    2. %3.0 konsantrasyonda Skin Corr 1B tetiklenmeli (3% >= 2%), Eye Dam 1 ise SCL'ye (%5) ulaşmadığı için SCL üzerinden tetiklenmemelidir.
+    """
+    from app.models.regulatory import SpecificConcentrationLimit
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+    from app.services.classification_engine import ClassificationEngine
+
+    # 1. Zengin metin ayrıştırma testi
+    text = "Skin Corr. 1B H314 (SCL >= 2%), Eye Dam. 1 H318 (SCL >= 5%)"
+    comps = [{"ad": "Asit Karışımı", "konsantrasyon": "%3", "siniflandirma": text}]
+    substances = RegulatoryPipeline.adapt_raw_components(comps)
+    assert len(substances) == 1
+    sub = substances[0]
+
+    h_skin = next(h for h in sub.hazards if h.h_code == "H314")
+    h_eye = next(h for h in sub.hazards if h.h_code == "H318")
+    assert h_skin.scl == 2.0
+    assert h_eye.scl == 5.0
+
+    # Model yardımcı metodları
+    scl_dict = h_skin.to_scl_dict()
+    assert scl_dict == {
+        "hazard_class": "Skin Corr.",
+        "category": "1B",
+        "h_code": "H314",
+        "scl": 2.0
+    }
+    scl_entry = h_skin.to_scl_entry()
+    assert isinstance(scl_entry, SpecificConcentrationLimit)
+    assert scl_entry.scl == 2.0
+    assert len(sub.structured_scls) == 2
+
+    # 2. Dışarıdan yapılandırılmış 'scl_entries' ile besleme testi
+    comps_structured = [
+        {
+            "ad": "Özel Bileşik",
+            "konsantrasyon": "%3",
+            "siniflandirma": "Skin Corr. 1B H314, Eye Dam. 1 H318",
+            "scl_entries": [
+                {"hazard_class": "Skin Corr.", "category": "1B", "h_code": "H314", "scl": 2.0},
+                {"hazard_class": "Eye Dam.", "category": "1", "h_code": "H318", "scl": 5.0}
+            ]
+        }
+    ]
+    substances_struct = RegulatoryPipeline.adapt_raw_components(comps_structured)
+    sub2 = substances_struct[0]
+    h_skin2 = next(h for h in sub2.hazards if h.h_code == "H314")
+    h_eye2 = next(h for h in sub2.hazards if h.h_code == "H318")
+    assert h_skin2.scl == 2.0
+    assert h_eye2.scl == 5.0
+
+    # 3. Kural motoru değerlendirmesi:
+    # Konsantrasyon = %3.0 -> Skin Corr 1B tetiklenmeli (3 >= 2), Eye Dam 1 SCL'si (%5) aşılmamalı
+    res = ClassificationEngine.calculate_mixture_hazards(comps)
+    assert "H314" in res["h_ifadeleri"]
+    assert any("SCL (%2.0)" in step for step in res["calculation_steps"])
+    assert not any("Eye Dam" in step and "SCL (%2.0)" in step for step in res["calculation_steps"])
+
+
+def test_reg007_scalar_scl_broadcast_prevention():
+    """
+    REG-007: Birden fazla zararlılık içeren bileşene dışarıdan genel skaler 'scl' verildiğinde,
+    tüm zararlılıklara körlemesine atanması engellenmelidir.
+    """
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+
+    # Multi-hazard bileşene genel skaler scl=2 verilmesi durumu
+    comps = [
+        {
+            "ad": "Karmaşık Madde",
+            "konsantrasyon": "%3",
+            "siniflandirma": "Skin Corr. 1B H314, Eye Dam. 1 H318",
+            "scl": 2.0  # Hedefsiz, genel skaler
+        }
+    ]
+    substances = RegulatoryPipeline.adapt_raw_components(comps)
+    sub = substances[0]
+    h_skin = next(h for h in sub.hazards if h.h_code == "H314")
+    h_eye = next(h for h in sub.hazards if h.h_code == "H318")
+
+    # Genel skaler 2.0, hangi sınıfa ait olduğu belirsiz olduğu için körlemesine atanmaz!
+    assert h_skin.scl is None
+    assert h_eye.scl is None
+
+    # Tekil zararlılığı olan bileşende ise geriye dönük uyumluluk korunur
+    comp_single = [
+        {
+            "ad": "Tekil Aşındırıcı",
+            "konsantrasyon": "%2",
+            "siniflandirma": "Skin Corr. 1B H314",
+            "scl": 1.5  # Tekil hedef olduğundan belirsizlik yok
+        }
+    ]
+    sub_single = RegulatoryPipeline.adapt_raw_components(comp_single)[0]
+    assert sub_single.hazards[0].scl == 1.5
+
+
+
 
 
 

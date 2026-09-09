@@ -2,11 +2,13 @@
 Regülatif Sınıflandırma Boru Hattı (Regulatory Engine Pipeline)
 """
 
+import logging
 import re
 from typing import List, Dict, Any, Optional, Set, Literal
 from app.models.regulatory import (
     ConcentrationValue,
     HazardEntry,
+    SpecificConcentrationLimit,
     InhalationExposure,
     StructuredSubstance,
     CalculationContext,
@@ -14,6 +16,8 @@ from app.models.regulatory import (
     RuleResult,
     ClassifiedHazard
 )
+
+logger = logging.getLogger(__name__)
 from app.services.rules import (
     BaseHazardRule,
     FlammableLiquidRule,
@@ -131,6 +135,103 @@ class RegulatoryPipeline:
         return list(dict.fromkeys(normalized))
 
     @classmethod
+    def apply_scl_to_hazards(
+        cls,
+        parsed_hazards: List[HazardEntry],
+        comp: Dict[str, Any],
+        comp_name: str = "Bileşen"
+    ) -> None:
+        """
+        REG-007: Hedefli SCL Mimarisini uygular.
+        Zararlılık sınıfı, kategori veya H-kodu belirtilmeyen skaler 'scl' değerlerinin
+        birden fazla zararlılık içeren bileşenlerde körlemesine dağıtılmasını engeller.
+        """
+        # 1. Yapılandırılmış SCL girdisi kontrolü
+        # 'scl_entries', 'scls', 'specific_concentration_limits' veya dict/list 'scl'
+        scl_source = (
+            comp.get("scl_entries") or
+            comp.get("scls") or
+            comp.get("specific_concentration_limits")
+        )
+        raw_scl = comp.get("scl")
+        if scl_source is None and isinstance(raw_scl, (list, dict)):
+            scl_source = raw_scl
+
+        targeted_scls: List[Dict[str, Any]] = []
+
+        if isinstance(scl_source, list):
+            for item in scl_source:
+                if isinstance(item, dict):
+                    targeted_scls.append(item)
+                elif hasattr(item, "model_dump"):
+                    targeted_scls.append(item.model_dump())
+        elif isinstance(scl_source, dict):
+            if "scl" in scl_source:
+                targeted_scls.append(scl_source)
+            else:
+                for k, v in scl_source.items():
+                    val = cls.parse_float_safe(v)
+                    if val is not None:
+                        is_code = k.upper().startswith(("H", "EUH"))
+                        targeted_scls.append({
+                            "h_code": k if is_code else None,
+                            "hazard_class": k if not is_code else None,
+                            "scl": val
+                        })
+
+        # Hedefli SCL'leri ilgili zararlılık kayıtlarına eşleştir
+        for target in targeted_scls:
+            t_hcode = (target.get("h_code") or "").strip().upper()
+            t_class = (target.get("hazard_class") or "").strip().lower()
+            t_cat = (target.get("category") or "").strip().upper()
+            t_val = cls.parse_float_safe(target.get("scl"))
+            if t_val is None:
+                continue
+
+            matched = False
+            for h in parsed_hazards:
+                # 1. H-kodu eşleşmesi (en yüksek öncelik)
+                if t_hcode and h.h_code.upper() == t_hcode:
+                    h.scl = t_val
+                    matched = True
+                    break
+                # 2. Zararlılık sınıfı ve kategori eşleşmesi
+                elif t_class and t_cat and t_class in h.hazard_class.lower() and t_cat == h.category.upper():
+                    h.scl = t_val
+                    matched = True
+                    break
+                # 3. Zararlılık sınıfı eşleşmesi
+                elif t_class and t_class in h.hazard_class.lower():
+                    h.scl = t_val
+                    matched = True
+                    break
+
+            if not matched and (t_hcode or t_class):
+                parsed_hazards.append(HazardEntry(
+                    hazard_class=target.get("hazard_class") or "Genel",
+                    category=target.get("category") or "",
+                    h_code=t_hcode,
+                    scl=t_val
+                ))
+
+        # 2. Skaler 'scl' durumu (örn: comp["scl"] = 2.0)
+        # Sadece hedeflenmemiş ve skaler bir değer verilmişse çalışır:
+        if not targeted_scls and raw_scl is not None and not isinstance(raw_scl, (list, dict)):
+            scalar_scl = cls.parse_float_safe(raw_scl)
+            if scalar_scl is not None:
+                if len(parsed_hazards) == 1:
+                    # Tek bir zararlılık varsa belirsizlik yoktur; geriye dönük uyumluluk adına atanır
+                    if parsed_hazards[0].scl is None:
+                        parsed_hazards[0].scl = scalar_scl
+                elif len(parsed_hazards) > 1:
+                    # REG-007: Birden fazla zararlılık varken skaler 'scl' körlemesine dağıtılamaz!
+                    logger.warning(
+                        f"[REG-007 SCL Architecture] '{comp_name}' bileşeninde birden fazla ({len(parsed_hazards)}) "
+                        f"zararlılık sınıfı varken genel skaler 'scl'={scalar_scl} körlemesine dağıtılamaz. "
+                        f"Hedefli SCL veri yapısı kullanın: {{'hazard_class': ..., 'category': ..., 'h_code': ..., 'scl': {scalar_scl}}}"
+                    )
+
+    @classmethod
     def adapt_raw_components(cls, raw_bilesenler: List[Dict[str, Any]]) -> List[StructuredSubstance]:
         """
         Bölüm 3.2 ham dict listesini yapılandırılmış StructuredSubstance listesine dönüştürür.
@@ -149,12 +250,8 @@ class RegulatoryPipeline:
             if not codes:
                 codes = cls.extract_h_codes(sinif_str)
 
-            # SCL açıkça comp dict içinde verilmişse ez
-            explicit_scl = cls.parse_float_safe(comp.get("scl"))
-            if explicit_scl is not None:
-                for h in parsed_hazards:
-                    if h.scl is None:
-                        h.scl = explicit_scl
+            # REG-007: Hedefli SCL Mimarisini uygula (genel skaler kör atamayı engeller)
+            cls.apply_scl_to_hazards(parsed_hazards, comp, comp_name=name)
 
             # Akut toksisite & soluma
             ate_oral = cls.parse_float_safe(comp.get("akut_toksisite_oral"))
