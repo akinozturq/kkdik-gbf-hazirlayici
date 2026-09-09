@@ -86,6 +86,26 @@ class ValidatorService:
             return True
         return True
 
+    @classmethod
+    def _parse_numeric_value(cls, val: Any) -> Optional[float]:
+        """
+        Metin içindeki ilk sayısal değeri (float/int) temizleyerek çeker.
+        Örn: '80°C' -> 80.0, '35 mm²/s' -> 35.0, '-4 °C' -> -4.0, 'pH: 1.5' -> 1.5
+        """
+        if val is None or val == "":
+            return None
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            clean = val.replace(",", ".").strip()
+            matches = re.findall(r"[-+]?\d+(?:\.\d+)?", clean)
+            if matches:
+                try:
+                    return float(matches[0])
+                except (ValueError, TypeError):
+                    pass
+        return None
+
     def validate_sds(self, sds: Union[SDSModel, Dict[str, Any]]) -> ValidationResult:
         """
         SDS nesnesini KKDİK Ek-2 kurallarına göre detaylı doğrulamadan geçirir.
@@ -491,7 +511,9 @@ class ValidatorService:
         warnings: List[ValidationItem]
     ):
         """
-        Bölüm 2 zararlılıkları ile Bölüm 9, 11, 12 ve 14 arasındaki semantik tutarlılığı denetler.
+        Bölümler arası Regülatif Çapraz Doğrulama (Cross-Section Regulatory Validation):
+        Bölüm 2 zararlılıkları ile Bölüm 8, 9, 11, 12 ve 14 arasındaki fiziksel, kimyasal
+        ve toksikolojik tutarlılıkları SEA Ek-1 ve KKDİK Ek-2 kurallarına göre denetler.
         """
         h_codes: Set[str] = set()
         # B2 h_ifadeleri
@@ -511,20 +533,32 @@ class ValidatorService:
                     if h_kodu:
                         h_codes.add(h_kodu.upper())
 
-        # 1. Alevlenir Sıvılar (H224, H225, H226) <-> Bölüm 9.1 Parlama Noktası
-        if any(c in h_codes for c in ["H224", "H225", "H226"]):
-            parlama_noktasi = (
-                _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "parlama_noktasi") or
-                _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "parlama_noktasi")
-            )
-            p_str = str(parlama_noktasi or "").strip().lower()
+        # =========================================================================
+        # 1. ALEVLENİR SIVILAR (H224, H225, H226) <-> BÖLÜM 9.1 PARLAMA & KAYNAMA NOKTASI
+        # SEA Ek-1 md. 2.6 Kriterleri:
+        # - Kat. 1 (H224): FP < 23°C ve BP <= 35°C
+        # - Kat. 2 (H225): FP < 23°C ve BP > 35°C
+        # - Kat. 3 (H226): 23°C <= FP <= 60°C
+        # =========================================================================
+        parlama_noktasi_raw = (
+            _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "parlama_noktasi") or
+            _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "parlama_noktasi")
+        )
+        kaynama_noktasi_raw = (
+            _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "kaynama_noktasi") or
+            _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "kaynama_noktasi")
+        )
+        fp_val = self._parse_numeric_value(parlama_noktasi_raw)
+        bp_val = self._parse_numeric_value(kaynama_noktasi_raw)
+
+        has_flam = any(c in h_codes for c in ["H224", "H225", "H226"])
+        if has_flam:
+            p_str = str(parlama_noktasi_raw or "").strip().lower()
             is_invalid = (
-                not self._is_filled(parlama_noktasi) or
+                not self._is_filled(parlama_noktasi_raw) or
                 "bilgi yok" in p_str or
                 "n/a" in p_str or
-                p_str == "yok" or
-                p_str == "-" or
-                p_str == "tanımsız"
+                p_str in ("yok", "-", "tanımsız")
             )
             if is_invalid:
                 errors.append(ValidationItem(
@@ -534,15 +568,83 @@ class ValidatorService:
                     regulation_ref="KKDİK Ek-2 md. 9.1 & SEA Ek-1 md. 2.6",
                     severity="ERROR"
                 ))
+            elif fp_val is not None:
+                # H224 (Kat. 1): FP < 23°C ve BP <= 35°C
+                if "H224" in h_codes:
+                    if fp_val >= 23.0:
+                        errors.append(ValidationItem(
+                            section="B9.1",
+                            field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.parlama_noktasi",
+                            message=f"Mevzuat Çelişkisi: Bölüm 2'de Alevlenir Sıvı Kategori 1 (H224) sınıflandırması vardır; ancak Bölüm 9.1'deki parlama noktası ({fp_val:g}°C), SEA Ek-1 md. 2.6 kriteri olan < 23°C eşiğini sağlamamaktadır.",
+                            regulation_ref="SEA Ek-1 md. 2.6 & KKDİK Ek-2 md. 9.1",
+                            severity="ERROR"
+                        ))
+                    if bp_val is not None and bp_val > 35.0:
+                        errors.append(ValidationItem(
+                            section="B9.1",
+                            field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.kaynama_noktasi",
+                            message=f"Mevzuat Çelişkisi: Bölüm 2'de Alevlenir Sıvı Kategori 1 (H224) sınıflandırması vardır; ancak Bölüm 9.1'deki kaynama noktası ({bp_val:g}°C), SEA Ek-1 md. 2.6 kriteri olan <= 35°C eşiğini aşmaktadır (Ürün Kat. 2 olmalıdır).",
+                            regulation_ref="SEA Ek-1 md. 2.6 & KKDİK Ek-2 md. 9.1",
+                            severity="ERROR"
+                        ))
 
-        # 2. Aspirasyon Zararı (H304) <-> Bölüm 9.1 Kinematik Viskozite
+                # H225 (Kat. 2): FP < 23°C ve BP > 35°C
+                if "H225" in h_codes:
+                    if fp_val >= 23.0:
+                        errors.append(ValidationItem(
+                            section="B9.1",
+                            field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.parlama_noktasi",
+                            message=f"Mevzuat Çelişkisi: Bölüm 2'de Alevlenir Sıvı Kategori 2 (H225) sınıflandırması vardır; ancak Bölüm 9.1'deki parlama noktası ({fp_val:g}°C), SEA Ek-1 md. 2.6 kriteri olan < 23°C eşiğini sağlamamaktadır (FP >= 23°C için ürün H225 olamaz).",
+                            regulation_ref="SEA Ek-1 md. 2.6 & KKDİK Ek-2 md. 9.1",
+                            severity="ERROR"
+                        ))
+                    if bp_val is not None and bp_val <= 35.0:
+                        warnings.append(ValidationItem(
+                            section="B9.1",
+                            field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.kaynama_noktasi",
+                            message=f"Mevzuat Uyarısı: Bölüm 9.1'deki kaynama noktası ({bp_val:g}°C) <= 35°C ve parlama noktası < 23°C ise ürün SEA Ek-1 md. 2.6 uyarınca Kategori 1 (H224) olarak sınıflandırılmalıdır.",
+                            regulation_ref="SEA Ek-1 md. 2.6 & KKDİK Ek-2 md. 9.1",
+                            severity="WARNING"
+                        ))
+
+                # H226 (Kat. 3): 23°C <= FP <= 60°C
+                if "H226" in h_codes:
+                    if fp_val < 23.0:
+                        warnings.append(ValidationItem(
+                            section="B9.1",
+                            field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.parlama_noktasi",
+                            message=f"Mevzuat Uyarısı: Bölüm 2'de Alevlenir Sıvı Kategori 3 (H226: 23-60°C) sınıflandırması vardır; ancak Bölüm 9.1'deki parlama noktası ({fp_val:g}°C) < 23°C'dir. Ürün Kategori 1 veya Kategori 2 olarak yeniden değerlendirilmelidir.",
+                            regulation_ref="SEA Ek-1 md. 2.6 & KKDİK Ek-2 md. 9.1",
+                            severity="WARNING"
+                        ))
+                    elif fp_val > 60.0:
+                        errors.append(ValidationItem(
+                            section="B9.1",
+                            field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.parlama_noktasi",
+                            message=f"Mevzuat Çelişkisi: Bölüm 2'de Alevlenir Sıvı Kategori 3 (H226) sınıflandırması vardır; ancak Bölüm 9.1'deki parlama noktası ({fp_val:g}°C) > 60°C'dir. SEA Ek-1 md. 2.6 uyarınca parlama noktası > 60°C olan sıvılar Alevlenir Sıvı (H226) olarak sınıflandırılamaz.",
+                            regulation_ref="SEA Ek-1 md. 2.6 & KKDİK Ek-2 md. 9.1",
+                            severity="ERROR"
+                        ))
+        elif fp_val is not None and fp_val <= 60.0:
+            warnings.append(ValidationItem(
+                section="B2.1",
+                field_path="b2_zarar_tanimi.b2_1.siniflandirmalar",
+                message=f"Mevzuat Uyarısı: Bölüm 9.1'de parlama noktası {fp_val:g}°C olarak belirtilmiştir; ancak Bölüm 2'de Alevlenir Sıvı (H224/H225/H226) sınıflandırması yer almamaktadır. SEA Ek-1 md. 2.6 uyarınca alevlenirlik kriterini inceleyiniz.",
+                regulation_ref="SEA Ek-1 md. 2.6",
+                severity="WARNING"
+            ))
+
+        # =========================================================================
+        # 2. ASPİRASYON ZARARI (H304) <-> BÖLÜM 9.1 KİNEMATİK VİSKOZİTE
+        # SEA Ek-1 md. 3.10 Kriteri: 40°C'de kinematik viskozite <= 20.5 mm²/s
+        # =========================================================================
         if "H304" in h_codes:
-            viskozite = (
+            viskozite_raw = (
                 _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "kinematik_viskozite") or
                 _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "kinematik_viskozite") or
                 _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "akiskanlik")
             )
-            if not self._is_filled(viskozite):
+            if not self._is_filled(viskozite_raw):
                 warnings.append(ValidationItem(
                     section="B9.1",
                     field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.kinematik_viskozite",
@@ -550,36 +652,132 @@ class ValidatorService:
                     regulation_ref="KKDİK Ek-2 md. 9.1 & SEA Ek-1 Bölüm 3.10",
                     severity="WARNING"
                 ))
+            else:
+                visc_val = self._parse_numeric_value(viskozite_raw)
+                if visc_val is not None and visc_val > 20.5:
+                    warnings.append(ValidationItem(
+                        section="B9.1",
+                        field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.kinematik_viskozite",
+                        message=f"İnceleme Uyarısı: Bölüm 2'de H304 (Aspirasyon Zararı) sınıflandırması mevcuttur; ancak Bölüm 9.1'deki kinematik viskozite ({visc_val:g} mm²/s), SEA Ek-1 md. 3.10 kriteri olan <= 20.5 mm²/s eşiğinin üzerindedir. Sınıflandırma veya viskozite verisini inceleyiniz.",
+                        regulation_ref="KKDİK Ek-2 md. 9.1 & SEA Ek-1 md. 3.10",
+                        severity="WARNING"
+                    ))
 
-        # 3. Sucul Zararlılık (H400, H410, H411) <-> Bölüm 12 Ekotoksisite
-        if any(c in h_codes for c in ["H400", "H410", "H411"]):
+        # =========================================================================
+        # 3. SUCUL ZARARLILIK (H400, H410, H411, H412, H413) <-> BÖLÜM 12 EKOTOKSİSİTE
+        # =========================================================================
+        aquatic_codes = [c for c in ["H400", "H410", "H411", "H412", "H413"] if c in h_codes]
+        if aquatic_codes:
             b12_toks = (
                 _get_nested(sds_dict, "b12_ekolojik", "b12_1_toksisite") or
                 _get_nested(sds_dict, "b12_ekoloji", "b12_1", "balik_toksisitesi") or
                 _get_nested(sds_dict, "b12_ekoloji", "b12_1", "su_piresi_toksisitesi") or
                 _get_nested(sds_dict, "b12_ekoloji", "b12_1", "alg_toksisitesi")
             )
+            codes_str = ", ".join(aquatic_codes)
+            b12_str = str(b12_toks or "").strip().lower()
+
+            negative_indicators = [
+                "veri yok", "bilgi yok", "no data", "no supporting data",
+                "belirlenmemiştir", "test edilmemiştir", "n/a", "yok"
+            ]
+            is_boilerplate_negative = any(ind in b12_str for ind in negative_indicators)
+            has_formula_or_numeric = bool(
+                re.search(r"\d+(?:\.\d+)?\s*(?:mg\/l|ppm|g\/l)", b12_str) or
+                any(w in b12_str for w in ["lc50", "ec50", "ic50", "noec", "hesaplama", "toplanabilirlik", "summation"])
+            )
+
             if not self._is_filled(b12_toks):
                 warnings.append(ValidationItem(
                     section="B12.1",
                     field_path="b12_ekolojik.b12_1_toksisite",
-                    message="Bölüm 2'de Sucul Ortama Zararlı sınıflandırması mevcuttur; Bölüm 12.1 Ekotoksisite verileri (Balık/Daphnia/Alg LC50/EC50) veya hesaplama açıklaması doldurulmalıdır.",
+                    message=f"Bölüm 2'de Sucul Ortama Zararlı ({codes_str}) sınıflandırması mevcuttur; Bölüm 12.1 Ekotoksisite verileri (Balık/Daphnia/Alg LC50/EC50) veya hesaplama açıklaması doldurulmalıdır.",
                     regulation_ref="KKDİK Ek-2 md. 12.1",
                     severity="WARNING"
                 ))
+            elif is_boilerplate_negative and not has_formula_or_numeric:
+                warnings.append(ValidationItem(
+                    section="B12.1",
+                    field_path="b12_ekolojik.b12_1_toksisite",
+                    message=f"Destekleyici Veri Eksikliği: Bölüm 2'de Sucul Zararlılık ({codes_str}) sınıflandırması mevcuttur; ancak Bölüm 12.1 Ekotoksisite alanında destekleyici test verisi (LC50/EC50) veya karışım toplanabilirlik hesaplama dayanağı bulunmamaktadır ('{b12_toks.strip()}'). KKDİK Ek-2 md. 12.1 uyarınca sınıflandırmayı destekleyen veriler veya formül dayanağı girilmelidir.",
+                    regulation_ref="KKDİK Ek-2 md. 12.1 & SEA Ek-1 md. 4.1",
+                    severity="WARNING"
+                ))
 
-        # 4. Alevlenir / Aşındırıcı Sınıflandırma <-> Bölüm 14.1 UN Numarası
+        # =========================================================================
+        # 4. AŞIRI ASİDİK / BAZİK pH <-> CİLT AŞINMASI / GÖZ HASARI (H314, H318)
+        # SEA Ek-1 md. 3.2.3.1.2: pH <= 2 veya pH >= 11.5
+        # =========================================================================
+        ph_raw = (
+            _get_nested(sds_dict, "b9_fiziksel_kimyasal_ozellikler", "b9_1", "ph") or
+            _get_nested(sds_dict, "b9_fiziksel_kimyasal", "b9_1", "ph")
+        )
+        ph_val = self._parse_numeric_value(ph_raw)
+        if ph_val is not None:
+            if (ph_val <= 2.0 or ph_val >= 11.5) and not any(c in h_codes for c in ["H314", "H318"]):
+                warnings.append(ValidationItem(
+                    section="B2.1",
+                    field_path="b2_zarar_tanimi.b2_1.siniflandirmalar",
+                    message=f"Mevzuat Uyarısı: Bölüm 9.1'de aşırı asidik/bazik pH = {ph_val:g} belirtilmiştir. SEA Ek-1 md. 3.2.3.1.2 uyarınca pH <= 2 veya pH >= 11.5 olan karışımlar genellikle Cilt Aşınması (H314) / Göz Hasarı (H318) olarak değerlendirilir. Aksini ispatlayan test verisi yoksa sınıflandırmayı gözden geçiriniz.",
+                    regulation_ref="SEA Ek-1 md. 3.2.3.1.2 & KKDİK Ek-2 md. 9.1",
+                    severity="WARNING"
+                ))
+            elif "H314" in h_codes and 6.0 <= ph_val <= 8.0:
+                warnings.append(ValidationItem(
+                    section="B9.1",
+                    field_path="b9_fiziksel_kimyasal_ozellikler.b9_1.ph",
+                    message=f"İnceleme Uyarısı: Bölüm 2'de Cilt Aşınması (H314) sınıflandırması varken Bölüm 9.1'de nötr pH ({ph_val:g}) girilmiştir. Aşındırıcılık pH dışı bir etki mekanizmasından kaynaklanmıyorsa verileri kontrol ediniz.",
+                    regulation_ref="KKDİK Ek-2 md. 9.1 & SEA Ek-1 md. 3.2",
+                    severity="WARNING"
+                ))
+
+        # =========================================================================
+        # 5. TAŞIMACILIK ÇAPRAZ KONTROLLERİ (BÖLÜM 2 <-> BÖLÜM 14)
+        # =========================================================================
+        un_no = str(
+            _get_nested(sds_dict, "b14_tasimacilik", "b14_1_un_numarasi") or
+            _get_nested(sds_dict, "b14_tasimacilik", "b14_1_un_no") or ""
+        ).strip()
+        adr_class = str(
+            _get_nested(sds_dict, "b14_tasimacilik", "b14_3_tasimacilik_sinifi") or ""
+        ).strip()
+        cevresel = str(
+            _get_nested(sds_dict, "b14_tasimacilik", "b14_5_cevresel_zararlar") or ""
+        ).strip().lower()
+
         if any(c in h_codes for c in ["H224", "H225", "H226", "H314"]):
-            un_no = str(
-                _get_nested(sds_dict, "b14_tasimacilik", "b14_1_un_numarasi") or
-                _get_nested(sds_dict, "b14_tasimacilik", "b14_1_un_no") or ""
-            ).strip()
             if not self._is_filled(un_no) or "zararlı olarak sınıflandırılmamıştır" in un_no.lower():
                 warnings.append(ValidationItem(
                     section="B14.1",
                     field_path="b14_tasimacilik.b14_1_un_numarasi",
                     message="Alevlenir veya aşındırıcı olarak sınıflandırılmış ürünler için Bölüm 14'te geçerli bir UN Numarası (ör. UN 1263, UN 1294) ve taşımacılık sınıfı belirtilmelidir.",
                     regulation_ref="KKDİK Ek-2 md. 14.1 & ADR / IMDG",
+                    severity="WARNING"
+                ))
+            if any(c in h_codes for c in ["H224", "H225", "H226"]) and adr_class and "3" not in adr_class:
+                warnings.append(ValidationItem(
+                    section="B14.3",
+                    field_path="b14_tasimacilik.b14_3_tasimacilik_sinifi",
+                    message=f"Taşımacılık Çelişkisi: Bölüm 2'de Alevlenir Sıvı sınıflandırması mevcuttur; Bölüm 14.3 ADR Taşımacılık Sınıfı '3' beklenmektedir (Girilen: '{adr_class}').",
+                    regulation_ref="ADR Bölüm 2.2.3 & KKDİK Ek-2 md. 14.3",
+                    severity="WARNING"
+                ))
+            if "H314" in h_codes and adr_class and "8" not in adr_class:
+                warnings.append(ValidationItem(
+                    section="B14.3",
+                    field_path="b14_tasimacilik.b14_3_tasimacilik_sinifi",
+                    message=f"Taşımacılık Çelişkisi: Bölüm 2'de Cilt Aşınması (H314) sınıflandırması mevcuttur; Bölüm 14.3 ADR Taşımacılık Sınıfı '8' (Aşındırıcı) beklenmektedir (Girilen: '{adr_class}').",
+                    regulation_ref="ADR Bölüm 2.2.8 & KKDİK Ek-2 md. 14.3",
+                    severity="WARNING"
+                ))
+
+        if any(c in h_codes for c in ["H400", "H410"]):
+            if cevresel and any(neg in cevresel for neg in ["hayır", "degil", "değil", "no", "yok"]):
+                warnings.append(ValidationItem(
+                    section="B14.5",
+                    field_path="b14_tasimacilik.b14_5_cevresel_zararlar",
+                    message="Taşımacılık Çelişkisi: Bölüm 2'de Sucul Akut 1 (H400) veya Sucul Kronik 1 (H410) sınıflandırması vardır; ancak Bölüm 14.5'te Çevresel Zararlar 'Hayır / Değil' olarak işaretlenmiştir. Ürün ADR / IMDG uyarınca Çevreye Zararlı / Deniz Kirletici (Marine Pollutant) olarak etiketlenmelidir.",
+                    regulation_ref="ADR md. 2.2.9.1.10 & IMDG Code 2.10",
                     severity="WARNING"
                 ))
 

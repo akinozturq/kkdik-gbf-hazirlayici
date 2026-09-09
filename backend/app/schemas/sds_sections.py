@@ -213,6 +213,7 @@ class B9_1_TemelOzellikler(BaseModel):
     kendiliginden_tutusma_sicakligi: Optional[str] = Field(None, description="Kendiliğinden tutuşma sıcaklığı")
     bozunma_sicakligi: Optional[str] = Field(None, description="Bozunma sıcaklığı")
     akiskanlik: Optional[str] = Field(None, description="Akışkanlık / viskozite (kinematik/dinamik)")
+    kinematik_viskozite: Optional[str] = Field(None, description="Kinematik viskozite (40°C mm²/s)")
     patlayici_ozellikler: Optional[str] = Field(None, description="Patlayıcı özellikler")
     oksitleyici_ozellikler: Optional[str] = Field(None, description="Oksitleyici özellikler")
 

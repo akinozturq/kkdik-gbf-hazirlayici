@@ -136,3 +136,104 @@ def test_semantic_cross_validation_flammables_and_viscosity(sample_valid_sds_dic
     assert any(e.section == "B9.1" and "parlama noktası" in e.message for e in res.errors)
     # H304 varken viskozite ve akiskanlik boş -> Warning B9.1
     assert any(w.section == "B9.1" and "kinematik viskozite" in w.message for w in res.warnings)
+
+
+def test_cross_section_regulatory_validation_rules(sample_valid_sds_dict):
+    """
+    Kullanıcı İnceleme Kriterleri: Cross-Section Regulatory Validation
+    1. B2 = H225 & B9.1 Flash point = 80°C -> HATA (ERROR)
+    2. B2 = H304 & B9.1 viscosity = 35 mm²/s -> İNCELEME UYARISI (WARNING)
+    3. B2 = H410 & B12 aquatic toxicity = "no supporting data" -> UYARI (WARNING)
+    4. B2 = H224 & B9.1 boiling point = 40°C (>35°C) -> HATA (ERROR)
+    5. B9.1 pH = 1.5 & no H314/H318 -> UYARI (WARNING)
+    6. B2 = H314 & B14 transport class != 8 -> UYARI (WARNING)
+    7. B2 = H410 & B14.5 marine pollutant = "Hayır" -> UYARI (WARNING)
+    """
+    # 1. B2 = H225 & B9.1 Flash point = 80°C -> HATA (ERROR)
+    sds_h225 = dict(sample_valid_sds_dict)
+    sds_h225["b2_zarar_tanimi"] = {
+        "b2_1": {"siniflandirmalar": [{"zararlilik_sinifi": "Flam. Liq.", "kategori": "2", "h_kodu": "H225"}]},
+        "b2_2": {"h_ifadeleri": ["H225"]}
+    }
+    sds_h225["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "80 °C"
+    sds_h225["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["kaynama_noktasi"] = "110 °C"
+    res1 = validator_service.validate_sds(sds_h225)
+    assert any(
+        e.section == "B9.1" and "H225" in e.message and "80" in e.message and e.severity == "ERROR"
+        for e in res1.errors
+    )
+
+    # 2. B2 = H304 & B9.1 viscosity = 35 mm²/s -> İNCELEME UYARISI (WARNING)
+    sds_h304 = dict(sample_valid_sds_dict)
+    sds_h304["b2_zarar_tanimi"] = {
+        "b2_1": {"siniflandirmalar": [{"zararlilik_sinifi": "Asp. Tox.", "kategori": "1", "h_kodu": "H304"}]},
+        "b2_2": {"h_ifadeleri": ["H304"]}
+    }
+    sds_h304["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["kinematik_viskozite"] = "35 mm²/s"
+    sds_h304["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "105 °C"
+    res2 = validator_service.validate_sds(sds_h304)
+    assert any(
+        w.section == "B9.1" and "H304" in w.message and "35" in w.message and "20.5" in w.message and w.severity == "WARNING"
+        for w in res2.warnings
+    )
+
+    # 3. B2 = H410 & B12 aquatic toxicity = "no supporting data" -> UYARI (WARNING)
+    sds_h410 = dict(sample_valid_sds_dict)
+    sds_h410["b2_zarar_tanimi"] = {
+        "b2_1": {"siniflandirmalar": [{"zararlilik_sinifi": "Aquatic Chronic", "kategori": "1", "h_kodu": "H410"}]},
+        "b2_2": {"h_ifadeleri": ["H410"]}
+    }
+    sds_h410["b12_ekolojik"] = {"b12_1_toksisite": "no supporting data (veri yok)"}
+    sds_h410["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "120 °C"
+    res3 = validator_service.validate_sds(sds_h410)
+    assert any(
+        w.section == "B12.1" and "Destekleyici Veri Eksikliği" in w.message and "H410" in w.message and w.severity == "WARNING"
+        for w in res3.warnings
+    )
+
+    # 4. B2 = H224 & B9.1 Kaynama Noktası = 45°C (> 35°C) -> HATA (ERROR)
+    sds_h224 = dict(sample_valid_sds_dict)
+    sds_h224["b2_zarar_tanimi"] = {
+        "b2_1": {"siniflandirmalar": [{"zararlilik_sinifi": "Flam. Liq.", "kategori": "1", "h_kodu": "H224"}]},
+        "b2_2": {"h_ifadeleri": ["H224"]}
+    }
+    sds_h224["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "-10 °C"
+    sds_h224["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["kaynama_noktasi"] = "45 °C"
+    res4 = validator_service.validate_sds(sds_h224)
+    assert any(
+        e.section == "B9.1" and "H224" in e.message and "kaynama noktası" in e.message and e.severity == "ERROR"
+        for e in res4.errors
+    )
+
+    # 5. B9.1 pH = 1.5 & No H314/H318 -> UYARI (WARNING)
+    sds_ph = dict(sample_valid_sds_dict)
+    sds_ph["b2_zarar_tanimi"]["b2_2"]["h_ifadeleri"] = ["H226"]
+    sds_ph["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["ph"] = "1.5"
+    res5 = validator_service.validate_sds(sds_ph)
+    assert any(
+        w.section == "B2.1" and "pH = 1.5" in w.message and "H314" in w.message and w.severity == "WARNING"
+        for w in res5.warnings
+    )
+
+    # 6. B2 = H314 & B14 ADR Sınıfı != 8 -> UYARI (WARNING)
+    sds_adr = dict(sample_valid_sds_dict)
+    sds_adr["b2_zarar_tanimi"]["b2_2"]["h_ifadeleri"] = ["H314"]
+    sds_adr["b14_tasimacilik"]["b14_3_tasimacilik_sinifi"] = "3"
+    sds_adr["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "90 °C"
+    res6 = validator_service.validate_sds(sds_adr)
+    assert any(
+        w.section == "B14.3" and "Aşındırıcı" in w.message and "8" in w.message and w.severity == "WARNING"
+        for w in res6.warnings
+    )
+
+    # 7. B2 = H410 & B14.5 Marine Pollutant = "Hayır" -> UYARI (WARNING)
+    sds_marine = dict(sample_valid_sds_dict)
+    sds_marine["b2_zarar_tanimi"]["b2_2"]["h_ifadeleri"] = ["H410"]
+    sds_marine["b14_tasimacilik"]["b14_5_cevresel_zararlar"] = "Deniz Kirletici değildir (Hayır)"
+    sds_marine["b9_fiziksel_kimyasal_ozellikler"]["b9_1"]["parlama_noktasi"] = "95 °C"
+    res7 = validator_service.validate_sds(sds_marine)
+    assert any(
+        w.section == "B14.5" and "Marine Pollutant" in w.message and w.severity == "WARNING"
+        for w in res7.warnings
+    )
+
