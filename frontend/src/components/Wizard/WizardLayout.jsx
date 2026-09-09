@@ -55,7 +55,6 @@ export default function WizardLayout() {
   const {
     activeStep,
     setActiveStep,
-    product,
     validationReport,
     setIsValidationOpen,
     isPresetModalOpen,

@@ -4,7 +4,7 @@ Referans Veri API Router'ı (H-kodları, P-kodları, Piktogramlar)
 
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, status
-from app.schemas.reference import HStatementItem, PStatementItem, PictogramItem
+from app.schemas.reference import HStatementItem, PStatementItem, PictogramItem, RawMaterialSchema
 from app.services.reference_service import reference_service
 
 router = APIRouter(prefix="/api/references", tags=["Mevzuat Referans Kütüphanesi"])
@@ -139,5 +139,76 @@ def get_raw_material_by_id(id_or_cas: str):
             detail=f"'{id_or_cas}' kimlikli hammadde bulunamadı."
         )
     return item
+
+
+@router.post(
+    "/raw-materials",
+    summary="Kütüphaneye Yeni Hammadde Ekle",
+    status_code=status.HTTP_201_CREATED
+)
+def create_raw_material(payload: RawMaterialSchema):
+    """
+    Kullanıcının kütüphaneye yeni kimyasal hammadde eklemesini sağlar.
+    """
+    if not payload.ad.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hammadde adı boş bırakılamaz."
+        )
+    created = reference_service.add_raw_material(payload.model_dump())
+    return created
+
+
+@router.put(
+    "/raw-materials/{id}",
+    summary="Kütüphanedeki Hammaddeyi Güncelle"
+)
+def update_raw_material(id: str, payload: RawMaterialSchema):
+    """
+    Mevcut hammaddenin teknik, regülasyon veya fiziksel bilgilerini günceller.
+    """
+    updated = reference_service.update_raw_material(id, payload.model_dump())
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"'{id}' kimlikli hammadde bulunamadı."
+        )
+    return updated
+
+
+@router.delete(
+    "/raw-materials/{id}",
+    summary="Kütüphaneden Hammadde Sil"
+)
+def delete_raw_material(id: str):
+    """
+    Belirli bir hammaddeyi kütüphaneden kalıcı olarak siler.
+    """
+    success = reference_service.delete_raw_material(id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"'{id}' kimlikli hammadde bulunamadı."
+        )
+    return {"message": f"'{id}' kimlikli hammadde başarıyla silindi.", "success": True}
+
+
+
+@router.get(
+    "/phrases",
+    summary="Standart Cümle Kataloğu (EuPhraC Phrase Bank)"
+)
+def get_standard_phrases(
+    section: Optional[str] = Query(None, description="Bölüm filtresi (b4, b5, b6, b7, b8, b10, b13)"),
+    subfield: Optional[str] = Query(None, description="Alt alan filtresi (soluma, cilt, depolama vb.)"),
+    search: Optional[str] = Query(None, description="Arama terimi (başlık, TR veya EN metin)")
+):
+    """
+    Güvenlik bilgi formlarının serbest metin alanları için EuPhraC standartlarında
+    hazır Türkçe ve İngilizce ifadeler kataloğunu döner.
+    """
+    from app.services.phrase_service import phrase_service
+    return phrase_service.get_phrases(section=section, subfield=subfield, query=search)
+
 
 

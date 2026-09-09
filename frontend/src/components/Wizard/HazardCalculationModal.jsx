@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import {
   Calculator,
   X,
-  CheckCircle2,
   AlertTriangle,
   Layers,
   FileText,
@@ -12,8 +11,6 @@ import {
   Sparkles,
   Info,
   ShieldAlert,
-  ArrowRight,
-  Filter,
 } from 'lucide-react';
 
 export default function HazardCalculationModal({ isOpen, onClose }) {
@@ -25,13 +22,8 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
   const [selectedPCodes, setSelectedPCodes] = useState([]);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && activeProductId) {
-      calculateHazards();
-    }
-  }, [isOpen, activeProductId]);
-
-  const calculateHazards = async () => {
+  const calculateHazards = useCallback(async () => {
+    if (!activeProductId) return;
     setLoading(true);
     setError(null);
     setIsSuccess(false);
@@ -44,7 +36,13 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeProductId]);
+
+  useEffect(() => {
+    if (isOpen && activeProductId) {
+      calculateHazards();
+    }
+  }, [isOpen, activeProductId, calculateHazards]);
 
   if (!isOpen) return null;
 

@@ -5,7 +5,6 @@ import {
   X,
   FileText,
   FileDown,
-  CheckCircle2,
   AlertTriangle,
   ExternalLink,
   ShieldCheck,
@@ -32,7 +31,6 @@ export default function ExportModal({ isOpen, onClose }) {
 
   const isValid = validationReport?.is_valid_for_export;
   const errors = validationReport?.errors || [];
-  const warnings = validationReport?.warnings || [];
   const completionPct = validationReport?.overall_completion_percentage || 0;
 
   const handleSelectLang = (lang) => {

@@ -3,6 +3,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.config import settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # SQLite requires check_same_thread=False for multithreaded FastAPI apps
 connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 
@@ -68,8 +72,8 @@ def run_auto_migrations():
                                 text("UPDATE products SET tamamlanma_yuzdesi = :pct, dogrulama_durumu = :stat WHERE id = :id"),
                                 {"pct": val_res.overall_completion_percentage, "stat": stat, "id": p_id}
                             )
-                        except Exception:
-                            pass
+                        except Exception as row_err:
+                            logger.debug(f"[AutoMigration] Ürün {p_id} tamamlanma yüzdesi hesaplanamadı: {row_err}")
                     conn.commit()
             except Exception as e:
-                print(f"[AutoMigration Warning] {e}")
+                logger.warning(f"[AutoMigration Warning] {e}")

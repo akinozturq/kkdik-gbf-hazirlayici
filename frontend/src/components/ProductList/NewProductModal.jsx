@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { useApp } from '../../context/AppContext';
-import { X, PlusCircle, FolderPlus, ListFilter, Plus } from 'lucide-react';
+import { X, PlusCircle, FolderPlus, ListFilter } from 'lucide-react';
 
 export default function NewProductModal({ isOpen, onClose, onCreated }) {
   const { openProduct } = useApp();

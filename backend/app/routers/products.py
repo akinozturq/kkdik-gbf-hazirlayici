@@ -577,3 +577,77 @@ def auto_fill_exposure_limits(
     }
 
 
+class CalculateTransportPreviewRequest(BaseModel):
+    sds_data: Dict[str, Any]
+    urun_adi: Optional[str] = ""
+
+
+@router.post(
+    "/hazards/calculate-transport-preview",
+    summary="Canlı Form Verilerinden Otomatik ADR / UN Taşımacılık Sınıflandırması Hesapla"
+)
+def calculate_transport_preview(req: CalculateTransportPreviewRequest):
+    """
+    Bölüm 9 fiziksel özellikleri ve Bölüm 2 zararlılık sınıflarını analiz ederek
+    Bölüm 14 için ADR / RID / IMDG / IATA taşımacılık sınıflandırması önerir.
+    """
+    from app.services.transport_engine import transport_engine
+    return transport_engine.evaluate_transport(req.sds_data, urun_adi=req.urun_adi or "")
+
+
+@router.post(
+    "/{product_id}/calculate-transport",
+    summary="Ürünün Kayıtlı SDS'inden ADR / UN Taşımacılık Sınıflandırmasını Hesapla"
+)
+def calculate_product_transport(
+    product_id: int,
+    save_to_sds: bool = Query(False, description="Hesaplanan bilgileri doğrudan Bölüm 14'e kaydet"),
+    db: Session = Depends(get_db)
+):
+    """
+    Kayıtlı ürünün verilerini tarar, ADR karar ağacını çalıştırır ve Bölüm 14 alanlarını döner/kaydeder.
+    """
+    from app.services.transport_engine import transport_engine
+
+    product = product_service.get_product(db, product_id)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{product_id} numaralı ürün bulunamadı."
+        )
+
+    sds = copy.deepcopy(product.sds_data or {})
+    result = transport_engine.evaluate_transport(sds, urun_adi=product.urun_adi or "")
+
+    if save_to_sds:
+        if "b14_tasimacilik" not in sds:
+            sds["b14_tasimacilik"] = {}
+        b14 = sds["b14_tasimacilik"]
+        b14["b14_1_un_numarasi"] = result.get("b14_1_un_numarasi")
+        b14["b14_2_un_tasimacilik_adi"] = result.get("b14_2_un_tasimacilik_adi")
+        b14["b14_3_tasimacilik_sinifi"] = result.get("b14_3_tasimacilik_sinifi")
+        b14["b14_4_ambalajlama_grubu"] = result.get("b14_4_ambalajlama_grubu")
+        b14["b14_5_cevresel_zararlar"] = result.get("b14_5_cevresel_zararlar")
+        b14["b14_6_kullanici_ozel_onlemler"] = result.get("b14_6_kullanici_ozel_onlemler")
+
+        updated = product_service.update_product(db, product_id, {"sds_data": sds})
+        val_res = validator_service.validate_sds(updated.sds_data or {})
+        return {
+            "product_id": product_id,
+            "transport_data": result,
+            "saved": True,
+            "product": {
+                "id": updated.id,
+                "sds_data": updated.sds_data,
+                "tamamlanma_yuzdesi": val_res.overall_completion_percentage
+            }
+        }
+
+    return {
+        "product_id": product_id,
+        "transport_data": result,
+        "saved": False
+    }
+
+
+

@@ -3,7 +3,7 @@ import { useApp } from '../../../context/AppContext';
 import FieldHelper from '../../Common/FieldHelper';
 import ExposureLimitPickerModal from '../../Common/ExposureLimitPickerModal';
 import { api } from '../../../api/client';
-import { Plus, Trash2, Sparkles, FileSpreadsheet, Layers } from 'lucide-react';
+import { Plus, Trash2, Sparkles, FileSpreadsheet } from 'lucide-react';
 
 export default function Step8_MaruzKalma() {
   const { sdsData, updateSdsField, activeProductId } = useApp();

@@ -249,7 +249,24 @@ export const api = {
     return request(`/references/raw-materials?${query.toString()}`);
   },
 
-  getRawMaterialById: (idOrCas) => request(`/references/raw-materials/${idOrCas}`),
+  getRawMaterialById: (idOrCas) => request(`/references/raw-materials/${encodeURIComponent(idOrCas)}`),
+
+  createRawMaterial: (data) =>
+    request('/references/raw-materials', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateRawMaterial: (id, data) =>
+    request(`/references/raw-materials/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteRawMaterial: (id) =>
+    request(`/references/raw-materials/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
 
   // ==========================================
   // GOOGLE GEMINI AI ÇEVİRİ & AYARLAR
@@ -267,6 +284,31 @@ export const api = {
     }),
   translateProductWithAi: (id) =>
     request(`/ai/translate-product/${id}`, {
+      method: 'POST',
+    }),
+
+  // ==========================================
+  // STANDART CÜMLE KATALOĞU (EuPhraC Phrase Bank)
+  // ==========================================
+  getStandardPhrases: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.section) query.set('section', params.section);
+    if (params.subfield) query.set('subfield', params.subfield);
+    if (params.search) query.set('search', params.search);
+    return request(`/references/phrases?${query.toString()}`);
+  },
+
+  // ==========================================
+  // ADR / UN TAŞIMACILIK KARAR MOTORU
+  // ==========================================
+  calculateTransportPreview: (sdsData, urunAdi = '') =>
+    request('/products/hazards/calculate-transport-preview', {
+      method: 'POST',
+      body: JSON.stringify({ sds_data: sdsData, urun_adi: urunAdi }),
+    }),
+
+  calculateProductTransport: (id, saveToSds = false) =>
+    request(`/products/${id}/calculate-transport?save_to_sds=${saveToSds}`, {
       method: 'POST',
     }),
 };

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
-import { Search, X, Plus, Check, ShieldCheck, FileSpreadsheet } from 'lucide-react';
+import { Search, X, Plus, FileSpreadsheet } from 'lucide-react';
 
-export default function ExposureLimitPickerModal({ isOpen, onClose, onSelect, existingItems = [] }) {
+export default function ExposureLimitPickerModal({ isOpen, onClose, onSelect }) {
   const [limits, setLimits] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);

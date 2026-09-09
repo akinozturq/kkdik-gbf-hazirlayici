@@ -59,3 +59,8 @@ notlar.txt
 *.pdf
 *.xlsx
 *.docx
+
+# Antigravity agent & skills
+.agents/
+skills-lock.json
+

@@ -1,0 +1,218 @@
+[
+  {
+    "id": "PHR-S4-INH-01",
+    "section": "b4",
+    "subfield": "soluma",
+    "title_tr": "Temiz havaya çıkarma ve dinlendirme",
+    "text_tr": "Maruz kalan kişiyi derhal temiz havaya çıkarın ve rahat nefes alabileceği bir pozisyonda tutun. Solunum güçlüğü varsa oksijen verin; solunum durmuşsa suni solunum uygulayın ve derhal tıbbi yardım alın.",
+    "text_en": "Remove victim to fresh air and keep at rest in a position comfortable for breathing. If breathing is difficult, administer oxygen; if breathing has stopped, give artificial respiration and seek immediate medical attention.",
+    "keywords": ["soluma", "temiz hava", "nefes", "oksijen"]
+  },
+  {
+    "id": "PHR-S4-INH-02",
+    "section": "b4",
+    "subfield": "soluma",
+    "title_tr": "Hafif maruziyet ve izleme",
+    "text_tr": "Etkilenen kişiyi temiz havaya çıkarın. Belirtiler (baş dönmesi, öksürük, mide bulantısı) devam ederse veya kötüleşirse doktora başvurun.",
+    "text_en": "Move affected person to fresh air. If symptoms (dizziness, coughing, nausea) persist or worsen, consult a doctor.",
+    "keywords": ["soluma", "hafif", "baş dönmesi", "öksürük"]
+  },
+  {
+    "id": "PHR-S4-SKN-01",
+    "section": "b4",
+    "subfield": "cilt",
+    "title_tr": "Bol su ve sabunla yıkama",
+    "text_tr": "Kirlenmiş tüm giysi ve ayakkabıları derhal çıkarın. Cildi bol su ve nötr sabun ile en az 15 dakika boyunca iyice yıkayın. Tahriş devam ederse tıbbi yardım alın. Kirlenmiş giysileri tekrar kullanmadan önce yıkayın.",
+    "text_en": "Immediately remove all contaminated clothing and shoes. Wash skin thoroughly with plenty of water and mild soap for at least 15 minutes. Seek medical attention if irritation persists. Wash contaminated clothing before reuse.",
+    "keywords": ["cilt", "deri", "su ve sabun", "tahriş"]
+  },
+  {
+    "id": "PHR-S4-SKN-02",
+    "section": "b4",
+    "subfield": "cilt",
+    "title_tr": "Aşındırıcı kimyasal cilt teması",
+    "text_tr": "Cilde temas halinde derhal kirlenmiş giysileri çıkarın ve cildi kesintisiz akan su altında en az 20 dakika boyunca yıkayın. Vakit kaybetmeden acil tıbbi yardım çağırın veya bir yanık/zehir merkezine başvurun.",
+    "text_en": "In case of skin contact, immediately remove contaminated clothing and flush skin with running water for at least 20 minutes. Call an emergency physician or poison center without delay.",
+    "keywords": ["cilt", "aşındırıcı", "asit", "yanık", "acil"]
+  },
+  {
+    "id": "PHR-S4-EYE-01",
+    "section": "b4",
+    "subfield": "goz",
+    "title_tr": "Gözleri bol suyla yıkama",
+    "text_tr": "Göz kapaklarını açık tutarak derhal bol su veya göz yıkama solüsyonu ile en az 15 dakika boyunca yıkayın. Varsa ve çıkarması kolaysa kontak lensleri çıkarın, durulamaya devam edin. Derhal bir göz hekimine başvurun.",
+    "text_en": "Rinse cautiously with water or eye wash solution for at least 15 minutes, keeping eyelids wide open. Remove contact lenses if present and easy to do, continue rinsing. Seek immediate medical advice from an ophthalmologist.",
+    "keywords": ["göz", "yıkama", "lens", "hekim"]
+  },
+  {
+    "id": "PHR-S4-ING-01",
+    "section": "b4",
+    "subfield": "yutma",
+    "title_tr": "Kusturmayın (Aspirasyon ve Çözücü Riski)",
+    "text_tr": "AĞZI SUYLA ÇALKALAYIN. KUSTURMAYIN (akciğerlere kaçma ve kimyasal pnömoni riski). Bilinci yerinde olmayan kişiye asla ağızdan bir şey vermeyin. Derhal Ulusal Zehir Danışma Merkezi'ni (UZEM 114) veya bir doktoru arayın.",
+    "text_en": "Rinse mouth thoroughly with water. DO NOT INDUCE VOMITING (risk of aspiration into lungs and chemical pneumonitis). Never give anything by mouth to an unconscious person. Immediately call a Poison Center or doctor.",
+    "keywords": ["yutma", "kusturmayın", "aspirasyon", "uzem 114"]
+  },
+  {
+    "id": "PHR-S4-ING-02",
+    "section": "b4",
+    "subfield": "yutma",
+    "title_tr": "Genel yutma önlemi",
+    "text_tr": "Ağzı suyla çalkalayın ve bol miktarda su içirin. Rahatsızlık hissedilirse doktora başvurun. Ürün etiketini veya bu GBF'yi hazır bulundurun.",
+    "text_en": "Rinse mouth and drink plenty of water. If discomfort occurs, seek medical advice. Have product label or this SDS at hand.",
+    "keywords": ["yutma", "su içirin", "etiket"]
+  },
+  {
+    "id": "PHR-S4-DOC-01",
+    "section": "b4",
+    "subfield": "doktor_bilgisi",
+    "title_tr": "Semptomatik tedavi ve çözücü uyarısı",
+    "text_tr": "Semptomlara göre tedavi uygulayın. Soluma veya yutma sonrasında akciğer ödemi ve aspirasyon pnömonisi riski gözetilmelidir. Gerekirse mide yıkama işlemi endotrakeal kontrol altında yapılmalıdır.",
+    "text_en": "Treat symptomatically. Following inhalation or ingestion, risk of pulmonary edema and aspiration pneumonia should be considered. Gastric lavage should only be performed under endotracheal control if necessary.",
+    "keywords": ["doktor", "semptomatik", "tedavi", "mide yıkama"]
+  },
+  {
+    "id": "PHR-S5-MED-01",
+    "section": "b5",
+    "subfield": "uygun_yangin_sondurucu",
+    "title_tr": "Alevlenir solvent / sıvı yangınları",
+    "text_tr": "Alkol dirençli köpük, kuru kimyevi toz, karbon dioksit (CO2) veya su sisi (püskürtme). Yangına maruz kalan kapları soğutmak için su spreyi kullanılabilir.",
+    "text_en": "Alcohol-resistant foam, dry chemical powder, carbon dioxide (CO2) or water spray/mist. Water spray may be used to cool fire-exposed containers.",
+    "keywords": ["yangın", "söndürücü", "köpük", "co2", "kuru toz"]
+  },
+  {
+    "id": "PHR-S5-MED-02",
+    "section": "b5",
+    "subfield": "uygun_yangin_sondurucu",
+    "title_tr": "Su bazlı sistemler için söndürücü",
+    "text_tr": "Ürün alevlenmez su bazlıdır. Çevreleyen yangına uygun söndürme maddeleri kullanınız (su sisi, köpük, kuru kimyevi toz).",
+    "text_en": "Product is a non-flammable water-based system. Use extinguishing measures appropriate to surrounding fire (water spray, foam, dry chemical).",
+    "keywords": ["su bazlı", "alevlenmez", "çevre yangını"]
+  },
+  {
+    "id": "PHR-S5-UNM-01",
+    "section": "b5",
+    "subfield": "uygun_olmayan_sondurucu",
+    "title_tr": "Yüksek debili tam su jeti yasağı",
+    "text_tr": "Doğrudan yüksek debili basınçlı su jeti kullanılmamalıdır; alevlenen sıvının etrafa saçılmasına ve yangının yayılmasına neden olabilir.",
+    "text_en": "Do not use a full water jet or high-volume water jet; it may scatter and spread the burning liquid.",
+    "keywords": ["su jeti", "uygun olmayan", "yangın yayılması"]
+  },
+  {
+    "id": "PHR-S5-HAZ-01",
+    "section": "b5",
+    "subfield": "ozel_zararlar",
+    "title_tr": "Zehirli yanma gazları ve buhar parlama riski",
+    "text_tr": "Buharları havadan ağır olup zemin boyunca yayılabilir ve uzaktaki ateşleme kaynaklarından geri parlayabilir. Termal parçalanma sonucu karbon monoksit (CO), karbon dioksit (CO2) ve zehirli dumanlar açığa çıkar.",
+    "text_en": "Vapours are heavier than air and may spread along floors, igniting at distant ignition sources with flashback risk. Thermal decomposition yields toxic fumes including carbon monoxide (CO) and carbon dioxide (CO2).",
+    "keywords": ["yanma gazı", "karbon monoksit", "geri parlama", "duman"]
+  },
+  {
+    "id": "PHR-S5-FFP-01",
+    "section": "b5",
+    "subfield": "yangin_ekibi_koruma",
+    "title_tr": "Tam koruyucu donanım ve SCBA",
+    "text_tr": "Yangınla mücadele eden personel, pozitif basınçlı bağımsız solunum cihazı (SCBA - EN 137) ve tam koruyucu itfaiyeci kıyafeti (EN 469) giymelidir. Yangın söndürme sularının kanalizasyona veya su kaynaklarına karışmasını önleyin.",
+    "text_en": "Firefighters must wear self-contained breathing apparatus (SCBA - EN 137) with positive pressure and full protective turnout gear (EN 469). Prevent firefighting water from entering drains or watercourses.",
+    "keywords": ["itfaiyeci", "scba", "solunum cihazı", "yangın suyu"]
+  },
+  {
+    "id": "PHR-S6-NON-01",
+    "section": "b6",
+    "subfield": "kisisel_onlemler_acil_olmayan",
+    "title_tr": "Tahliye ve havalandırma (Acil olmayan personel)",
+    "text_tr": "Tüm ateşleme ve kıvılcım kaynaklarını ortadan kaldırın (sigara, açık alev, elektrik anahtarları). Alanı iyice havalandırın. Gereksiz ve korumasız personeli dökülme alanından uzaklaştırın. Buharları solumaktan ve cilt/göz temasından kaçının.",
+    "text_en": "Eliminate all ignition sources (no smoking, flares, sparks, or flames). Ventilate the area thoroughly. Evacuate unnecessary and unprotected personnel from the spill area. Avoid breathing vapours and contact with skin/eyes.",
+    "keywords": ["tahliye", "havalandırma", "ateşleme kaynağı", "kıvılcım"]
+  },
+  {
+    "id": "PHR-S6-ENV-01",
+    "section": "b6",
+    "subfield": "cevresel_onlemler",
+    "title_tr": "Kanalizasyon ve su yollarına karışmayı önleme",
+    "text_tr": "Döküntünün kanalizasyona, drenaj kanallarına, yüzey veya yeraltı sularına ve toprağa karışmasını engelleyin. Çevreye veya kanalizasyona sızıntı olması durumunda derhal yetkili yerel çevre otoritelerine haber verin.",
+    "text_en": "Prevent spillage from entering drains, surface water, groundwater, and soil. In case of contamination of waterways or sewers, immediately inform competent local environmental authorities.",
+    "keywords": ["çevre", "kanalizasyon", "yeraltı suyu", "toprak"]
+  },
+  {
+    "id": "PHR-S6-CLN-01",
+    "section": "b6",
+    "subfield": "temizleme_yontemleri",
+    "title_tr": "İnert emici malzeme ile toplama",
+    "text_tr": "Dökülen sıvıyı inert yanmaz bir emici malzeme (kum, silika jel, kiselgur, talaşsız emici) ile emdirin. Kıvılcım çıkarmayan aletlerle toplayıp bertaraf edilmek üzere uygun etiketli kapalı atık konteynerlerine koyun.",
+    "text_en": "Absorb spillage with non-combustible inert absorbent material (sand, silica gel, diatomaceous earth, vermiculite). Pick up with spark-proof tools and transfer to properly labelled sealed containers for disposal.",
+    "keywords": ["emici malzeme", "kum", "silika jel", "kıvılcımsız alet"]
+  },
+  {
+    "id": "PHR-S7-HDL-01",
+    "section": "b7",
+    "subfield": "guvenli_ellecleme",
+    "title_tr": "Alevlenir solvent güvenli elleçleme",
+    "text_tr": "Yalnızca iyi havalandırılan veya yerel emiş sistemi bulunan alanlarda kullanın. Buharların birikmesini önleyin. Açık alevden, sıcak yüzeylerden ve kıvılcımdan uzak tutun. Ekipmanları topraklayın. Kıvılcım çıkarmayan el aletleri kullanın. Çalışma alanında sigara içmeyin, yemek yemeyin.",
+    "text_en": "Use only in well-ventilated areas or under local exhaust ventilation. Avoid vapor accumulation. Keep away from heat, sparks, open flames, and hot surfaces. Ground/bond container and receiving equipment. Use non-sparking tools. Do not smoke, eat or drink during use.",
+    "keywords": ["elleçleme", "havalandırma", "topraklama", "kıvılcımsız", "sigara içilmez"]
+  },
+  {
+    "id": "PHR-S7-STO-01",
+    "section": "b7",
+    "subfield": "guvenli_depolama",
+    "title_tr": "Serin, kuru, iyi havalandırılan depolama",
+    "text_tr": "Kabı sıkıca kapalı olarak serin (+5°C ile +30°C arası), kuru ve iyi havalandırılan alev almaz bir depoda muhafaza ediniz. Doğrudan güneş ışığından, ısı kaynaklarından ve kuvvetli oksitleyici maddelerden uzak tutunuz. Orijinal ambalajında saklayınız.",
+    "text_en": "Store container tightly closed in a cool (+5°C to +30°C), dry, and well-ventilated fireproof area. Keep away from direct sunlight, heat sources, and strong oxidizing agents. Store only in original container.",
+    "keywords": ["depolama", "serin", "kuru", "güneş ışığı", "orijinal ambalaj"]
+  },
+  {
+    "id": "PHR-S8-EYE-01",
+    "section": "b8",
+    "subfield": "goz_koruma",
+    "title_tr": "Göz ve yüz koruması (EN 166)",
+    "text_tr": "Sıvı sıçramalarına karşı yan siperlikli güvenlik gözlükleri (EN 166 standardına uygun) veya tam yüz siperi kullanılmalıdır. Çalışma alanında acil göz yıkama çeşmesi bulundurulmalıdır.",
+    "text_en": "Safety goggles with side shields (compliant with EN 166) or full face shield must be worn to protect against liquid splashes. Emergency eyewash fountains should be accessible in the immediate work area.",
+    "keywords": ["göz koruma", "en 166", "gözlük", "göz çeşmesi"]
+  },
+  {
+    "id": "PHR-S8-SKN-01",
+    "section": "b8",
+    "subfield": "el_koruma",
+    "title_tr": "Solvente dayanıklı nitril/butil eldiven (EN 374)",
+    "text_tr": "Kimyasallara ve solvente dayanıklı eldivenler (EN 374 standardına uygun, örn. Nitril kauçuk >= 0.4 mm kalınlık, geçirgenlik süresi > 480 dk veya Floroelastomer/Viton) kullanılmalıdır. Hasarlı eldivenler derhal değiştirilmelidir.",
+    "text_en": "Chemical- and solvent-resistant protective gloves (compliant with EN 374, e.g. Nitrile rubber >= 0.4 mm thickness, breakthrough time > 480 min, or Fluoroelastomer/Viton) must be worn. Replace damaged gloves immediately.",
+    "keywords": ["eldiven", "en 374", "nitril", "solvent", "geçirgenlik"]
+  },
+  {
+    "id": "PHR-S8-RES-01",
+    "section": "b8",
+    "subfield": "solunum_koruma",
+    "title_tr": "Organik buhar maskesi (EN 14387 - Tip A)",
+    "text_tr": "Havalandırmanın yetersiz olduğu veya maruziyet sınırlarının aşıldığı durumlarda, organik buhar filtreli yarım/tam yüz maskesi (EN 14387 standardına uygun Tip A filtre veya kombine A-P2 filtre) takılmalıdır. Kapalı dar alanlarda bağımsız solunum cihazı (SCBA) kullanılmalıdır.",
+    "text_en": "In case of insufficient ventilation or exceeding occupational exposure limits, wear half/full-face mask with organic vapour filter (compliant with EN 14387 Type A or combined A-P2). In confined spaces, use self-contained breathing apparatus (SCBA).",
+    "keywords": ["maske", "en 14387", "organik buhar", "a tipi filtre", "scba"]
+  },
+  {
+    "id": "PHR-S10-REA-01",
+    "section": "b10",
+    "subfield": "tepkime",
+    "title_tr": "Normal koşullarda kararlı",
+    "text_tr": "Tavsiye edilen depolama ve elleçleme koşullarında tehlikeli bir tepkime vermez. Kuvvetli oksitleyiciler ve asitlerle temasından kaçınınız.",
+    "text_en": "No hazardous reactions known under recommended storage and handling conditions. Avoid contact with strong oxidizing agents and strong acids.",
+    "keywords": ["kararlılık", "tepkime", "oksitleyici"]
+  },
+  {
+    "id": "PHR-S13-WST-01",
+    "section": "b13",
+    "subfield": "atik_isleme",
+    "title_tr": "Tehlikeli atık yönetimi (Atık Kodu: 08 01 11*)",
+    "text_tr": "Kanalizasyona, su yollarına veya toprağa dökülmemelidir. Atık Yönetmeliği hükümleri uyarınca lisanslı tehlikeli atık bertaraf veya geri kazanım tesislerine teslim edilmelidir. Atık Kodu (Atık Kataloğu): 08 01 11* (organik solventler veya diğer tehlikeli maddeler içeren boya ve vernik atıkları).",
+    "text_en": "Do not allow to enter drains, waterways, or soil. Dispose of via licensed hazardous waste disposal or recovery facilities in accordance with applicable Waste Framework Directive. Waste Code: 08 01 11* (waste paint and varnish containing organic solvents or other hazardous substances).",
+    "keywords": ["atık", "tehlikeli atık", "08 01 11", "lisanslı tesis"]
+  },
+  {
+    "id": "PHR-S13-PKG-01",
+    "section": "b13",
+    "subfield": "ambalaj_atik",
+    "title_tr": "Kirlenmiş ambalaj yönetimi (Atık Kodu: 15 01 10*)",
+    "text_tr": "Tamamen boşaltılmış ambalajlar geri dönüştürülmelidir. Kalıntı içeren ambalajlar tehlikeli atık kabul edilir ve lisanslı ambalaj geri kazanım tesislerine verilmelidir. Atık Kodu: 15 01 10* (tehlikeli maddelerin kalıntılarını içeren ya da bu maddelerle kontamine olmuş ambalajlar).",
+    "text_en": "Completely emptied containers should be recycled. Containers containing residues are considered hazardous waste and must be consigned to licensed packaging recovery facilities. Waste Code: 15 01 10* (packaging containing residues of or contaminated by hazardous substances).",
+    "keywords": ["ambalaj atığı", "15 01 10", "kontamine ambalaj"]
+  }
+]

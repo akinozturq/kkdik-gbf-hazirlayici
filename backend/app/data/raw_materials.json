@@ -12,8 +12,16 @@
     "kategori": "Solventler / Ketonlar",
     "fiziksel_hal": "Sıvı (Renksiz, karakteristik koku)",
     "siniflandirma_str": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, STOT SE 3 H336, EUH066",
-    "h_kodlari": ["H225", "H319", "H336", "EUH066"],
-    "piktogramlar": ["GHS02", "GHS07"],
+    "h_kodlari": [
+      "H225",
+      "H319",
+      "H336",
+      "EUH066"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
     "uyari_kelimesi": "Tehlike",
     "maruziyet_limitleri": {
       "twa_ppm": "500",
@@ -42,6 +50,8 @@
     "akut_toksisite_oral": 5800,
     "akut_toksisite_dermal": 15800,
     "akut_toksisite_soluma": 76.0,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
     "m_faktoru_akut": null,
     "m_faktoru_kronik": null,
     "ekolojik_bilgiler": {
@@ -54,7 +64,7 @@
       "un_no": "UN 1090",
       "uygun_tasima_adi": "ASETON",
       "sinif": "3 (Alevlenir Sıvılar)",
-      "ambalaj_grubu": "PG II (Orta derecede tehlike)"
+      "ambalaj_grubu": "PG II"
     }
   },
   {
@@ -70,8 +80,19 @@
     "kategori": "Solventler / Aromatik Hidrokarbonlar",
     "fiziksel_hal": "Sıvı (Renksiz, karakteristik aromatik koku)",
     "siniflandirma_str": "Flam. Liq. 2 H225, Skin Irrit. 2 H315, Repr. 2 H361d, STOT SE 3 H336, STOT RE 2 H373, Asp. Tox. 1 H304",
-    "h_kodlari": ["H225", "H304", "H315", "H336", "H361d", "H373"],
-    "piktogramlar": ["GHS02", "GHS07", "GHS08"],
+    "h_kodlari": [
+      "H225",
+      "H304",
+      "H315",
+      "H336",
+      "H361d",
+      "H373"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07",
+      "GHS08"
+    ],
     "uyari_kelimesi": "Tehlike",
     "maruziyet_limitleri": {
       "twa_ppm": "50",
@@ -103,6 +124,8 @@
     "akut_toksisite_oral": 5580,
     "akut_toksisite_dermal": 5000,
     "akut_toksisite_soluma": 28.1,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
     "m_faktoru_akut": null,
     "m_faktoru_kronik": null,
     "ekolojik_bilgiler": {
@@ -115,7 +138,763 @@
       "un_no": "UN 1294",
       "uygun_tasima_adi": "TOLUEN",
       "sinif": "3 (Alevlenir Sıvılar)",
-      "ambalaj_grubu": "PG II (Orta derecede tehlike)"
+      "ambalaj_grubu": "PG II"
+    }
+  },
+  {
+    "id": "raw-ksilen",
+    "ad": "Ksilen",
+    "ticari_ad": "Ksilen (Ksilen izomerleri karışımı / Dimetilbenzen)",
+    "iupac_adi": "Ksilen (o-, m-, p- izomerleri karışımı)",
+    "cas_no": "1330-20-7",
+    "ec_no": "215-535-7",
+    "kayit_no": "01-2119488216-32-XXXX",
+    "molekul_formulu": "C8H10",
+    "molekul_agirligi": "106.16 g/mol",
+    "kategori": "Solventler / Aromatik Hidrokarbonlar",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik koku)",
+    "siniflandirma_str": "Flam. Liq. 3 H226, Acute Tox. 4 H312, Acute Tox. 4 H332, Skin Irrit. 2 H315, Eye Irrit. 2 H319, STOT SE 3 H335, STOT RE 2 H373, Asp. Tox. 1 H304",
+    "h_kodlari": [
+      "H226",
+      "H304",
+      "H312",
+      "H315",
+      "H319",
+      "H332",
+      "H335",
+      "H373"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07",
+      "GHS08"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "50",
+      "twa_mg_m3": "221",
+      "stel_ppm": "100",
+      "stel_mg_m3": "442",
+      "notes": "Deri"
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "25 °C (Kapalı kap)",
+      "kaynama_noktasi": "137 °C",
+      "erime_noktasi": "-48 °C",
+      "yogunluk": "0.865 g/cm³ (20 °C)",
+      "buhar_basinci": "0.8 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%1.0 - %7.0 (Hacimce)",
+      "kendiliginden_tutusma": "465 °C",
+      "cozunurluk": "Suda çözünmez (0.16 g/L, 25 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "3523 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "12126 mg/kg (Tavşan) / ATE: 1100 mg/kg",
+      "akut_soluma_lc50": "27.57 mg/L (4 saat, Sıçan, buhar) / ATE: 11 mg/L",
+      "cilt_goz_etkisi": "Cilt tahrişine ve ciddi göz tahrişine yol açar.",
+      "stot_se": "Solunum yolu tahrişine yol açabilir (STOT SE 3, H335).",
+      "stot_re": "Uzun süreli veya tekrarlı maruz kalmada işitme organlarına zarar verebilir (STOT RE 2, H373).",
+      "aspirasyon": "Solunum yoluna nüfuzu ve yutulması halinde öldürücüdür (Asp. Tox. 1, H304)."
+    },
+    "akut_toksisite_oral": 3523,
+    "akut_toksisite_dermal": 1100,
+    "akut_toksisite_soluma": 11.0,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 2.6 mg/L (Oncorhynchus mykiss)",
+      "su_piresi_toksisitesi": "IC50 (24 saat): 1.0 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük biyobirikim (log Kow = 3.12)",
+      "kalicilik": "Biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1307",
+      "uygun_tasima_adi": "KSİLENLER",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG III"
+    }
+  },
+  {
+    "id": "raw-butil-asetat",
+    "ad": "n-Butil Asetat",
+    "ticari_ad": "Butil Asetat",
+    "iupac_adi": "Butil asetat",
+    "cas_no": "123-86-4",
+    "ec_no": "204-658-1",
+    "kayit_no": "01-2119485493-29-XXXX",
+    "molekul_formulu": "C6H12O2",
+    "molekul_agirligi": "116.16 g/mol",
+    "kategori": "Solventler / Esterler",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik meyvemsi koku)",
+    "siniflandirma_str": "Flam. Liq. 3 H226, STOT SE 3 H336, EUH066",
+    "h_kodlari": [
+      "H226",
+      "H336",
+      "EUH066"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Uyarı",
+    "maruziyet_limitleri": {
+      "twa_ppm": "50",
+      "twa_mg_m3": "241",
+      "stel_ppm": "150",
+      "stel_mg_m3": "723",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "27 °C (Kapalı kap)",
+      "kaynama_noktasi": "126 °C",
+      "erime_noktasi": "-90 °C",
+      "yogunluk": "0.881 g/cm³ (20 °C)",
+      "buhar_basinci": "1.5 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%1.2 - %7.5 (Hacimce)",
+      "kendiliginden_tutusma": "415 °C",
+      "cozunurluk": "Suda az çözünür (5.3 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "10760 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 14112 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "23.4 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Tekrarlı maruz kalmada ciltte kuruluğa veya çatlaklara yol açabilir (EUH066).",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
+    },
+    "akut_toksisite_oral": 10760,
+    "akut_toksisite_dermal": 14112,
+    "akut_toksisite_soluma": 23.4,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 18 mg/L (Pimephales promelas)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 44 mg/L (Daphnia magna)",
+      "biyobirikim": "Biyobirikim potansiyeli düşüktür (log Kow = 2.3)",
+      "kalicilik": "Kolay biyolojik olarak parçalanabilir (%83, 28 gün)."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1123",
+      "uygun_tasima_adi": "BUTİL ASETATLAR",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG III"
+    }
+  },
+  {
+    "id": "raw-etil-asetat",
+    "ad": "Etil Asetat",
+    "ticari_ad": "Etil Asetat",
+    "iupac_adi": "Etil etanoat",
+    "cas_no": "141-78-6",
+    "ec_no": "205-500-4",
+    "kayit_no": "01-2119475103-46-XXXX",
+    "molekul_formulu": "C4H8O2",
+    "molekul_agirligi": "88.11 g/mol",
+    "kategori": "Solventler / Esterler",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik meyvemsi koku)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, STOT SE 3 H336, EUH066",
+    "h_kodlari": [
+      "H225",
+      "H319",
+      "H336",
+      "EUH066"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "200",
+      "twa_mg_m3": "734",
+      "stel_ppm": "400",
+      "stel_mg_m3": "1468",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "-4 °C (Kapalı kap)",
+      "kaynama_noktasi": "77.1 °C",
+      "erime_noktasi": "-83.6 °C",
+      "yogunluk": "0.902 g/cm³ (20 °C)",
+      "buhar_basinci": "9.8 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%2.0 - %11.5 (Hacimce)",
+      "kendiliginden_tutusma": "426 °C",
+      "cozunurluk": "Suda kısmen çözünür (80 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "5620 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 18000 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "56 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Ciddi göz tahrişine yol açar (Kategori 2, H319).",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
+    },
+    "akut_toksisite_oral": 5620,
+    "akut_toksisite_dermal": 18000,
+    "akut_toksisite_soluma": 56.0,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 230 mg/L (Pimephales promelas)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 164 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük (log Kow = 0.68)",
+      "kalicilik": "Kolay biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1173",
+      "uygun_tasima_adi": "ETİL ASETAT",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG II"
+    }
+  },
+  {
+    "id": "raw-ipa",
+    "ad": "İzopropil Alkol (İPA)",
+    "ticari_ad": "İzopropanol / 2-Propanol",
+    "iupac_adi": "Propan-2-ol",
+    "cas_no": "67-63-0",
+    "ec_no": "200-661-7",
+    "kayit_no": "01-2119457558-25-XXXX",
+    "molekul_formulu": "C3H8O",
+    "molekul_agirligi": "60.1 g/mol",
+    "kategori": "Solventler / Alkoller",
+    "fiziksel_hal": "Sıvı (Renksiz, alkol kokulu)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, STOT SE 3 H336",
+    "h_kodlari": [
+      "H225",
+      "H319",
+      "H336"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "200",
+      "twa_mg_m3": "500",
+      "stel_ppm": "400",
+      "stel_mg_m3": "1000",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "12 °C (Kapalı kap)",
+      "kaynama_noktasi": "82.5 °C",
+      "erime_noktasi": "-89 °C",
+      "yogunluk": "0.786 g/cm³ (20 °C)",
+      "buhar_basinci": "4.4 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%2.0 - %12.7 (Hacimce)",
+      "kendiliginden_tutusma": "425 °C",
+      "cozunurluk": "Suda tamamen karışır (20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "5840 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "12870 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "37.5 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Ciddi göz tahrişine yol açar (Kategori 2, H319).",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
+    },
+    "akut_toksisite_oral": 5840,
+    "akut_toksisite_dermal": 12870,
+    "akut_toksisite_soluma": 37.5,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 9640 mg/L (Pimephales promelas)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): > 10000 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük (log Kow = 0.05)",
+      "kalicilik": "Kolay biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1219",
+      "uygun_tasima_adi": "İZOPROPANOL (İZOPROPİL ALKOL)",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG II"
+    }
+  },
+  {
+    "id": "raw-mek",
+    "ad": "Metil Etil Keton (MEK)",
+    "ticari_ad": "MEK / Butanon",
+    "iupac_adi": "Butan-2-on",
+    "cas_no": "78-93-3",
+    "ec_no": "201-159-0",
+    "kayit_no": "01-2119457290-43-XXXX",
+    "molekul_formulu": "C4H8O",
+    "molekul_agirligi": "72.11 g/mol",
+    "kategori": "Solventler / Ketonlar",
+    "fiziksel_hal": "Sıvı (Renksiz, keskin aseton benzeri koku)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Eye Irrit. 2 H319, STOT SE 3 H336, EUH066",
+    "h_kodlari": [
+      "H225",
+      "H319",
+      "H336",
+      "EUH066"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "200",
+      "twa_mg_m3": "600",
+      "stel_ppm": "300",
+      "stel_mg_m3": "900",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "-9 °C (Kapalı kap)",
+      "kaynama_noktasi": "79.6 °C",
+      "erime_noktasi": "-86 °C",
+      "yogunluk": "0.805 g/cm³ (20 °C)",
+      "buhar_basinci": "10.5 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%1.8 - %11.5 (Hacimce)",
+      "kendiliginden_tutusma": "514 °C",
+      "cozunurluk": "Suda çözünür (250 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "2737 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 5000 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "34 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Ciddi göz tahrişine yol açar (Kategori 2, H319).",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
+    },
+    "akut_toksisite_oral": 2737,
+    "akut_toksisite_dermal": 5000,
+    "akut_toksisite_soluma": 34.0,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 2993 mg/L (Pimephales promelas)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 308 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük (log Kow = 0.3)",
+      "kalicilik": "Biyolojik olarak kolayca ayrışabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1193",
+      "uygun_tasima_adi": "ETİL METİL KETON (METİL ETİL KETON)",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG II"
+    }
+  },
+  {
+    "id": "raw-pma",
+    "ad": "Metoksi Propil Asetat (PMA)",
+    "ticari_ad": "PMA / PGMEA",
+    "iupac_adi": "2-Metoksietil asetat",
+    "cas_no": "108-65-6",
+    "ec_no": "203-603-9",
+    "kayit_no": "01-2119475791-29-XXXX",
+    "molekul_formulu": "C6H12O3",
+    "molekul_agirligi": "132.16 g/mol",
+    "kategori": "Solventler / Glikol Eter Esterleri",
+    "fiziksel_hal": "Sıvı (Renksiz, hafif tatlımsı koku)",
+    "siniflandirma_str": "Flam. Liq. 3 H226, STOT SE 3 H336",
+    "h_kodlari": [
+      "H226",
+      "H336"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Uyarı",
+    "maruziyet_limitleri": {
+      "twa_ppm": "50",
+      "twa_mg_m3": "275",
+      "stel_ppm": "100",
+      "stel_mg_m3": "550",
+      "notes": "Deri"
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "45 °C (Kapalı kap)",
+      "kaynama_noktasi": "146 °C",
+      "erime_noktasi": "-65 °C",
+      "yogunluk": "0.967 g/cm³ (20 °C)",
+      "buhar_basinci": "0.4 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%1.5 - %10.0 (Hacimce)",
+      "kendiliginden_tutusma": "333 °C",
+      "cozunurluk": "Suda çözünür (198 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "8532 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 5000 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "35.7 mg/L (4 saat, Sıçan, buhar)",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336)."
+    },
+    "akut_toksisite_oral": 8532,
+    "akut_toksisite_dermal": 5000,
+    "akut_toksisite_soluma": 35.7,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 134 mg/L (Oncorhynchus mykiss)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 408 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük biyobirikim (log Kow = 1.2)",
+      "kalicilik": "Kolay biyolojik olarak parçalanabilir (%83)."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 3272",
+      "uygun_tasima_adi": "ESTERLER, B.B.B. (1-METOKSİ-2-PROPİL ASETAT)",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG III"
+    }
+  },
+  {
+    "id": "raw-metanol",
+    "ad": "Metanol",
+    "ticari_ad": "Metanol (Metil alkol)",
+    "iupac_adi": "Metanol",
+    "cas_no": "67-56-1",
+    "ec_no": "200-659-6",
+    "kayit_no": "01-2119433307-44-XXXX",
+    "molekul_formulu": "CH4O",
+    "molekul_agirligi": "32.04 g/mol",
+    "kategori": "Solventler / Alkoller",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik alkol kokusu)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Acute Tox. 3 H301, Acute Tox. 3 H311, Acute Tox. 3 H331, STOT SE 1 H370",
+    "h_kodlari": [
+      "H225",
+      "H301",
+      "H311",
+      "H331",
+      "H370"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS06",
+      "GHS08"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "200",
+      "twa_mg_m3": "260",
+      "stel_ppm": "",
+      "stel_mg_m3": "",
+      "notes": "Deri"
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "9.7 °C (Kapalı kap)",
+      "kaynama_noktasi": "64.7 °C",
+      "erime_noktasi": "-97.8 °C",
+      "yogunluk": "0.792 g/cm³ (20 °C)",
+      "buhar_basinci": "12.8 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%6.0 - %36.0 (Hacimce)",
+      "kendiliginden_tutusma": "455 °C",
+      "cozunurluk": "Suda tamamen karışır (20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "100 mg/kg (Resmi SEA / CLP ATE Değeri)",
+      "akut_dermal_ld50": "300 mg/kg (Resmi SEA / CLP ATE Değeri)",
+      "akut_soluma_lc50": "3.0 mg/L (4 saat, Buhar, Resmi SEA / CLP ATE Değeri)",
+      "stot_se": "Organlara (görme organları, merkezi sinir sistemi) zarar verir (STOT SE 1, H370)."
+    },
+    "akut_toksisite_oral": 100,
+    "akut_toksisite_dermal": 300,
+    "akut_toksisite_soluma": 3.0,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 15400 mg/L (Lepomis macrochirus)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): > 10000 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük (log Kow = -0.77)",
+      "kalicilik": "Kolayca biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1230",
+      "uygun_tasima_adi": "METANOL",
+      "sinif": "3 (6.1 İkincil Tehlike: Zehirli)",
+      "ambalaj_grubu": "PG II"
+    }
+  },
+  {
+    "id": "raw-etanol",
+    "ad": "Etanol",
+    "ticari_ad": "Etanol (Etil alkol)",
+    "iupac_adi": "Etanol",
+    "cas_no": "64-17-5",
+    "ec_no": "200-578-6",
+    "kayit_no": "01-2119457610-43-XXXX",
+    "molekul_formulu": "C2H6O",
+    "molekul_agirligi": "46.07 g/mol",
+    "kategori": "Solventler / Alkoller",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik koku)",
+    "siniflandirma_str": "Flam. Liq. 2 H225, Eye Irrit. 2 H319",
+    "h_kodlari": [
+      "H225",
+      "H319"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "1000",
+      "twa_mg_m3": "1900",
+      "stel_ppm": "",
+      "stel_mg_m3": "",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "13 °C (Kapalı kap)",
+      "kaynama_noktasi": "78.3 °C",
+      "erime_noktasi": "-114 °C",
+      "yogunluk": "0.789 g/cm³ (20 °C)",
+      "buhar_basinci": "5.9 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%3.3 - %19.0 (Hacimce)",
+      "kendiliginden_tutusma": "363 °C",
+      "cozunurluk": "Suda tamamen karışır (20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "10470 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 20000 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "124.7 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Ciddi göz tahrişine yol açar (Kategori 2, H319)."
+    },
+    "akut_toksisite_oral": 10470,
+    "akut_toksisite_dermal": 20000,
+    "akut_toksisite_soluma": 124.7,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 14200 mg/L (Pimephales promelas)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 5012 mg/L (Ceriodaphnia dubia)",
+      "biyobirikim": "Düşük (log Kow = -0.35)",
+      "kalicilik": "Kolayca biyolojik olarak parçalanabilir."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1170",
+      "uygun_tasima_adi": "ETANOL (ETİL ALKOL)",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG II"
+    }
+  },
+  {
+    "id": "raw-n-butanol",
+    "ad": "n-Bütanol",
+    "ticari_ad": "1-Bütanol (Butil alkol)",
+    "iupac_adi": "Butan-1-ol",
+    "cas_no": "71-36-3",
+    "ec_no": "200-751-6",
+    "kayit_no": "01-2119484630-38-XXXX",
+    "molekul_formulu": "C4H10O",
+    "molekul_agirligi": "74.12 g/mol",
+    "kategori": "Solventler / Alkoller",
+    "fiziksel_hal": "Sıvı (Renksiz, karakteristik alkol kokusu)",
+    "siniflandirma_str": "Flam. Liq. 3 H226, Acute Tox. 4 H302, Skin Irrit. 2 H315, Eye Dam. 1 H318, STOT SE 3 H335, STOT SE 3 H336",
+    "h_kodlari": [
+      "H226",
+      "H302",
+      "H315",
+      "H318",
+      "H335",
+      "H336"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS05",
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "20",
+      "twa_mg_m3": "62",
+      "stel_ppm": "50",
+      "stel_mg_m3": "154",
+      "notes": "Deri"
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "35 °C (Kapalı kap)",
+      "kaynama_noktasi": "117.7 °C",
+      "erime_noktasi": "-89.8 °C",
+      "yogunluk": "0.81 g/cm³ (20 °C)",
+      "buhar_basinci": "0.7 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%1.4 - %11.3 (Hacimce)",
+      "kendiliginden_tutusma": "343 °C",
+      "cozunurluk": "Suda çözünür (77 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "2292 mg/kg (Sıçan) / ATE: 500 mg/kg",
+      "akut_dermal_ld50": "3430 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "24 mg/L (4 saat, Sıçan, buhar)",
+      "cilt_goz_etkisi": "Ciddi göz hasarına yol açar (Kategori 1, H318). Cilt tahrişine yol açar (Kategori 2, H315).",
+      "stot_se": "Solunum yolu tahrişine (H335) ve baş dönmesine (H336) yol açabilir."
+    },
+    "akut_toksisite_oral": 500,
+    "akut_toksisite_dermal": 3430,
+    "akut_toksisite_soluma": 24.0,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): 1376 mg/L (Pimephales promelas)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): 1328 mg/L (Daphnia magna)",
+      "biyobirikim": "Düşük (log Kow = 1.0)",
+      "kalicilik": "Kolayca biyolojik olarak parçalanabilir (%92)."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1120",
+      "uygun_tasima_adi": "BÜTANOL",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG III"
+    }
+  },
+  {
+    "id": "raw-white-spirit",
+    "ad": "White Spirit",
+    "ticari_ad": "White Spirit (Solvent Nafta / Sentetik Tiner Bazı)",
+    "iupac_adi": "Hidrokarbonlar, C9-C12, n-alkanlar, izoalkanlar, siklikler, aromatikler (%2-25)",
+    "cas_no": "64742-82-1",
+    "ec_no": "919-446-0",
+    "kayit_no": "01-2119458049-33-XXXX",
+    "molekul_formulu": "UVCB Madde Karışımı",
+    "molekul_agirligi": "~ 140 g/mol",
+    "kategori": "Solventler / Alifatik-Aromatik Hidrokarbonlar",
+    "fiziksel_hal": "Sıvı (Berrak renksiz, hafif aromatik koku)",
+    "siniflandirma_str": "Flam. Liq. 3 H226, STOT SE 3 H336, STOT RE 1 H372, Asp. Tox. 1 H304, Aquatic Chronic 2 H411, EUH066",
+    "h_kodlari": [
+      "H226",
+      "H304",
+      "H336",
+      "H372",
+      "H411",
+      "EUH066"
+    ],
+    "piktogramlar": [
+      "GHS02",
+      "GHS07",
+      "GHS08",
+      "GHS09"
+    ],
+    "uyari_kelimesi": "Tehlike",
+    "maruziyet_limitleri": {
+      "twa_ppm": "50",
+      "twa_mg_m3": "290",
+      "stel_ppm": "",
+      "stel_mg_m3": "",
+      "notes": ""
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "39 °C (Kapalı kap)",
+      "kaynama_noktasi": "150 - 200 °C",
+      "erime_noktasi": "< -20 °C",
+      "yogunluk": "0.785 g/cm³ (15 °C)",
+      "buhar_basinci": "0.2 kPa (20 °C)",
+      "patlama_alt_ust_limit": "%0.7 - %7.0 (Hacimce)",
+      "kendiliginden_tutusma": "> 230 °C",
+      "cozunurluk": "Suda pratik olarak çözünmez (< 0.05 g/L, 20 °C)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "> 15000 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 3400 mg/kg (Tavşan)",
+      "akut_soluma_lc50": "> 13.1 mg/L (4 saat, Sıçan, buhar)",
+      "stot_se": "Uyuşukluk veya baş dönmesine yol açabilir (STOT SE 3, H336).",
+      "stot_re": "Uzun süreli veya tekrarlı maruz kalma sonucu merkezi sinir sistemine zarar verir (STOT RE 1, H372).",
+      "aspirasyon": "Solunum yoluna nüfuzu ve yutulması halinde öldürücüdür (Asp. Tox. 1, H304)."
+    },
+    "akut_toksisite_oral": 15000,
+    "akut_toksisite_dermal": 3400,
+    "akut_toksisite_soluma": 13.1,
+    "akut_toksisite_soluma_formu": "buhar",
+    "is_isocyanate": false,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LL50 (96 saat): 10-30 mg/L (Oncorhynchus mykiss)",
+      "su_piresi_toksisitesi": "EL50 (48 saat): 10-22 mg/L (Daphnia magna)",
+      "biyobirikim": "Biyobirikim potansiyeli vardır (log Kow = 3.7 - 6.7)",
+      "kalicilik": "Biyolojik olarak kısmen ayrışabilir (%75, 28 gün)."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "UN 1300",
+      "uygun_tasima_adi": "TURPENTİN YERİNE KULLANILAN MADDELER",
+      "sinif": "3 (Alevlenir Sıvılar)",
+      "ambalaj_grubu": "PG III"
+    }
+  },
+  {
+    "id": "raw-hdi-trimer",
+    "ad": "Heksametilen Diizosiyanat Polimeri (HDI Trimer)",
+    "ticari_ad": "Poliizosiyanat (Poliüretan Sertleştirici Aktif Maddesi - Desmodur N)",
+    "iupac_adi": "Heksametilen diizosiyanat, oligomerler",
+    "cas_no": "28182-81-2",
+    "ec_no": "500-060-2",
+    "kayit_no": "01-2119485796-17-XXXX",
+    "molekul_formulu": "(C8H12N2O2)n",
+    "molekul_agirligi": "~ 500 g/mol",
+    "kategori": "Sertleştiriciler / Alifatik İzosiyanatlar",
+    "fiziksel_hal": "Sıvı (Açık sarımsı viskoz sıvı, kokusuz)",
+    "siniflandirma_str": "Acute Tox. 4 H332, Skin Sens. 1 H317, STOT SE 3 H335, EUH204",
+    "h_kodlari": [
+      "H317",
+      "H332",
+      "H335",
+      "EUH204"
+    ],
+    "piktogramlar": [
+      "GHS07"
+    ],
+    "uyari_kelimesi": "Uyarı",
+    "maruziyet_limitleri": {
+      "twa_ppm": "",
+      "twa_mg_m3": "",
+      "stel_ppm": "",
+      "stel_mg_m3": "0.075",
+      "notes": "Sensitizer"
+    },
+    "fiziksel_ozellikler": {
+      "parlama_noktasi": "> 160 °C (Kapalı kap)",
+      "kaynama_noktasi": "> 200 °C (Ayrışır)",
+      "erime_noktasi": "-20 °C",
+      "yogunluk": "1.16 g/cm³ (20 °C)",
+      "buhar_basinci": "< 0.00001 hPa (20 °C)",
+      "patlama_alt_ust_limit": "Uygulanamaz",
+      "kendiliginden_tutusma": "460 °C",
+      "cozunurluk": "Suda çözünmez (Su ile yavaş reaksiyona girer ve CO2 açığa çıkar)"
+    },
+    "toksikolojik_bilgiler": {
+      "akut_oral_ld50": "> 2500 mg/kg (Sıçan)",
+      "akut_dermal_ld50": "> 2000 mg/kg (Sıçan)",
+      "akut_soluma_lc50": "1.5 mg/L (4 saat, Toz/Sis, Resmi ATE Değeri)",
+      "cilt_goz_etkisi": "Alerjik cilt reaksiyonlarına yol açar (Skin Sens. 1, H317).",
+      "stot_se": "Solunum yolu tahrişine yol açabilir (STOT SE 3, H335).",
+      "ilave_etiket": "İzosiyanat içerir. Alerjik reaksiyona yol açabilir (EUH204)."
+    },
+    "akut_toksisite_oral": 2500,
+    "akut_toksisite_dermal": 2000,
+    "akut_toksisite_soluma": 1.5,
+    "akut_toksisite_soluma_formu": "toz_sis",
+    "is_isocyanate": true,
+    "m_faktoru_akut": null,
+    "m_faktoru_kronik": null,
+    "ekolojik_bilgiler": {
+      "balik_toksisitesi": "LC50 (96 saat): > 100 mg/L (Danio rerio)",
+      "su_piresi_toksisitesi": "EC50 (48 saat): > 100 mg/L (Daphnia magna)",
+      "biyobirikim": "Biyobirikim beklenmez (su ile polimerleşir)",
+      "kalicilik": "Biyolojik olarak kolay parçalanmaz (hidroliz olur)."
+    },
+    "tasimacilik_bilgileri": {
+      "un_no": "Tehlikeli Madde Değildir",
+      "uygun_tasima_adi": "Uygulanabilir değildir (Solventsiz haliyle ADR kapsamında değildir)",
+      "sinif": "—",
+      "ambalaj_grubu": "—"
     }
   }
 ]

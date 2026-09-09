@@ -27,6 +27,8 @@ export default function Step4_IlkYardim() {
           />
           <FieldHelper
             legalRef="KKDİK Ek-2 md. 4.1"
+            section="b4"
+            fieldLabel="Solunması Halinde"
             onInsertText={(val) => updateSdsField(['b4_ilk_yardim', 'b4_1', 'soluma'], val)}
             templates={['Kazazedeyi temiz havaya çıkarın. Rahat nefes alabileceği bir pozisyonda tutun.', 'Özel bir soluma önlemi gerekmez.']}
           />
@@ -44,6 +46,8 @@ export default function Step4_IlkYardim() {
           />
           <FieldHelper
             legalRef="KKDİK Ek-2 md. 4.1"
+            section="b4"
+            fieldLabel="Cilt Teması Halinde"
             onInsertText={(val) => updateSdsField(['b4_ilk_yardim', 'b4_1', 'cilt_temasi'], val)}
             templates={['Cildi bol su ve sabun ile yıkayınız.', 'Kirlenmiş giysileri çıkarın ve yeniden kullanmadan önce yıkayın.']}
           />
@@ -61,6 +65,8 @@ export default function Step4_IlkYardim() {
           />
           <FieldHelper
             legalRef="KKDİK Ek-2 md. 4.1"
+            section="b4"
+            fieldLabel="Göz Teması Halinde"
             onInsertText={(val) => updateSdsField(['b4_ilk_yardim', 'b4_1', 'goz_temasi'], val)}
             templates={['Gözleri birkaç dakika dikkatlice bol su ile yıkayın. Varsa kontakt lensleri çıkarın.', 'Tahriş sürerse doktora başvurun.']}
           />
@@ -78,6 +84,8 @@ export default function Step4_IlkYardim() {
           />
           <FieldHelper
             legalRef="KKDİK Ek-2 md. 4.1"
+            section="b4"
+            fieldLabel="Yutulması Halinde"
             onInsertText={(val) => updateSdsField(['b4_ilk_yardim', 'b4_1', 'yutma'], val)}
             templates={['Ağzı suyla çalkalayın. İstifra ettirmeyiniz. Derhal tıbbi yardım alınız.', 'Bilinç kapalıysa ağızdan hiçbir şey vermeyiniz.']}
           />
@@ -101,6 +109,8 @@ export default function Step4_IlkYardim() {
           />
           <FieldHelper
             legalRef="KKDİK Ek-2 md. 4.2"
+            section="b4"
+            fieldLabel="Belirtiler ve Etkiler"
             onInsertText={(val) => updateSdsField(['b4_ilk_yardim', 'b4_2_belirtiler_etkiler'], val)}
             templates={['Bilinen akut veya gecikmeli önemli bir belirti bildirilmemiştir.']}
           />
@@ -118,6 +128,8 @@ export default function Step4_IlkYardim() {
           />
           <FieldHelper
             legalRef="KKDİK Ek-2 md. 4.3"
+            section="b4"
+            fieldLabel="Tıbbi Müdahale / Doktor Bilgisi"
             onInsertText={(val) => updateSdsField(['b4_ilk_yardim', 'b4_3_acil_tibbi_mudahale'], val)}
             templates={['Semptomatik ve destekleyici tedavi uygulayınız.', 'Özel bir tedavi gerekmez.']}
           />

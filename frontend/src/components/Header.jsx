@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import ExportModal from './Wizard/ExportModal';
 import AiSettingsModal from './AiSettingsModal';
+import RawMaterialPickerModal from './Common/RawMaterialPickerModal';
 import {
   FlaskConical,
   Save,
   CheckCircle2,
-  AlertTriangle,
   XCircle,
   ArrowLeft,
   ShieldAlert,
   FileDown,
   Sparkles,
+  Package,
 } from 'lucide-react';
 
 export default function Header() {
@@ -31,6 +32,7 @@ export default function Header() {
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isRawMaterialsOpen, setIsRawMaterialsOpen] = useState(false);
 
   const totalErrors = validationReport?.total_errors || 0;
   const totalWarnings = validationReport?.total_warnings || 0;
@@ -160,6 +162,26 @@ export default function Header() {
             </>
           )}
 
+          {/* Hammadde Kütüphanesi Button */}
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setIsRawMaterialsOpen(true)}
+            title="Hammadde Kütüphanesini Görüntüle ve Yönet"
+            style={{
+              background: 'rgba(2, 132, 199, 0.2)',
+              color: '#7dd3fc',
+              borderColor: 'rgba(2, 132, 199, 0.4)',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Package size={14} color="#38bdf8" />
+            <span>Hammaddeler</span>
+          </button>
+
           {/* Gemini AI Settings Button */}
           <button
             type="button"
@@ -242,6 +264,12 @@ export default function Header() {
       <AiSettingsModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
+      />
+
+      {/* Raw Materials Library Modal */}
+      <RawMaterialPickerModal
+        isOpen={isRawMaterialsOpen}
+        onClose={() => setIsRawMaterialsOpen(false)}
       />
     </>
   );

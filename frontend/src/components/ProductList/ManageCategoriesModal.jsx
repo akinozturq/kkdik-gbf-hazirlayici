@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
-import { X, Trash2, Plus, Folder, AlertTriangle, Check, Layers, ArrowRight } from 'lucide-react';
+import { X, Trash2, Plus, Folder, AlertTriangle, Layers } from 'lucide-react';
 
 export default function ManageCategoriesModal({ isOpen, onClose, onChanged }) {
   const [categories, setCategories] = useState([]);

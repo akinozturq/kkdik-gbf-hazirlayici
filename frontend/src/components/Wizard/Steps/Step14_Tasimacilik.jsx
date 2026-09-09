@@ -1,17 +1,115 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
+import { api } from '../../../api/client';
 import FieldHelper from '../../Common/FieldHelper';
+import { Truck, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function Step14_Tasimacilik() {
-  const { sdsData, updateSdsField } = useApp();
+  const { sdsData, updateSdsField, currentProduct } = useApp();
+  const [calculating, setCalculating] = useState(false);
+  const [calcRationale, setCalcRationale] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   const b14 = sdsData?.b14_tasimacilik || {};
 
+  const handleAutoCalculateTransport = async () => {
+    setCalculating(true);
+    setErrorMsg(null);
+    try {
+      const effectiveProductName = (
+        currentProduct?.urun_adi ||
+        sdsData?.b1_kimlik?.b1_1?.madde_karisim_adi ||
+        sdsData?.b1_kimlik?.b1_1?.ticari_adi ||
+        ''
+      );
+
+      const res = await api.calculateTransportPreview(
+        sdsData || {},
+        effectiveProductName
+      );
+
+      if (res) {
+        updateSdsField(['b14_tasimacilik', 'b14_1_un_numarasi'], res.b14_1_un_numarasi || '');
+        updateSdsField(['b14_tasimacilik', 'b14_2_un_tasimacilik_adi'], res.b14_2_un_tasimacilik_adi || '');
+        updateSdsField(['b14_tasimacilik', 'b14_3_tasimacilik_sinifi'], res.b14_3_tasimacilik_sinifi || '');
+        updateSdsField(['b14_tasimacilik', 'b14_4_ambalajlama_grubu'], res.b14_4_ambalajlama_grubu || '');
+        updateSdsField(['b14_tasimacilik', 'b14_5_cevresel_zararlar'], res.b14_5_cevresel_zararlar || '');
+        updateSdsField(['b14_tasimacilik', 'b14_6_kullanici_ozel_onlemler'], res.b14_6_kullanici_ozel_onlemler || '');
+        setCalcRationale(res.aciklama || 'ADR kurallarına göre hesaplandı.');
+      }
+    } catch (err) {
+      console.error('Taşımacılık hesaplama hatası:', err);
+      setErrorMsg('Hesaplama sırasında bir hata oluştu: ' + (err.message || err));
+    } finally {
+      setCalculating(false);
+    }
+  };
+
   return (
     <div>
-      <div className="section-group-title">
+      <div className="section-group-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
         <span>14. Taşımacılık Bilgisi (ADR / RID / IMDG / IATA)</span>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={handleAutoCalculateTransport}
+          disabled={calculating}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          title="Bölüm 9 test verileri (Parlama/Kaynama Noktası) ve Bölüm 2 sınıflarından ADR/UN bilgilerini otomatik türet"
+        >
+          {calculating ? (
+            <>
+              <Sparkles size={14} className="spin-animate" /> Hesaplanıyor...
+            </>
+          ) : (
+            <>
+              <Truck size={14} /> Otomatik ADR / UN Sınıflandırması Hesapla
+            </>
+          )}
+        </button>
       </div>
+
+      {calcRationale && (
+        <div
+          style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            borderRadius: '6px',
+            color: '#065f46',
+            fontSize: '0.84rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
+          <div>
+            <strong>ADR Karar Motoru Sonucu:</strong> {calcRationale}
+          </div>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div
+          style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '6px',
+            color: '#991b1b',
+            fontSize: '0.84rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <AlertCircle size={16} color="#dc2626" style={{ flexShrink: 0 }} />
+          <div>{errorMsg}</div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
         <div className="form-group">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import FieldHelper from '../../Common/FieldHelper';
-import { Sparkles, Check, Plus, Trash2 } from 'lucide-react';
+import { Sparkles, Plus, Trash2 } from 'lucide-react';
 
 export default function Step16_DigerBilgiler() {
   const { sdsData, updateSdsField, autoFillHStatements } = useApp();

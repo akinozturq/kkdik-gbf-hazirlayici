@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ArrowRight,
   ShieldCheck,
-  Percent,
 } from 'lucide-react';
 
 export default function ValidationDrawer() {

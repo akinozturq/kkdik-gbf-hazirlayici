@@ -5,6 +5,7 @@ Referans Veri Servisi (H-kodları, P-kodları, GHS Piktogramları)
 import json
 import os
 import re
+import uuid
 from typing import Dict, List, Optional, Any, Union
 from app.schemas.reference import HStatementItem, PStatementItem, PictogramItem
 from app.schemas.sds_sections import SDSModel
@@ -342,6 +343,126 @@ class ReferenceService:
             if item.get("id", "").lower() == clean or item.get("cas_no", "").lower() == clean:
                 return item
         return None
+
+    def infer_pictograms_from_h_codes(self, h_codes: List[str]) -> List[str]:
+        """
+        H-kodlarına göre varsayılan GHS piktogramlarını (GHS01 - GHS09) çıkarır.
+        """
+        pics = set()
+        for code in h_codes:
+            c = code.strip().upper()
+            if c in ["H220", "H221", "H222", "H223", "H224", "H225", "H226", "H228", "H241", "H242"]:
+                pics.add("GHS02")
+            elif c in ["H270", "H271", "H272"]:
+                pics.add("GHS03")
+            elif c in ["H280", "H281"]:
+                pics.add("GHS04")
+            elif c in ["H290", "H314", "H318"]:
+                pics.add("GHS05")
+            elif c in ["H300", "H301", "H310", "H311", "H330", "H331"]:
+                pics.add("GHS06")
+            elif c in ["H302", "H312", "H332", "H315", "H319", "H317", "H335", "H336"]:
+                pics.add("GHS07")
+            elif c in ["H304", "H334", "H340", "H341", "H350", "H351", "H360", "H361", "H370", "H371", "H372", "H373"]:
+                pics.add("GHS08")
+            elif c in ["H400", "H410", "H411"]:
+                pics.add("GHS09")
+        return sorted(list(pics))
+
+    def save_raw_materials(self):
+        """
+        Bellekteki hammadde listesini raw_materials.json dosyasına kaydeder.
+        """
+        raw_path = os.path.join(DATA_DIR, "raw_materials.json")
+        with open(raw_path, "w", encoding="utf-8") as f:
+            json.dump(self._raw_materials, f, ensure_ascii=False, indent=2)
+
+    def add_raw_material(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Kütüphaneye yeni hammadde ekler ve kaydeder.
+        """
+        mat_id = (data.get("id") or "").strip()
+        if not mat_id:
+            # İsimden slug oluştur
+            name_slug = re.sub(r'[^a-zA-Z0-9]+', '-', data.get("ad", "").strip().lower()).strip('-')
+            base_id = f"raw-{name_slug}" if name_slug else f"raw-{uuid.uuid4().hex[:6]}"
+            mat_id = base_id
+            counter = 1
+            existing_ids = {m.get("id", "").lower() for m in self._raw_materials}
+            while mat_id.lower() in existing_ids:
+                mat_id = f"{base_id}-{counter}"
+                counter += 1
+
+        new_item = dict(data)
+        new_item["id"] = mat_id
+
+        # H-kodları boşsa sınıflandırma dizesinden otomatik çıkar
+        h_codes = new_item.get("h_kodlari") or []
+        if not h_codes and new_item.get("siniflandirma_str"):
+            extracted = re.findall(r'\b(H\d{3}[a-zA-Z]*|EUH\d{3})\b', new_item["siniflandirma_str"], re.IGNORECASE)
+            h_codes = sorted(list(set(c.upper() for c in extracted)))
+            new_item["h_kodlari"] = h_codes
+
+        # Piktogramlar boşsa otomatik türet
+        if not new_item.get("piktogramlar") and h_codes:
+            new_item["piktogramlar"] = self.infer_pictograms_from_h_codes(h_codes)
+
+        # Listenin en başına ekle (yeni eklenen anında görünsün)
+        self._raw_materials.insert(0, new_item)
+        self.save_raw_materials()
+        return new_item
+
+    def update_raw_material(self, id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Mevcut hammaddeyi günceller ve kaydeder.
+        """
+        clean = id.strip().lower()
+        target_idx = None
+        for idx, item in enumerate(self._raw_materials):
+            if item.get("id", "").lower() == clean or item.get("cas_no", "").lower() == clean:
+                target_idx = idx
+                break
+
+        if target_idx is None:
+            return None
+
+        current = self._raw_materials[target_idx]
+        updated = dict(current)
+        for k, v in data.items():
+            if v is not None:
+                updated[k] = v
+
+        # ID korunur
+        updated["id"] = current["id"]
+
+        # H-kodları kontrolü
+        h_codes = updated.get("h_kodlari") or []
+        if not h_codes and updated.get("siniflandirma_str"):
+            extracted = re.findall(r'\b(H\d{3}[a-zA-Z]*|EUH\d{3})\b', updated["siniflandirma_str"], re.IGNORECASE)
+            h_codes = sorted(list(set(c.upper() for c in extracted)))
+            updated["h_kodlari"] = h_codes
+
+        if not updated.get("piktogramlar") and h_codes:
+            updated["piktogramlar"] = self.infer_pictograms_from_h_codes(h_codes)
+
+        self._raw_materials[target_idx] = updated
+        self.save_raw_materials()
+        return updated
+
+    def delete_raw_material(self, id: str) -> bool:
+        """
+        Hammaddeyi kütüphaneden siler ve kaydeder.
+        """
+        clean = id.strip().lower()
+        initial_len = len(self._raw_materials)
+        self._raw_materials = [
+            m for m in self._raw_materials 
+            if m.get("id", "").lower() != clean and m.get("cas_no", "").lower() != clean
+        ]
+        if len(self._raw_materials) < initial_len:
+            self.save_raw_materials()
+            return True
+        return False
 
 
 reference_service = ReferenceService()

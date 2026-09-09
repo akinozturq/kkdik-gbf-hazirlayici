@@ -16,8 +16,20 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
+ALLOWED_ENV_KEYS = {"GEMINI_API_KEY", "GEMINI_MODEL", "DEBUG"}
+
 def save_env_setting(key: str, value: str):
-    """Saves a setting to the .env file and updates runtime settings."""
+    """Saves a setting to the .env file and updates runtime settings securely."""
+    if key not in ALLOWED_ENV_KEYS:
+        raise ValueError(f"Geçersiz yapılandırma anahtarı: {key}")
+
+    # Newline / CR-LF Injection koruması
+    if "\n" in value or "\r" in value:
+        raise ValueError("Yapılandırma değeri satır sonu karakteri (\\n veya \\r) içeremez.")
+
+    # Çift tırnak ve tehlikeli karakter kontrolü
+    clean_val = value.strip()
+
     env_file = BACKEND_DIR / ".env"
     lines = []
     if env_file.exists():
@@ -28,19 +40,19 @@ def save_env_setting(key: str, value: str):
     new_lines = []
     for line in lines:
         if line.strip().startswith(f"{key}="):
-            new_lines.append(f"{key}={value}\n")
+            new_lines.append(f"{key}={clean_val}\n")
             found = True
         else:
             new_lines.append(line)
 
     if not found:
-        new_lines.append(f"{key}={value}\n")
+        new_lines.append(f"{key}={clean_val}\n")
 
     with open(env_file, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
 
-    os.environ[key] = value
+    os.environ[key] = clean_val
     if hasattr(settings, key):
-        setattr(settings, key, value)
+        setattr(settings, key, clean_val)
 
 settings = Settings()

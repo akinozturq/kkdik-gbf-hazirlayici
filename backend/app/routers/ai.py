@@ -49,10 +49,16 @@ def get_ai_config():
 
 @router.post("/config", summary="Gemini API anahtarını ve aktif modeli kaydet")
 def save_ai_config(req: AIConfigRequest):
-    if req.api_key is not None:
-        save_env_setting("GEMINI_API_KEY", req.api_key.strip())
-    if req.model is not None:
-        save_env_setting("GEMINI_MODEL", req.model.strip())
+    try:
+        if req.api_key is not None:
+            save_env_setting("GEMINI_API_KEY", req.api_key.strip())
+        if req.model is not None:
+            save_env_setting("GEMINI_MODEL", req.model.strip())
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err)
+        )
 
     gemini_service.set_credentials(
         api_key=req.api_key if req.api_key is not None else None,

@@ -24,6 +24,19 @@ export function AppProvider({ children }) {
   const [autosaveStatus, setAutosaveStatus] = useState('idle');
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const debounceTimerRef = useRef(null);
+  const sdsDataRef = useRef(sdsData);
+
+  useEffect(() => {
+    sdsDataRef.current = sdsData;
+  }, [sdsData]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Validation
   const [validationReport, setValidationReport] = useState(null);
@@ -115,6 +128,7 @@ export function AppProvider({ children }) {
 
   // Update SDS Field (Debounced Autosave)
   const updateSdsField = useCallback((pathArray, value) => {
+    let nextData = null;
     setSdsData((prev) => {
       if (!prev) return prev;
       const next = JSON.parse(JSON.stringify(prev));
@@ -128,33 +142,38 @@ export function AppProvider({ children }) {
         current = current[key];
       }
       current[pathArray[pathArray.length - 1]] = value;
-
-      // Trigger Debounced Autosave (750ms)
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      setAutosaveStatus('saving');
-
-      debounceTimerRef.current = setTimeout(async () => {
-        try {
-          const updated = await api.updateProduct(activeProductId, {
-            sds_data: next,
-          });
-          setProduct(updated);
-          setAutosaveStatus('saved');
-          setLastSavedTime(new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-
-          // Refresh validation in background
-          const valRes = await api.validateProduct(activeProductId);
-          setValidationReport(valRes);
-        } catch (err) {
-          console.error('Autosave başarısız:', err);
-          setAutosaveStatus('error');
-        }
-      }, 750);
-
+      nextData = next;
+      sdsDataRef.current = next;
       return next;
     });
+
+    if (!activeProductId) return;
+
+    // Trigger Debounced Autosave (750ms) cleanly outside updater
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    setAutosaveStatus('saving');
+
+    debounceTimerRef.current = setTimeout(async () => {
+      const dataToSave = nextData || sdsDataRef.current;
+      if (!dataToSave) return;
+      try {
+        const updated = await api.updateProduct(activeProductId, {
+          sds_data: dataToSave,
+        });
+        setProduct(updated);
+        setAutosaveStatus('saved');
+        setLastSavedTime(new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
+        // Refresh validation in background
+        const valRes = await api.validateProduct(activeProductId);
+        setValidationReport(valRes);
+      } catch (err) {
+        console.error('Autosave başarısız:', err);
+        setAutosaveStatus('error');
+      }
+    }, 750);
   }, [activeProductId]);
 
   // Map step number to sds section key

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SECTOR_PRESETS } from '../../data/sectorPresets';
-import { X, Sparkles, Check, AlertCircle, Layers, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, Sparkles, Check, AlertCircle, Layers, CheckCircle2 } from 'lucide-react';
 
 export default function PresetModal({ isOpen, onClose }) {
-  const { sdsData, activeStep, applySectorPreset } = useApp();
+  const { activeStep, applySectorPreset } = useApp();
   const [selectedPresetId, setSelectedPresetId] = useState('tiner');
   const [scope, setScope] = useState('all'); // 'all' | 'current'
   const [overwrite, setOverwrite] = useState(false); // false: fill blanks only, true: overwrite

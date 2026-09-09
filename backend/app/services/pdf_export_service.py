@@ -31,13 +31,16 @@ def _register_fonts():
     gs_italic = os.path.join(FONTS_DIR, "GoogleSans-Italic.ttf")
     gs_bi = os.path.join(FONTS_DIR, "GoogleSans-BoldItalic.ttf")
 
-    # Fallback to Windows fonts folder if not in template fonts
+    # Fallback to Windows user fonts folder dynamically if not in template fonts
     if not os.path.exists(gs_reg):
-        win_fonts = r"C:\Users\renkmerkezi\AppData\Local\Microsoft\Windows\Fonts"
-        gs_reg = os.path.join(win_fonts, "GoogleSans-Regular.ttf")
-        gs_bold = os.path.join(win_fonts, "GoogleSans-Bold.ttf")
-        gs_italic = os.path.join(win_fonts, "GoogleSans-Italic.ttf")
-        gs_bi = os.path.join(win_fonts, "GoogleSans-BoldItalic.ttf")
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        if local_app_data:
+            win_fonts = os.path.join(local_app_data, "Microsoft", "Windows", "Fonts")
+            if os.path.exists(os.path.join(win_fonts, "GoogleSans-Regular.ttf")):
+                gs_reg = os.path.join(win_fonts, "GoogleSans-Regular.ttf")
+                gs_bold = os.path.join(win_fonts, "GoogleSans-Bold.ttf")
+                gs_italic = os.path.join(win_fonts, "GoogleSans-Italic.ttf")
+                gs_bi = os.path.join(win_fonts, "GoogleSans-BoldItalic.ttf")
 
     if os.path.exists(gs_reg):
         pdfmetrics.registerFont(TTFont('GoogleSans', gs_reg))

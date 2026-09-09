@@ -4,7 +4,7 @@ import FieldHelper from '../../Common/FieldHelper';
 import HPickerModal from '../../Common/HPickerModal';
 import HazardCalculationModal from '../HazardCalculationModal';
 import { api } from '../../../api/client';
-import { Plus, Trash2, ShieldAlert, Sparkles, Check, X, Calculator, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Sparkles, X, Calculator } from 'lucide-react';
 
 export default function Step2_ZararTanimi() {
   const { sdsData, updateSdsField, pictograms } = useApp();

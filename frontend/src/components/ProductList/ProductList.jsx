@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/client';
 import { useApp } from '../../context/AppContext';
 import NewProductModal from './NewProductModal';
 import DuplicateProductModal from './DuplicateProductModal';
 import ManageCategoriesModal from './ManageCategoriesModal';
 import ExportModal from '../Wizard/ExportModal';
+import RawMaterialPickerModal from '../Common/RawMaterialPickerModal';
 import {
   Search,
   Plus,
@@ -19,12 +20,12 @@ import {
   Clock,
   FileDown,
   Layers,
+  Package,
 } from 'lucide-react';
 
 export default function ProductList() {
   const { openProduct } = useApp();
   const [products, setProducts] = useState([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -35,9 +36,10 @@ export default function ProductList() {
   const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
   const [duplicateTarget, setDuplicateTarget] = useState(null);
   const [exportTarget, setExportTarget] = useState(null);
+  const [isRawMaterialsOpen, setIsRawMaterialsOpen] = useState(false);
 
   // Load Products
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.getProducts({
@@ -46,7 +48,6 @@ export default function ProductList() {
         page_size: 50,
       });
       setProducts(res.items || []);
-      setTotal(res.total || 0);
 
       // Load active categories from API
       const catData = await api.getProductCategories();
@@ -57,14 +58,14 @@ export default function ProductList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, selectedCategory]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadProducts();
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm, selectedCategory]);
+  }, [loadProducts]);
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`"${name}" adlı ürünü ve ilişkili tüm SDS verilerini silmek istediğinize emin misiniz?`)) {
@@ -97,6 +98,15 @@ export default function ProductList() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-outline"
+            onClick={() => setIsRawMaterialsOpen(true)}
+            style={{ borderColor: '#0284c7', color: '#0369a1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Package size={16} />
+            Hammadde Kütüphanesi
+          </button>
+
           <button
             className="btn btn-outline"
             onClick={() => setIsManageCategoriesOpen(true)}
@@ -348,6 +358,11 @@ export default function ProductList() {
       <ExportModal
         isOpen={Boolean(exportTarget)}
         onClose={() => setExportTarget(null)}
+      />
+
+      <RawMaterialPickerModal
+        isOpen={isRawMaterialsOpen}
+        onClose={() => setIsRawMaterialsOpen(false)}
       />
     </div>
   );

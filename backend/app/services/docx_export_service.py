@@ -633,3 +633,42 @@ class DocxExportService:
 
         cls._add_subsection_title(doc, "16.5. Eğitim Tavsiyeleri")
         cls._add_text_line(doc, b16.get("egitim_tavsiyeleri") or "Çalışanlar kimyasalların güvenli elleçlenmesi ve KKD kullanımı konusunda eğitilmelidir.")
+
+        # Doküman Sonu: Akredite Uzman & Sorumluluk Reddi (6pt)
+        p_disc = doc.add_paragraph()
+        p_disc.paragraph_format.space_before = Pt(10)
+        p_disc.paragraph_format.space_after = Pt(2)
+        p_disc.paragraph_format.line_spacing = 1.15
+
+        pPr = p_disc._element.get_or_add_pPr()
+        pBdr = parse_xml(
+            f'<w:pBdr {nsdecls("w")}>'
+            f'<w:top w:val="single" w:sz="4" w:space="3" w:color="888888"/>'
+            f'</w:pBdr>'
+        )
+        pPr.append(pBdr)
+
+        if lang == "en":
+            disc_text_1 = "This Safety Data Sheet has been prepared and approved by the accredited expert personnel of Aypol Solvent ve Kimya A.Ş., certified within the framework of the Regulation on Registration, Evaluation, Authorization and Restriction of Chemicals published in the Official Gazette dated 23.06.2017 and numbered 30105.\n"
+            disc_title = "DISCLAIMER: "
+            disc_text_2 = "The information in this Safety Data Sheet was obtained from sources which we believe are reliable. However, the information is provided without any warranty, express or implied, regarding its correctness. The conditions or methods of handling, storage, use or disposal of the product are beyond our control and may be beyond our knowledge. For this and other reasons, we do not assume responsibility and expressly disclaim liability for loss, damage or expense arising out of or in any way connected with the handling, storage, use or disposal of the product. This Safety Data Sheet was prepared and is to be used only for this product. If the product is used as a component in another product, this Safety Data Sheet information may not be applicable."
+        else:
+            disc_text_1 = "Bu Güvenlik Bilgi Formu, 23.06.2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan Kimyasalların Kaydı, Değerlendirilmesi, Ruhsatlandırılması ve Kısıtlanmasına İlişkin Yönetmelik çerçevesinde sertifikalandırılmış olan Aypol Solvent ve Kimya A.Ş.’nin akredite uzman personeli tarafından hazırlanmış ve onaylanmıştır.\n"
+            disc_title = "SORUMLULUK REDDİ: "
+            disc_text_2 = "Bu Güvenlik Bilgi Formundaki bilgiler, güvenilir olduğuna inandığımız kaynaklardan elde edilmiştir. Ancak, bu bilgiler doğruluklarına ilişkin açık veya zımni herhangi bir garanti olmaksızın sunulmaktadır. Ürünün elleçlenmesi, depolanması, kullanımı veya bertarafına ilişkin koşullar veya yöntemler kontrolümüz dışındadır ve bilgimiz dahilinde olmayabilir. Bu ve benzeri nedenlerle, ürünün elleçlenmesi, depolanması, kullanımı veya bertarafından kaynaklanabilecek herhangi bir kayıp veya hasar konusunda herhangi bir sorumluluk kabul etmiyoruz. Bu Güvenlik Bilgi Formu, yalnızca bu ürünün kullanımı için hazırlanmıştır. Ürün başka bir ürünün bileşeni olarak kullanılırsa, bu Güvenlik Bilgi Formundaki bilgiler geçersiz olabilir."
+
+        r1 = p_disc.add_run(disc_text_1)
+        r1.font.name = FONT_NAME
+        r1.font.size = Pt(6)
+        r1.font.color.rgb = RGBColor(80, 80, 80)
+
+        r2_bold = p_disc.add_run(disc_title)
+        r2_bold.font.name = FONT_NAME
+        r2_bold.font.size = Pt(6)
+        r2_bold.font.bold = True
+        r2_bold.font.color.rgb = RGBColor(80, 80, 80)
+
+        r2 = p_disc.add_run(disc_text_2)
+        r2.font.name = FONT_NAME
+        r2.font.size = Pt(6)
+        r2.font.color.rgb = RGBColor(80, 80, 80)
