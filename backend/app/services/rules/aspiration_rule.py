@@ -36,11 +36,22 @@ class AspirationHazardRule(BaseHazardRule):
 
         visk = context.kinematik_viskozite_40c
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
+        if uncertain_substances:
+            names = ", ".join(f"{s.name} (UNCERTAIN)" for s in uncertain_substances)
+            result.assumptions.append(
+                f"Veri Kalitesi (DATA QUALITY): Karışımdaki {names} konsantrasyon aralığına bağlı olarak belirsiz (UNCERTAIN) kabul edilmiştir."
+            )
+
         result.evidence = {
             "aspiration_category_1_sum": round(c_asp_tox_1, 2),
             "required_threshold": 10.0,
             "viscosity_40c": visk,
             "viscosity_threshold": 20.5,
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         result.calculations = [

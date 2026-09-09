@@ -41,11 +41,16 @@ class FlammableLiquidRule(BaseHazardRule):
                any(c in s.raw_h_codes for c in ["H224", "H225", "H226"])
         ]
 
+        uncertain_flam = [s for s in flam_components if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        flam_qualities = {s.name: s.data_quality.quality_level for s in flam_components if s.data_quality}
+
         result.evidence = {
             "flash_point": fp,
             "boiling_point": bp,
             "flammable_components_count": len(flam_components),
-            "flammable_components": [f"{s.name} (%{s.concentration.value:g})" for s in flam_components]
+            "flammable_components": [f"{s.name} (%{s.concentration.value:g})" for s in flam_components],
+            "component_data_qualities": flam_qualities,
+            "has_uncertain_data": len(uncertain_flam) > 0,
         }
 
         result.calculations = [

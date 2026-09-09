@@ -355,6 +355,40 @@ class InhalationExposure(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SubstanceDataQuality(BaseModel):
+    """
+    Tek bir bileşene ait veri kalitesi ve regülatif güvenilirlik değerlendirmesi (DATA QUALITY).
+    Girdi verisinin (konsantrasyon, zararlılık sınıfı, fiziksel testler vb.) kesinliğini modeller.
+    Örn: Konsantrasyon = %10-25 -> UNCERTAIN
+    """
+    quality_level: Literal["CONFIRMED", "UNCERTAIN", "INCOMPLETE", "CONTRADICTORY"] = Field(
+        "CONFIRMED",
+        description="Genel veri kalitesi seviyesi: CONFIRMED (Kesin) | UNCERTAIN (Belirsiz/Aralık) | INCOMPLETE (Eksik Veri) | CONTRADICTORY (Çelişkili)"
+    )
+    concentration_quality: Literal["EXACT", "UNCERTAIN", "BOUNDED", "ESTIMATED"] = Field(
+        "EXACT",
+        description="Konsantrasyon kalitesi: EXACT (Tam değer) | UNCERTAIN (Aralık) | BOUNDED (Sınır) | ESTIMATED (Tahmini)"
+    )
+    hazard_quality: Literal["CONFIRMED", "CATEGORY_UNRESOLVED", "SYNTACTIC_ONLY", "CONTRADICTORY"] = Field(
+        "CONFIRMED",
+        description="Zararlılık kalitesi: CONFIRMED | CATEGORY_UNRESOLVED | SYNTACTIC_ONLY | CONTRADICTORY"
+    )
+    uncertainty_score: float = Field(
+        0.0,
+        description="Belirsizlik skoru (0.0 = kesin, 1.0 = azami belirsizlik)"
+    )
+    flags: List[str] = Field(
+        default_factory=list,
+        description="Veri kalitesi uyarı bayrakları (örn. 'CONCENTRATION_RANGE_UNCERTAINTY')"
+    )
+    details: List[str] = Field(
+        default_factory=list,
+        description="Doğrulama ve denetim gerekçeleri"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class StructuredSubstance(BaseModel):
     """
     Tip güvenli, yapılandırılmış regülatif kimyasal madde profili.
@@ -367,6 +401,10 @@ class StructuredSubstance(BaseModel):
     raw_h_codes: List[str] = Field(default_factory=list, description="H-kodları listesi")
     has_euh066: bool = Field(False, description="Bileşen açıkça EUH066 taşıyor mu?")
     euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/dayanak bilgisi")
+    data_quality: SubstanceDataQuality = Field(
+        default_factory=SubstanceDataQuality,
+        description="Bileşen veri kalitesi ve güvenilirlik değerlendirmesi"
+    )
     
     # Akut toksisite değerleri
     ate_oral: Optional[float] = Field(None, description="Oral ATE (mg/kg)")
@@ -418,6 +456,36 @@ class StructuredSubstance(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class MixtureDataQuality(BaseModel):
+    """
+    Karışım genel veri kalitesi, belirsizlik profili ve eksik test parametreleri (DATA QUALITY).
+    """
+    overall_quality: Literal["CONFIRMED", "UNCERTAIN", "INCOMPLETE", "CONTRADICTORY"] = Field(
+        "CONFIRMED",
+        description="Karışım genel veri kalitesi seviyesi"
+    )
+    quality_score: float = Field(
+        100.0,
+        description="0-100 arası veri kalitesi ve güvenilirlik puanı (100 = tam teyitli)"
+    )
+    has_uncertain_components: bool = Field(False, description="Belirsiz (UNCERTAIN) konsantrasyona sahip bileşen var mı?")
+    has_unresolved_hazards: bool = Field(False, description="Kategorisi çözümlenememiş zararlılık var mı?")
+    missing_physical_data: List[str] = Field(
+        default_factory=list,
+        description="Mevzuat kuralları için eksik olan fiziksel test verileri (parlama noktası, viskozite vb.)"
+    )
+    component_qualities: Dict[str, SubstanceDataQuality] = Field(
+        default_factory=dict,
+        description="Bileşen bazlı veri kalitesi haritası"
+    )
+    audit_notes: List[str] = Field(
+        default_factory=list,
+        description="Veri kalitesi denetim izi notları"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class CalculationContext(BaseModel):
     """
     Karışımın test verileri ve operasyonel fiziksel parametreleri.
@@ -427,6 +495,10 @@ class CalculationContext(BaseModel):
     kinematik_viskozite_40c: Optional[float] = Field(None, description="Karışımın 40°C'deki kinematik viskozitesi (mm²/s)")
     ph: Optional[float] = Field(None, description="Ölçülmüş pH değeri")
     fiziksel_hal: Optional[str] = Field("Sıvı", description="Karışımın fiziksel hali (Sıvı, Katı, Gaz)")
+    data_quality: Optional[MixtureDataQuality] = Field(
+        None,
+        description="Karışım genel veri kalitesi ve fiziksel test gereksinimleri değerlendirmesi"
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -550,6 +622,9 @@ class ClassificationResult(BaseModel):
     rule_results: List[RuleResult] = Field(default_factory=list)
     has_indeterminate: bool = Field(False, description="Karışım genelinde aralık belirsizliği (INDETERMINATE) var mı?")
     indeterminate_hazards: List[Dict[str, Any]] = Field(default_factory=list, description="Aralığa bağlı belirsiz sınıflandırmalar")
+    data_quality: Optional[MixtureDataQuality] = Field(
+        None, description="Karışım veri kalitesi ve regülatif güvenilirlik profili"
+    )
 
 
 class HazardThreshold(BaseModel):

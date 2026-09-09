@@ -364,6 +364,15 @@ class RegulatoryPipeline:
                 ("explicit_classification" if sub_has_euh066 else None)
             )
 
+            # DATA QUALITY: Bileşen veri kalitesi ve belirsizlik değerlendirmesi
+            from app.services.regulatory_engine.data_quality import DataQualityAssessor
+            sub_dq = DataQualityAssessor.assess_substance(
+                name=name,
+                concentration=conc_model,
+                hazards=parsed_hazards,
+                raw_h_codes=codes
+            )
+
             substances.append(StructuredSubstance(
                 name=name,
                 cas_no=comp.get("cas_no"),
@@ -373,6 +382,7 @@ class RegulatoryPipeline:
                 raw_h_codes=codes,
                 has_euh066=sub_has_euh066,
                 euh066_source=sub_euh066_source,
+                data_quality=sub_dq,
                 ate_oral=ate_oral,
                 ate_dermal=ate_dermal,
                 inhalation=inhal_model,
@@ -495,6 +505,26 @@ class RegulatoryPipeline:
             calculation_steps.append("\n⚠️ GİRDİ VERİ DOĞRULAMA VE MEVZUAT UYGUNLUK DENETİMİ:")
             calculation_steps.extend(validation_warnings)
 
+        # DATA QUALITY KATMANI: Veri Kalitesi ve Regülatif Güvenilirlik Değerlendirmesi
+        from app.services.regulatory_engine.data_quality import DataQualityAssessor
+        data_quality = DataQualityAssessor.assess_mixture(substances, context)
+        context.data_quality = data_quality
+
+        calculation_steps.append("\n🔬 VERİ KALİTESİ VE BELİRSİZLİK PROFİLİ (DATA QUALITY ASSESSMENT):")
+        calculation_steps.append(
+            f"• Karışım Genel Veri Kalitesi: {data_quality.overall_quality} (Güvenilirlik Puanı: %{data_quality.quality_score:.1f})"
+        )
+        if data_quality.has_uncertain_components:
+            calculation_steps.append(
+                "• ⚠️ Reçetede konsantrasyon aralığı (UNCERTAIN) içeren bileşenler tespit edildi. Kural motoruna belirsizlik bilgisi aktarıldı."
+            )
+        if data_quality.missing_physical_data:
+            calculation_steps.append(
+                f"• ⚠️ Eksik Test Verileri (INCOMPLETE DATA): {', '.join(data_quality.missing_physical_data)}"
+            )
+        for note in data_quality.audit_notes:
+            calculation_steps.append(f"  - {note}")
+
         if has_ranges:
             calculation_steps.append("\n🔍 KONSANTRASYON ARALIĞI ÇİFT YÖNLÜ DENETİMİ (MIN / MAX BOUND CHECK):")
             calculation_steps.append("• Reçetede konsantrasyon aralığı tespit edildi. ECHA karışım rehberine uygun olarak kurallar hem minimum (en iyi durum) hem maksimum (en kötü durum) senaryolarıyla karşılaştırmalı değerlendirildi.")
@@ -599,6 +629,7 @@ class RegulatoryPipeline:
             calculation_steps=calculation_steps,
             rule_results=rule_results,
             has_indeterminate=bool(indeterminate_hazards),
-            indeterminate_hazards=indeterminate_hazards
+            indeterminate_hazards=indeterminate_hazards,
+            data_quality=data_quality
         )
 

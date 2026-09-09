@@ -494,6 +494,39 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                 </p>
               </div>
 
+              {result.data_quality && (
+                <div style={{
+                  padding: '12px 16px',
+                  background: result.data_quality.overall_quality === 'CONFIRMED' ? '#f0fdf4' : result.data_quality.overall_quality === 'UNCERTAIN' ? '#fffbeb' : '#fef2f2',
+                  border: `1px solid ${result.data_quality.overall_quality === 'CONFIRMED' ? '#bbf7d0' : result.data_quality.overall_quality === 'UNCERTAIN' ? '#fde68a' : '#fecaca'}`,
+                  borderRadius: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.86rem', color: result.data_quality.overall_quality === 'CONFIRMED' ? '#166534' : result.data_quality.overall_quality === 'UNCERTAIN' ? '#92400e' : '#991b1b' }}>
+                      🛡️ Veri Kalitesi (Data Quality): {result.data_quality.overall_quality}
+                    </span>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: '#ffffff', color: '#1e293b' }}>
+                      Güvenilirlik: %{result.data_quality.quality_score}
+                    </span>
+                  </div>
+                  {result.data_quality.missing_physical_data && result.data_quality.missing_physical_data.length > 0 && (
+                    <div style={{ fontSize: '0.78rem', color: '#b91c1c' }}>
+                      ⚠️ <strong>Eksik Test Parametreleri:</strong> {result.data_quality.missing_physical_data.join(', ')}
+                    </div>
+                  )}
+                  {result.data_quality.audit_notes && result.data_quality.audit_notes.length > 0 && (
+                    <div style={{ fontSize: '0.76rem', color: '#4b5563' }}>
+                      {result.data_quality.audit_notes.map((note, nIdx) => (
+                        <div key={nIdx}>• {note}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {(result.rule_results || []).map((rule, idx) => {
                   const statusVal = rule.status || rule.data_status;

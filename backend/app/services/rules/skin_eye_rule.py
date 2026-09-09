@@ -286,6 +286,8 @@ class SkinEyeRule(BaseHazardRule):
             "scl_skin_irrit": scl_skin_irrit,
             "scl_eye_dam": scl_eye_dam,
             "scl_eye_irrit": scl_eye_irrit,
+            "component_data_qualities": {s.name: s.data_quality.quality_level for s in substances if s.data_quality},
+            "has_uncertain_data": any(s.data_quality and s.data_quality.quality_level == "UNCERTAIN" for s in substances),
         }
 
         result.calculations = [

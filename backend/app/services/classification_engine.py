@@ -109,5 +109,6 @@ class ClassificationEngine:
             "rule_results": [r.model_dump() for r in result.rule_results],
             "data_status_summary": {r.rule_name: r.data_status for r in result.rule_results},
             "has_indeterminate": result.has_indeterminate,
-            "indeterminate_hazards": result.indeterminate_hazards
+            "indeterminate_hazards": result.indeterminate_hazards,
+            "data_quality": result.data_quality.model_dump() if result.data_quality else None
         }

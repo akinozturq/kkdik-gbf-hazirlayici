@@ -1151,6 +1151,80 @@ def test_reg010_rule_result_evidence_based_model():
     assert aq_rule["evidence"]["c_aq_chronic1_weighted"] == 30.0
 
 
+def test_reg011_eight_stage_pipeline_and_data_quality_layer():
+    """
+    REG-011: 8 Aşamalı Mimari Akışı ve DATA QUALITY Katmanı:
+    INPUT ➔ NORMALIZATION ➔ DATA QUALITY ➔ RULE ➔ EVIDENCE ➔ DECISION ➔ LABEL ➔ SDS
+
+    Kullanıcı Senaryosu:
+    Konsantrasyon = %10–25
+    →
+    DATA QUALITY = UNCERTAIN olmalı ve bu bilgi kural motoruna gitmelidir.
+    """
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+    from app.services.regulatory_engine.data_quality import DataQualityAssessor
+    from app.services.classification_engine import ClassificationEngine
+    from app.models.regulatory import CalculationContext
+
+    # 1. INPUT
+    raw_components = [
+        {
+            "ad": "Hidrokarbon Çözücü",
+            "konsantrasyon": "%10-25",
+            "siniflandirma": "Asp. Tox. 1 H304; Flam. Liq. 3 H226"
+        }
+    ]
+
+    # 2. NORMALIZATION
+    substances = RegulatoryPipeline.adapt_raw_components(raw_components)
+    sub = substances[0]
+    assert sub.concentration.qualifier == "range"
+    assert sub.concentration.min_val == 10.0
+    assert sub.concentration.max_val == 25.0
+    assert sub.concentration.value == 25.0
+
+    # 3. DATA QUALITY (Bileşen ve Karışım Düzeyinde Değerlendirme)
+    assert sub.data_quality is not None
+    assert sub.data_quality.quality_level == "UNCERTAIN"
+    assert sub.data_quality.concentration_quality == "UNCERTAIN"
+    assert "CONCENTRATION_RANGE_UNCERTAINTY" in sub.data_quality.flags
+    assert sub.data_quality.uncertainty_score > 0.0
+
+    context = CalculationContext(parlama_noktasi=28.0, kinematik_viskozite_40c=None)
+    mix_dq = DataQualityAssessor.assess_mixture(substances, context)
+    assert mix_dq.has_uncertain_components is True
+    assert "kinematik_viskozite_40c" in mix_dq.missing_physical_data
+    assert mix_dq.overall_quality in ("INCOMPLETE", "UNCERTAIN")
+
+    # 4. RULE & 5. EVIDENCE & 6. DECISION (Kural Motoruna Veri Kalitesinin İletilmesi)
+    pipeline = RegulatoryPipeline()
+    result = pipeline.execute(substances, context)
+
+    # Aspiration kuralı kanıtında veri kalitesi ve eksik viskozite kaydı
+    asp_rule = next(r for r in result.rule_results if r.rule_name == "AspirationHazardRule")
+    assert asp_rule.evidence["has_uncertain_data"] is True
+    assert asp_rule.evidence["component_data_qualities"]["Hidrokarbon Çözücü"] == "UNCERTAIN"
+    assert asp_rule.status == "INDETERMINATE"
+    assert any("DATA QUALITY" in a for a in asp_rule.assumptions)
+
+    # 7. LABEL (Etiket Elemanları)
+    assert "H226" in result.h_ifadeleri
+    assert "GHS02" in result.piktogramlar
+    assert result.uyari_kelimesi in ("Dikkat", "Tehlike")
+
+    # 8. SDS & Çıktı Entegrasyonu
+    res_engine = ClassificationEngine.calculate_mixture_hazards(
+        raw_components,
+        parlama_noktasi=28.0,
+        kinematik_viskozite=None
+    )
+    assert res_engine["data_quality"] is not None
+    assert res_engine["data_quality"]["has_uncertain_components"] is True
+    assert "kinematik_viskozite_40c" in res_engine["data_quality"]["missing_physical_data"]
+    assert any("VERİ KALİTESİ VE BELİRSİZLİK PROFİLİ" in step for step in res_engine["calculation_steps"])
+
+
+
 
 
 
