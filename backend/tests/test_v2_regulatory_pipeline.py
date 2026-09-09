@@ -201,3 +201,57 @@ def test_data_status_insufficient_for_flammable():
     assert "data_status_summary" in res
     assert res["data_status_summary"]["FlammableLiquidRule"] == "INSUFFICIENT_DATA"
 
+
+def test_concentration_range_three_valued_logic():
+    """
+    REG-001: Konsantrasyon aralıklarında 3 durumlu mantık doğrulaması:
+    1. min < threshold <= max -> INDETERMINATE (Belirsiz / Aralık Eşiği)
+    2. min >= threshold -> DEFINITELY_TRUE (Kesin)
+    3. max < threshold -> DEFINITELY_FALSE (Sınıflandırılmadı)
+    """
+    from app.services.classification_engine import ClassificationEngine
+
+    # Durum 1: 10 - 25% vs SCL = 20% -> INDETERMINATE
+    components_indeterminate = [
+        {
+            "ad": "Madde X",
+            "konsantrasyon": "10 - 25%",
+            "siniflandirma": "Skin Corr. 1B H314 (SCL >= 20%)"
+        }
+    ]
+    res1 = ClassificationEngine.calculate_mixture_hazards(components_indeterminate)
+    assert res1["has_indeterminate"] is True
+    assert len(res1["indeterminate_hazards"]) == 1
+    assert res1["siniflandirmalar"][0]["status"] == "INDETERMINATE"
+    assert res1["siniflandirmalar"][0]["status_label"] == "Belirsiz (Aralık Eşiği)"
+    assert "H314" in res1["h_ifadeleri"]
+
+    # Durum 2: 22 - 25% vs SCL = 20% -> DEFINITELY_TRUE
+    components_true = [
+        {
+            "ad": "Madde X",
+            "konsantrasyon": "22 - 25%",
+            "siniflandirma": "Skin Corr. 1B H314 (SCL >= 20%)"
+        }
+    ]
+    res2 = ClassificationEngine.calculate_mixture_hazards(components_true)
+    assert res2["has_indeterminate"] is False
+    assert len(res2["indeterminate_hazards"]) == 0
+    assert res2["siniflandirmalar"][0]["status"] == "DEFINITELY_TRUE"
+    assert res2["siniflandirmalar"][0]["status_label"] == "Kesin"
+    assert "H314" in res2["h_ifadeleri"]
+
+    # Durum 3: 5 - 15% vs SCL = 20% -> DEFINITELY_FALSE (Hiç sınıflandırılmaz)
+    components_false = [
+        {
+            "ad": "Madde X",
+            "konsantrasyon": "5 - 15%",
+            "siniflandirma": "Skin Corr. 1B H314 (SCL >= 20%)"
+        }
+    ]
+    res3 = ClassificationEngine.calculate_mixture_hazards(components_false)
+    assert res3["has_indeterminate"] is False
+    assert "H314" not in res3["h_ifadeleri"]
+    assert len(res3["siniflandirmalar"]) == 0
+
+

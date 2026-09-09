@@ -66,51 +66,61 @@ class CMRRule(BaseHazardRule):
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
             hazard_classes_str = " ".join([h.hazard_class for h in s.hazards])
 
+            has_scl_muta = False
+            has_scl_carc = False
+            has_scl_repr = False
+
             # SCL Kontrolleri
             for h in s.hazards:
                 if h.scl is not None:
                     if h.h_code in ["H340", "H341"] or "Muta" in h.hazard_class:
+                        has_scl_muta = True
                         if conc >= h.scl:
                             scl_muta = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H340")
                     elif h.h_code in ["H350", "H350i", "H351"] or "Carc" in h.hazard_class:
+                        has_scl_carc = True
                         if conc >= h.scl:
                             scl_carc = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H350")
                     elif any(h.h_code.startswith(p) for p in ["H360", "H361"]) or "Repr" in h.hazard_class:
+                        has_scl_repr = True
                         if conc >= h.scl:
                             scl_repr = (s.name, conc, h.scl, h.category or "1B", h.h_code or "H360D")
 
             # Mutajenite
-            if "H340" in codes:
-                if any("1A" in h.category.upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
-                    c_muta1a += conc
-                else:
-                    c_muta1b += conc
-            if "H341" in codes:
-                c_muta2 += conc
+            if not has_scl_muta:
+                if "H340" in codes:
+                    if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
+                        c_muta1a += conc
+                    else:
+                        c_muta1b += conc
+                if "H341" in codes:
+                    c_muta2 += conc
 
             # Kanserojenlik
-            if "H350" in codes or "H350i" in codes:
-                if any("1A" in h.category.upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
-                    c_carc1a += conc
-                else:
-                    c_carc1b += conc
-            if "H351" in codes:
-                c_carc2 += conc
+            if not has_scl_carc:
+                if "H350" in codes or "H350i" in codes:
+                    if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
+                        c_carc1a += conc
+                    else:
+                        c_carc1b += conc
+                if "H351" in codes:
+                    c_carc2 += conc
 
             # Üreme Toksisitesi
-            if any(c.startswith("H360") for c in codes):
-                if any("1A" in h.category.upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
-                    c_repr1a += conc
-                else:
-                    c_repr1b += conc
-                for c in codes:
-                    if c.startswith("H360"):
-                        repr_h360_codes.add(c)
-            if any(c.startswith("H361") for c in codes):
-                c_repr2 += conc
-                for c in codes:
-                    if c.startswith("H361"):
-                        repr_h361_codes.add(c)
+            if not has_scl_repr:
+                if any(c.startswith("H360") for c in codes):
+                    if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
+                        c_repr1a += conc
+                    else:
+                        c_repr1b += conc
+                    for c in codes:
+                        if c.startswith("H360"):
+                            repr_h360_codes.add(c)
+                if any(c.startswith("H361") for c in codes):
+                    c_repr2 += conc
+                    for c in codes:
+                        if c.startswith("H361"):
+                            repr_h361_codes.add(c)
 
         # 1. MUTAJENİTE
         total_muta1 = c_muta1a + c_muta1b

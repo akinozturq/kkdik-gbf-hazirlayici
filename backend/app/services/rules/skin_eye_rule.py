@@ -51,44 +51,57 @@ class SkinEyeRule(BaseHazardRule):
             hazard_classes_str = " ".join([h.hazard_class for h in s.hazards])
 
             # SCL Kontrolleri
+            has_scl_skin_corr = False
+            has_scl_skin_irrit = False
+            has_scl_eye_dam = False
+            has_scl_eye_irrit = False
+
             for h in s.hazards:
                 if h.scl is not None:
                     if h.h_code == "H314" or "Skin Corr" in h.hazard_class:
+                        has_scl_skin_corr = True
                         if conc >= h.scl:
                             scl_skin_corr = (s.name, conc, h.scl, h.category or "1")
                     elif h.h_code == "H315" or "Skin Irrit" in h.hazard_class:
+                        has_scl_skin_irrit = True
                         if conc >= h.scl:
                             scl_skin_irrit = (s.name, conc, h.scl)
                     elif h.h_code == "H318" or "Eye Dam" in h.hazard_class:
+                        has_scl_eye_dam = True
                         if conc >= h.scl:
                             scl_eye_dam = (s.name, conc, h.scl)
                     elif h.h_code == "H319" or "Eye Irrit" in h.hazard_class:
+                        has_scl_eye_irrit = True
                         if conc >= h.scl:
                             scl_eye_irrit = (s.name, conc, h.scl)
 
             # Cilt Aşınması
             if "H314" in codes or "Skin Corr." in hazard_classes_str:
-                if any("1A" in h.category.upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
-                    c_skin_corr_1a += conc
-                elif any("1B" in h.category.upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
-                    c_skin_corr_1b += conc
-                elif any("1C" in h.category.upper() for h in s.hazards) or "1C" in hazard_classes_str.upper():
-                    c_skin_corr_1c += conc
-                else:
-                    c_skin_corr_1_gen += conc
-                c_eye_dam_1 += conc  # Skin Corr 1 otomatik Eye Dam 1 sayılır
+                if not has_scl_skin_corr:
+                    if any("1A" in (h.category or "").upper() for h in s.hazards) or "1A" in hazard_classes_str.upper():
+                        c_skin_corr_1a += conc
+                    elif any("1B" in (h.category or "").upper() for h in s.hazards) or "1B" in hazard_classes_str.upper():
+                        c_skin_corr_1b += conc
+                    elif any("1C" in (h.category or "").upper() for h in s.hazards) or "1C" in hazard_classes_str.upper():
+                        c_skin_corr_1c += conc
+                    else:
+                        c_skin_corr_1_gen += conc
+                    c_eye_dam_1 += conc  # Skin Corr 1 genel havuzu otomatik Eye Dam 1 sayılır
 
             # Cilt Tahrişi
             if "H315" in codes:
-                c_skin_irrit_2 += conc
+                if not has_scl_skin_irrit:
+                    c_skin_irrit_2 += conc
 
             # Göz Hasarı
             if "H318" in codes:
-                c_eye_dam_1 += conc
+                if not has_scl_eye_dam:
+                    c_eye_dam_1 += conc
 
             # Göz Tahrişi
             if "H319" in codes:
-                c_eye_irrit_2 += conc
+                if not has_scl_eye_irrit:
+                    c_eye_irrit_2 += conc
 
         # 1. CİLT AŞINMASI (SKIN CORROSION)
         total_skin_corr_1 = c_skin_corr_1a + c_skin_corr_1b + c_skin_corr_1c + c_skin_corr_1_gen

@@ -3,7 +3,7 @@ Regülatif Sınıflandırma Boru Hattı (Regulatory Engine Pipeline)
 """
 
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set, Literal
 from app.models.regulatory import (
     ConcentrationValue,
     HazardEntry,
@@ -11,7 +11,8 @@ from app.models.regulatory import (
     StructuredSubstance,
     CalculationContext,
     ClassificationResult,
-    RuleResult
+    RuleResult,
+    ClassifiedHazard
 )
 from app.services.rules import (
     BaseHazardRule,
@@ -206,6 +207,52 @@ class RegulatoryPipeline:
 
         return substances
 
+    @classmethod
+    def project_substances(
+        cls,
+        substances: List[StructuredSubstance],
+        bound: Literal["min", "max", "nominal"]
+    ) -> List[StructuredSubstance]:
+        """
+        Bileşenlerin konsantrasyonlarını alt sınıra ('min'), üst sınıra ('max') veya
+        nominal değere göre projeksiyonlar.
+        """
+        projected = []
+        for s in substances:
+            c = s.concentration
+            if bound == "min":
+                if c.qualifier == "range":
+                    val = c.min_val if c.min_val is not None else c.value
+                elif c.qualifier == "less_than":
+                    val = 0.0
+                elif c.qualifier == "greater_than":
+                    val = c.value
+                else:
+                    val = c.value
+            elif bound == "max":
+                if c.qualifier == "range":
+                    val = c.max_val if c.max_val is not None else c.value
+                elif c.qualifier == "less_than":
+                    val = c.value
+                elif c.qualifier == "greater_than":
+                    val = 100.0
+                else:
+                    val = c.value
+            else:
+                val = c.value
+
+            new_conc = ConcentrationValue(
+                value=float(val),
+                min_val=c.min_val,
+                max_val=c.max_val,
+                qualifier=c.qualifier,
+                raw_text=c.raw_text
+            )
+            sub_copy = s.model_copy(deep=True)
+            sub_copy.concentration = new_conc
+            projected.append(sub_copy)
+        return projected
+
     def execute(
         self,
         substances: List[StructuredSubstance],
@@ -214,6 +261,8 @@ class RegulatoryPipeline:
         """
         Boru hattındaki tüm kural stratejilerini sırayla çalıştırır ve
         etiket elemanlarını çözümleyerek ClassificationResult üretir.
+        Konsantrasyon aralıklarını (min vs max) çift yönlü değerlendirerek
+        DEFINITELY_TRUE, DEFINITELY_FALSE ve INDETERMINATE durumlarını belirler.
         """
         if not substances:
             return ClassificationResult(
@@ -227,46 +276,113 @@ class RegulatoryPipeline:
                 rule_results=[]
             )
 
-        all_hazards: List[Dict[str, str]] = []
+        has_ranges = any(s.concentration.qualifier in ("range", "less_than") for s in substances)
+        substances_max = self.project_substances(substances, "max")
+        substances_min = self.project_substances(substances, "min")
+
+        all_hazards: List[Dict[str, Any]] = []
         all_h_codes: Set[str] = set()
         all_euh_codes: Set[str] = set()
         all_pictograms: Set[str] = set()
         warning_words: List[str] = []
         calculation_steps: List[str] = []
         rule_results: List[RuleResult] = []
+        indeterminate_hazards: List[Dict[str, Any]] = []
 
         # Bileşen Özeti Başlığı
         calculation_steps.append("📋 GİRDİ BİLEŞENLERİ VE KONSANTRASYONLARI:")
         for s in substances:
             codes_str = ", ".join(s.raw_h_codes) if s.raw_h_codes else "Sınıflandırma yok"
-            calculation_steps.append(f"• {s.name} (%{s.concentration.value:.1f}): {codes_str}")
+            if s.concentration.qualifier == "range":
+                conc_display = f"%{s.concentration.min_val:g} - %{s.concentration.max_val:g} (Aralık)"
+            elif s.concentration.qualifier == "less_than":
+                conc_display = f"<%{s.concentration.value:g}"
+            else:
+                conc_display = f"%{s.concentration.value:g}"
+            calculation_steps.append(f"• {s.name} ({conc_display}): {codes_str}")
+
+        if has_ranges:
+            calculation_steps.append("\n🔍 KONSANTRASYON ARALIĞI ÇİFT YÖNLÜ DENETİMİ (MIN / MAX BOUND CHECK):")
+            calculation_steps.append("• Reçetede konsantrasyon aralığı tespit edildi. ECHA karışım rehberine uygun olarak kurallar hem minimum (en iyi durum) hem maksimum (en kötü durum) senaryolarıyla karşılaştırmalı değerlendirildi.")
 
         calculation_steps.append("\n⚖️ SEA EK-1 TOPLANABİLİRLİK VE EŞİK DEĞER DEĞERLENDİRMESİ:")
 
         # Kuralları İcra Et
         for rule in self.rules:
-            res: RuleResult = rule.evaluate(context, substances)
-            rule_results.append(res)
+            # 1. Üst sınır değerlendirmesi (Worst-case)
+            res_max: RuleResult = rule.evaluate(context, substances_max)
 
-            for h in res.hazards:
+            # 2. Alt sınır değerlendirmesi (Best-case)
+            if has_ranges:
+                res_min: RuleResult = rule.evaluate(context, substances_min)
+                min_keys = {(h.zararlilik_sinifi, h.kategori, h.h_kodu) for h in res_min.hazards}
+            else:
+                min_keys = {(h.zararlilik_sinifi, h.kategori, h.h_kodu) for h in res_max.hazards}
+
+            evaluated_hazards: List[ClassifiedHazard] = []
+            has_rule_indeterminate = False
+
+            for h in res_max.hazards:
+                key = (h.zararlilik_sinifi, h.kategori, h.h_kodu)
+                if key in min_keys:
+                    h_status = "DEFINITELY_TRUE"
+                    status_lbl = "Kesin"
+                    range_det = None
+                else:
+                    h_status = "INDETERMINATE"
+                    status_lbl = "Belirsiz (Aralık Eşiği)"
+                    range_det = "Konsantrasyon aralığı eşik değeri kapsıyor; minimum konsantrasyonda eşik aşılmazken maksimum konsantrasyonda aşılmaktadır."
+                    has_rule_indeterminate = True
+                    indeterminate_hazards.append({
+                        "zararlilik_sinifi": h.zararlilik_sinifi,
+                        "kategori": h.kategori,
+                        "h_kodu": h.h_kodu,
+                        "rule_name": rule.rule_name,
+                        "details": range_det
+                    })
+
+                classified_h = ClassifiedHazard(
+                    zararlilik_sinifi=h.zararlilik_sinifi,
+                    kategori=h.kategori,
+                    h_kodu=h.h_kodu,
+                    status=h_status,
+                    status_label=status_lbl,
+                    range_details=range_det
+                )
+                evaluated_hazards.append(classified_h)
+
                 all_hazards.append({
                     "zararlilik_sinifi": h.zararlilik_sinifi,
                     "kategori": h.kategori,
-                    "h_kodu": h.h_kodu
+                    "h_kodu": h.h_kodu,
+                    "status": h_status,
+                    "status_label": status_lbl,
+                    "range_details": range_det
                 })
                 all_h_codes.add(h.h_kodu)
 
-            for euh in res.euh_codes:
+            res_max.hazards = evaluated_hazards
+            res_max.has_indeterminate = has_rule_indeterminate
+            rule_results.append(res_max)
+
+            for euh in res_max.euh_codes:
                 all_euh_codes.add(euh)
 
-            for pic in res.piktogramlar:
+            for pic in res_max.piktogramlar:
                 all_pictograms.add(pic)
 
-            if res.uyari_kelimesi:
-                warning_words.append(res.uyari_kelimesi)
+            if res_max.uyari_kelimesi:
+                warning_words.append(res_max.uyari_kelimesi)
 
-            for note in res.calculation_notes:
+            for note in res_max.calculation_notes:
                 calculation_steps.append(note)
+
+            if has_rule_indeterminate:
+                calculation_steps.append(
+                    f"⚠️ [ARALIK BELİRSİZLİĞİ / INDETERMINATE] {rule.rule_name}: "
+                    "Bileşenin konsantrasyon aralığı eşiği kapsadığı için minimum konsantrasyonda bu sınıflandırma oluşmamakta, "
+                    "ancak maksimum konsantrasyonda oluşmaktadır. ECHA rehberi uyarınca GBF'de en güvenli (worst-case) yaklaşım olarak listelenmiştir."
+                )
 
         # Etiket Elemanlarını Çözümle
         resolved_labels = LabelGenerator.resolve_label_elements(
@@ -285,5 +401,8 @@ class RegulatoryPipeline:
             uyari_kelimesi=resolved_labels["uyari_kelimesi"],
             p_ifadeleri=resolved_labels["p_ifadeleri"],
             calculation_steps=calculation_steps,
-            rule_results=rule_results
+            rule_results=rule_results,
+            has_indeterminate=bool(indeterminate_hazards),
+            indeterminate_hazards=indeterminate_hazards
         )
+

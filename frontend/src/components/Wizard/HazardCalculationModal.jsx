@@ -227,6 +227,29 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
 
           {!loading && !error && result && activeTab === 'results' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Konsantrasyon Aralığı (Indeterminate) Uyarısı */}
+              {result.has_indeterminate && (
+                <div
+                  style={{
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <AlertTriangle size={20} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '0.82rem', color: '#92400e' }}>
+                    <strong style={{ display: 'block', fontSize: '0.86rem', color: '#b45309', marginBottom: '2px' }}>
+                      Konsantrasyon Aralığı Uyarısı (ECHA CLP 3 Durumlu Mantık)
+                    </strong>
+                    Reçetede konsantrasyon aralığı (min - max) içeren bileşenler mevcuttur. Sarı renkle işaretlenen zararlılıklar, alt sınırda (%min) eşik değerin altında kalırken, üst sınırda (%max) eşik değeri aşmaktadır. ECHA ve SEA Karışım Rehberi uyarınca en koruyucu yaklaşım (üst sınır) seçilerek listelenmiştir.
+                  </div>
+                </div>
+              )}
+
               {/* Summary Highlights */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                 {/* Uyarı Kelimesi */}
@@ -304,20 +327,62 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                         <th>Zararlılık Sınıfı</th>
                         <th>Kategori</th>
                         <th>H-Kodu</th>
+                        <th>Kesinlik Durumu</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {siniflandirmalar.map((s, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: 600 }}>{s.zararlilik_sinifi}</td>
-                          <td>{s.kategori}</td>
-                          <td>
-                            <span className="badge badge-danger" style={{ fontSize: '0.76rem', fontWeight: 700 }}>
-                              {s.h_kodu}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {siniflandirmalar.map((s, idx) => {
+                        const isIndeterminate = s.status === 'INDETERMINATE';
+                        return (
+                          <tr key={idx} style={isIndeterminate ? { background: '#fffdf5' } : undefined}>
+                            <td style={{ fontWeight: 600 }}>{s.zararlilik_sinifi}</td>
+                            <td>{s.kategori}</td>
+                            <td>
+                              <span className="badge badge-danger" style={{ fontSize: '0.76rem', fontWeight: 700 }}>
+                                {s.h_kodu}
+                              </span>
+                            </td>
+                            <td>
+                              {isIndeterminate ? (
+                                <span
+                                  title={s.range_details || 'Konsantrasyon aralığı nedeniyle alt sınırda oluşmazken üst sınırda eşiği aşmaktadır.'}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    background: '#fef3c7',
+                                    color: '#b45309',
+                                    border: '1px solid #fde68a',
+                                  }}
+                                >
+                                  🟡 Belirsiz (Aralık Eşiği)
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    background: '#dcfce7',
+                                    color: '#15803d',
+                                    border: '1px solid #bbf7d0',
+                                  }}
+                                >
+                                  🟢 Kesin
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 ) : (
@@ -445,6 +510,21 @@ export default function HazardCalculationModal({ isOpen, onClose }) {
                           >
                             {statusLabel}
                           </span>
+                          {rule.has_indeterminate && (
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                background: '#fef3c7',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                              }}
+                            >
+                              🟡 Aralık Eşiği (Belirsiz)
+                            </span>
+                          )}
                         </div>
                         {rule.hazards && rule.hazards.length > 0 && (
                           <div style={{ display: 'flex', gap: '4px' }}>

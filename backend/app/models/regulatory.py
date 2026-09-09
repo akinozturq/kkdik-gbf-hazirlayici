@@ -95,6 +95,12 @@ class ClassifiedHazard(BaseModel):
     zararlilik_sinifi: str = Field(..., description="Zararlılık sınıfı başlığı")
     kategori: str = Field(..., description="Atanan kategori")
     h_kodu: str = Field(..., description="Atanan H veya EUH kodu")
+    status: Literal["DEFINITELY_TRUE", "INDETERMINATE"] = Field(
+        "DEFINITELY_TRUE",
+        description="Konsantrasyon aralığı kesinlik durumu: DEFINITELY_TRUE (Kesin) | INDETERMINATE (Aralık Eşiği / Belirsiz)"
+    )
+    status_label: Optional[str] = Field("Kesin", description="Kullanıcı dostu durum etiketi ('Kesin' veya 'Belirsiz (Aralık Eşiği)')")
+    range_details: Optional[str] = Field(None, description="Aralık belirsizliği detay açıklaması")
 
 
 class RuleResult(BaseModel):
@@ -110,13 +116,14 @@ class RuleResult(BaseModel):
     data_status: Literal["SUFFICIENT", "INSUFFICIENT_DATA", "NOT_APPLICABLE"] = Field(
         "SUFFICIENT", description="Veri yeterlilik ve güvenilirlik durumu"
     )
+    has_indeterminate: bool = Field(False, description="Kural kapsamında aralığa bağlı belirsizlik (INDETERMINATE) var mı?")
 
 
 class ClassificationResult(BaseModel):
     """
     Tüm kuralların birleşimi ve etiket önceliklendirmesi sonrası nihai karışım çıktısı.
     """
-    siniflandirmalar: List[Dict[str, str]] = Field(default_factory=list)
+    siniflandirmalar: List[Dict[str, Any]] = Field(default_factory=list)
     h_ifadeleri: List[str] = Field(default_factory=list)
     euh_ifadeleri: List[str] = Field(default_factory=list)
     piktogramlar: List[str] = Field(default_factory=list)
@@ -124,3 +131,6 @@ class ClassificationResult(BaseModel):
     p_ifadeleri: List[str] = Field(default_factory=list)
     calculation_steps: List[str] = Field(default_factory=list)
     rule_results: List[RuleResult] = Field(default_factory=list)
+    has_indeterminate: bool = Field(False, description="Karışım genelinde aralık belirsizliği (INDETERMINATE) var mı?")
+    indeterminate_hazards: List[Dict[str, Any]] = Field(default_factory=list, description="Aralığa bağlı belirsiz sınıflandırmalar")
+
