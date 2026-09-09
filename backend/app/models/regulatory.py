@@ -45,6 +45,40 @@ class SpecificConcentrationLimit(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class MFactor(BaseModel):
+    """
+    Sucul toksisite M-Faktörü (Çarpan Katsayısı) ve denetim izi (audit trail) veri yapısı.
+    CLP / SEA Ek-1 uyarınca M-faktörü belirtilmemişse hesaplama için varsayılan (effective_value=1.0)
+    kullanılır, ancak denetim izinde kaynak 'DEFAULT' (value=None) olarak işaretlenir.
+    Açıkça M=1 girilmişse value=1.0, effective_value=1.0, source='EXPLICIT' olur.
+    """
+    value: Optional[float] = Field(None, description="Bileşenin bilinen gerçek M-faktörü (belirtilmemişse None)")
+    effective_value: float = Field(1.0, description="Hesaplamada fiilen kullanılan katsayı (varsayılan 1.0)")
+    source: Literal["EXPLICIT", "ANNEX_VI", "DEFAULT"] = Field(
+        "DEFAULT", description="M-faktörü kaynağı: EXPLICIT | ANNEX_VI | DEFAULT"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @classmethod
+    def create(
+        cls,
+        val: Optional[float] = None,
+        source: Optional[Literal["EXPLICIT", "ANNEX_VI", "DEFAULT"]] = None
+    ) -> "MFactor":
+        if val is not None and float(val) > 0:
+            return cls(
+                value=float(val),
+                effective_value=float(val),
+                source=source or "EXPLICIT"
+            )
+        return cls(
+            value=None,
+            effective_value=1.0,
+            source="DEFAULT"
+        )
+
+
 class HazardEntry(BaseModel):
     """
     Bir bileşenin tekil zararlılık sınıfı profili.
@@ -56,8 +90,22 @@ class HazardEntry(BaseModel):
     scl: Optional[float] = Field(None, description="Varsa Spesifik Konsantrasyon Sınırı (SCL - %)")
     m_factor_acute: Optional[float] = Field(None, description="Sucul Akut 1 M-faktörü")
     m_factor_chronic: Optional[float] = Field(None, description="Sucul Kronik 1 M-faktörü")
+    m_acute_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Akut M-faktörü ve denetim izi")
+    m_chronic_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Kronik M-faktörü ve denetim izi")
     has_euh066: bool = Field(False, description="Bu zararlılık veya bileşen açıkça EUH066 taşıyor mu?")
     euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/uygulanabilirlik bilgisi ('explicit_code', 'annex_vi', 'supplier_sds')")
+
+    @property
+    def m_acute(self) -> MFactor:
+        if self.m_acute_factor is not None:
+            return self.m_acute_factor
+        return MFactor.create(self.m_factor_acute)
+
+    @property
+    def m_chronic(self) -> MFactor:
+        if self.m_chronic_factor is not None:
+            return self.m_chronic_factor
+        return MFactor.create(self.m_factor_chronic)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -117,6 +165,20 @@ class StructuredSubstance(BaseModel):
     is_isocyanate: bool = Field(False, description="İzosiyanat türevi mi?")
     m_factor_acute: Optional[float] = Field(None, description="Sucul Akut 1 M-faktörü")
     m_factor_chronic: Optional[float] = Field(None, description="Sucul Kronik 1 M-faktörü")
+    m_acute_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Akut M-faktörü ve denetim izi")
+    m_chronic_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Kronik M-faktörü ve denetim izi")
+
+    @property
+    def m_acute(self) -> MFactor:
+        if self.m_acute_factor is not None:
+            return self.m_acute_factor
+        return MFactor.create(self.m_factor_acute)
+
+    @property
+    def m_chronic(self) -> MFactor:
+        if self.m_chronic_factor is not None:
+            return self.m_chronic_factor
+        return MFactor.create(self.m_factor_chronic)
 
     @property
     def structured_scls(self) -> List[SpecificConcentrationLimit]:

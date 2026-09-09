@@ -42,18 +42,37 @@ class AquaticRule(BaseHazardRule):
 
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
 
-            m_akut = s.m_factor_acute or 1.0
-            m_kronik = s.m_factor_chronic or 1.0
+            m_akut_obj = s.m_acute
+            m_kronik_obj = s.m_chronic
+
+            m_akut = m_akut_obj.effective_value
+            m_kronik = m_kronik_obj.effective_value
 
             if "H400" in codes:
                 c_aq_acute1 += conc * m_akut
-                if not s.m_factor_acute:
-                    result.calculation_notes.append(f"  ℹ️ [{s.name}] Sucul Akut 1 M-faktörü belirtilmediği için varsayılan M=1 uygulandı.")
+                if m_akut_obj.source == "DEFAULT":
+                    result.calculation_notes.append(
+                        f"  ℹ️ [{s.name}] Sucul Akut 1 M-faktörü belirtilmediğinden denetim izi gereği "
+                        f"varsayılan (value=null, effective_value=1.0, source='DEFAULT') uygulandı."
+                    )
+                else:
+                    result.calculation_notes.append(
+                        f"  ℹ️ [{s.name}] Sucul Akut 1 M-faktörü doğrulandı: "
+                        f"(value={m_akut_obj.value:g}, effective_value={m_akut_obj.effective_value:g}, source='{m_akut_obj.source}')."
+                    )
 
             if "H410" in codes:
                 c_aq_chronic1 += conc * m_kronik
-                if not s.m_factor_chronic:
-                    result.calculation_notes.append(f"  ℹ️ [{s.name}] Sucul Kronik 1 M-faktörü belirtilmediği için varsayılan M=1 uygulandı.")
+                if m_kronik_obj.source == "DEFAULT":
+                    result.calculation_notes.append(
+                        f"  ℹ️ [{s.name}] Sucul Kronik 1 M-faktörü belirtilmediğinden denetim izi gereği "
+                        f"varsayılan (value=null, effective_value=1.0, source='DEFAULT') uygulandı."
+                    )
+                else:
+                    result.calculation_notes.append(
+                        f"  ℹ️ [{s.name}] Sucul Kronik 1 M-faktörü doğrulandı: "
+                        f"(value={m_kronik_obj.value:g}, effective_value={m_kronik_obj.effective_value:g}, source='{m_kronik_obj.source}')."
+                    )
 
             if "H411" in codes:
                 c_aq_chronic2 += conc

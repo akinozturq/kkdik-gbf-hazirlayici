@@ -9,6 +9,7 @@ from app.models.regulatory import (
     ConcentrationValue,
     HazardEntry,
     SpecificConcentrationLimit,
+    MFactor,
     InhalationExposure,
     StructuredSubstance,
     CalculationContext,
@@ -287,6 +288,13 @@ class RegulatoryPipeline:
                         m_kronik = h.m_factor_chronic
                         break
 
+            # REG-009: M-Faktörü Denetim İzi (Audit Trail)
+            m_akut_source = comp.get("m_akut_source") or ("EXPLICIT" if m_akut is not None else "DEFAULT")
+            m_kronik_source = comp.get("m_kronik_source") or ("EXPLICIT" if m_kronik is not None else "DEFAULT")
+
+            m_acute_model = MFactor.create(m_akut, source=m_akut_source)
+            m_chronic_model = MFactor.create(m_kronik, source=m_kronik_source)
+
             sub_has_euh066 = bool(
                 "EUH066" in codes or
                 comp.get("has_euh066") or
@@ -313,7 +321,9 @@ class RegulatoryPipeline:
                 inhalation=inhal_model,
                 is_isocyanate=is_iso,
                 m_factor_acute=m_akut,
-                m_factor_chronic=m_kronik
+                m_factor_chronic=m_kronik,
+                m_acute_factor=m_acute_model,
+                m_chronic_factor=m_chronic_model
             ))
 
         return substances

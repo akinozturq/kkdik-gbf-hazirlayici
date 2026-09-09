@@ -612,6 +612,69 @@ def test_reg008_cmr_category_unresolved():
     )
 
 
+def test_reg009_aquatic_m_factor_audit_trail():
+    """
+    REG-009: AquaticRule M-faktörü denetim izi (audit trail) doğrulaması.
+    'M = 1' (açıkça 1 belirtilmiş) ile 'M bilgisi yok' (varsayılan 1) ayrılmalıdır:
+    1. M bilgisi yoksa: value=None, effective_value=1.0, source='DEFAULT'
+    2. M açıkça 1 ise: value=1.0, effective_value=1.0, source='EXPLICIT'
+    3. M açıkça 10 ise: value=10.0, effective_value=10.0, source='EXPLICIT'
+    4. Denetim izinde (calculation_notes) bu ayrım şeffaf şekilde belgelenmelidir.
+    """
+    from app.models.regulatory import MFactor
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+    from app.services.classification_engine import ClassificationEngine
+
+    # 1. Model düzeyinde MFactor testi
+    m_default = MFactor.create(None)
+    assert m_default.value is None
+    assert m_default.effective_value == 1.0
+    assert m_default.source == "DEFAULT"
+
+    m_explicit_1 = MFactor.create(1.0)
+    assert m_explicit_1.value == 1.0
+    assert m_explicit_1.effective_value == 1.0
+    assert m_explicit_1.source == "EXPLICIT"
+
+    m_explicit_10 = MFactor.create(10.0)
+    assert m_explicit_10.value == 10.0
+    assert m_explicit_10.effective_value == 10.0
+    assert m_explicit_10.source == "EXPLICIT"
+
+    # 2. Pipeline adapt_raw_components ayrıştırma testi:
+    # A. M-faktörü belirtilmemiş bileşen
+    comp_no_m = [{"ad": "M Bilinmeyen Madde", "konsantrasyon": "%10", "siniflandirma": "Aquatic Acute 1 H400"}]
+    sub_no_m = RegulatoryPipeline.adapt_raw_components(comp_no_m)[0]
+    assert sub_no_m.m_acute.value is None
+    assert sub_no_m.m_acute.effective_value == 1.0
+    assert sub_no_m.m_acute.source == "DEFAULT"
+
+    res_no_m = ClassificationEngine.calculate_mixture_hazards(comp_no_m)
+    assert any("value=null, effective_value=1.0, source='DEFAULT'" in step for step in res_no_m["calculation_steps"])
+
+    # B. M-faktörü açıkça M=1 belirtilmiş bileşen
+    comp_m_1 = [{"ad": "M=1 Açık Madde", "konsantrasyon": "%10", "siniflandirma": "Aquatic Acute 1 H400 (M=1)"}]
+    sub_m_1 = RegulatoryPipeline.adapt_raw_components(comp_m_1)[0]
+    assert sub_m_1.m_acute.value == 1.0
+    assert sub_m_1.m_acute.effective_value == 1.0
+    assert sub_m_1.m_acute.source == "EXPLICIT"
+
+    res_m_1 = ClassificationEngine.calculate_mixture_hazards(comp_m_1)
+    assert any("value=1, effective_value=1, source='EXPLICIT'" in step for step in res_m_1["calculation_steps"])
+
+    # C. M-faktörü açıkça M=10 belirtilmiş bileşen (%3 * 10 = %30 >= %25 -> H400 tetiklenir)
+    comp_m_10 = [{"ad": "Yüksek Zehirli Sucul Madde", "konsantrasyon": "%3", "siniflandirma": "Aquatic Acute 1 H400 (M=10)"}]
+    sub_m_10 = RegulatoryPipeline.adapt_raw_components(comp_m_10)[0]
+    assert sub_m_10.m_acute.value == 10.0
+    assert sub_m_10.m_acute.effective_value == 10.0
+    assert sub_m_10.m_acute.source == "EXPLICIT"
+
+    res_m_10 = ClassificationEngine.calculate_mixture_hazards(comp_m_10)
+    assert "H400" in res_m_10["h_ifadeleri"]
+    assert any("value=10, effective_value=10, source='EXPLICIT'" in step for step in res_m_10["calculation_steps"])
+
+
+
 
 
 
