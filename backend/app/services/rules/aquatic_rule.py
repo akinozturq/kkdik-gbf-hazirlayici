@@ -142,12 +142,17 @@ class AquaticRule(BaseHazardRule):
         chr3_val = 100.0 * c_aq_chronic1 + 10.0 * c_aq_chronic2 + c_aq_chronic3
         chr4_val = c_aq_chronic1 + c_aq_chronic2 + c_aq_chronic3 + c_aq_chronic4
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
         result.evidence = {
             "c_aq_acute1_weighted": round(c_aq_acute1, 2),
             "c_aq_chronic1_weighted": round(c_aq_chronic1, 2),
             "c_aq_chronic2": round(c_aq_chronic2, 2),
             "c_aq_chronic3": round(c_aq_chronic3, 2),
             "c_aq_chronic4": round(c_aq_chronic4, 2),
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         result.calculations = [

@@ -123,10 +123,15 @@ class SensitizationRule(BaseHazardRule):
                     "H317 eşiğinin altında ancak SEA Ek-4 uyarınca EUH208 etikete eklendi."
                 )
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
         result.evidence = {
             "c_resp_sens_1": round(c_resp_sens_1, 2),
             "c_skin_sens_1": round(c_skin_sens_1, 2),
             "isocyanate_substances": iso_substances,
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         result.calculations = [

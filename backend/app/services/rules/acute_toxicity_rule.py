@@ -181,12 +181,17 @@ class AcuteToxicityRule(BaseHazardRule):
         gas_ate_val = (100.0 / ate_inhal_gas_sum) if (has_inhal_gas_inputs and ate_inhal_gas_sum > 0) else None
         dust_ate_val = (100.0 / ate_inhal_dust_sum) if (has_inhal_dust_inputs and ate_inhal_dust_sum > 0) else None
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
         result.evidence = {
             "ate_oral_mix": round(oral_ate_val, 2) if oral_ate_val is not None else None,
             "ate_dermal_mix": round(dermal_ate_val, 2) if dermal_ate_val is not None else None,
             "ate_inhal_vapour_mix": round(vapour_ate_val, 2) if vapour_ate_val is not None else None,
             "ate_inhal_gas_mix": round(gas_ate_val, 2) if gas_ate_val is not None else None,
             "ate_inhal_dust_mix": round(dust_ate_val, 2) if dust_ate_val is not None else None,
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         calcs = []

@@ -302,6 +302,9 @@ class CMRRule(BaseHazardRule):
                 result.uyari_kelimesi = "Dikkat"
             result.calculation_notes.append(f"• Üreme Toksisitesi: ∑(Repr 2) = %{c_repr2:.1f} >= %3.0 -> Sınıflandırıldı: Kategori 2 ({h_repr})")
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
         result.evidence = {
             "c_muta1a": round(c_muta1a, 2),
             "c_muta1b": round(c_muta1b, 2),
@@ -315,6 +318,8 @@ class CMRRule(BaseHazardRule):
             "c_repr1b": round(c_repr1b, 2),
             "c_repr1_unresolved": round(c_repr1_unresolved, 2),
             "c_repr2": round(c_repr2, 2),
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         result.calculations = [

@@ -305,6 +305,9 @@ class STOTRule(BaseHazardRule):
                 result.uyari_kelimesi = "Dikkat"
             result.calculation_notes.append(f"• STOT RE: ∑(STOT RE 2) = %{c_stot_re2:.1f} >= %10.0 -> Sınıflandırıldı: Kategori 2 (H373)")
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
         result.evidence = {
             "c_stot_se1": round(c_stot_se1, 2),
             "c_stot_se2": round(c_stot_se2, 2),
@@ -318,6 +321,8 @@ class STOTRule(BaseHazardRule):
             "scl_stot_se3_336": scl_stot_se3_336,
             "scl_stot_re1": scl_stot_re1,
             "scl_stot_re2": scl_stot_re2,
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         result.calculations = [

@@ -85,11 +85,16 @@ class SupplementalHazardRule(BaseHazardRule):
                 "• İlave Zararlılık (EUH066): Karışımdaki bileşenlerde açıkça EUH066 zararlılığı bulunmadığından EUH066 atanmadı (Sezgisel solvent varsayımı devre dışıdır)."
             )
 
+        uncertain_substances = [s for s in substances if s.data_quality and s.data_quality.quality_level == "UNCERTAIN"]
+        component_qualities = {s.name: s.data_quality.quality_level for s in substances if s.data_quality}
+
         result.evidence = {
             "euh066_substances": euh066_substances,
             "c_skin_corr_1": round(c_skin_corr_1, 2),
             "c_skin_irrit_2": round(c_skin_irrit_2, 2),
             "is_skin_corrosive_or_irritant": bool(is_skin_corr_1 or is_skin_irrit_2),
+            "component_data_qualities": component_qualities,
+            "has_uncertain_data": len(uncertain_substances) > 0,
         }
 
         result.calculations = [
