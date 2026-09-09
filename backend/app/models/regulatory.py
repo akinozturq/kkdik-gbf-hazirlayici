@@ -156,13 +156,78 @@ class HazardEntry(BaseModel):
         return None
 
 
+class ATEProvenance(BaseModel):
+    """
+    Akut Toksisite Tahmin Değeri (ATE) ve Menşei / Denetim İzi (Provenance) Modeli.
+    SEA Ek-1 Bölüm 3.1 & Tablo 3.1.2 uyarınca hesaplanan veya girilen ATE değerinin
+    kaynağını, türetilme yöntemini ve mevzuat referansını belgeler.
+    Örnek:
+    {
+      "ate": 500.0,
+      "value_source": "H302_CONVERSION",
+      "source_type": "DERIVED",
+      "source_reference": "SEA_ANNEX_I",
+      "route": "oral",
+      "unit": "mg/kg"
+    }
+    """
+    ate: float = Field(..., description="Sayısal ATE değeri")
+    value_source: str = Field(..., description="Değer kaynağı (örn. 'EXPLICIT_TEST_DATA', 'H302_CONVERSION', 'SUPPLIER_SDS')")
+    source_type: Literal["EXPERIMENTAL", "DERIVED", "DEFAULT", "ESTIMATED"] = Field(
+        "DERIVED", description="Kaynak tipi: EXPERIMENTAL (Deneysel) | DERIVED (Dönüştürülmüş) | DEFAULT | ESTIMATED"
+    )
+    source_reference: str = Field("SEA_ANNEX_I", description="Mevzuat veya standart referansı (örn. 'SEA_ANNEX_I', 'CLP_TABLE_3_1_2')")
+    route: Optional[str] = Field(None, description="Maruziyet yolu ('oral', 'dermal', 'inhalation_vapour', 'inhalation_gas', 'inhalation_dust')")
+    unit: str = Field("mg/kg", description="Ölçü birimi ('mg/kg', 'mg/L', 'ppmV')")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @classmethod
+    def create_experimental(
+        cls,
+        ate: float,
+        route: str = "oral",
+        unit: Optional[str] = None,
+        source_ref: str = "EXPLICIT_TEST_DATA"
+    ) -> "ATEProvenance":
+        default_unit = "ppmV" if route == "inhalation_gas" else ("mg/L" if "inhalation" in route else "mg/kg")
+        return cls(
+            ate=float(ate),
+            value_source="EXPLICIT_TEST_DATA",
+            source_type="EXPERIMENTAL",
+            source_reference=source_ref,
+            route=route,
+            unit=unit or default_unit
+        )
+
+    @classmethod
+    def create_derived_conversion(
+        cls,
+        ate: float,
+        h_code: str,
+        route: str = "oral",
+        unit: Optional[str] = None,
+        source_ref: str = "SEA_ANNEX_I"
+    ) -> "ATEProvenance":
+        default_unit = "ppmV" if route == "inhalation_gas" else ("mg/L" if "inhalation" in route else "mg/kg")
+        return cls(
+            ate=float(ate),
+            value_source=f"{h_code}_CONVERSION",
+            source_type="DERIVED",
+            source_reference=source_ref,
+            route=route,
+            unit=unit or default_unit
+        )
+
+
 class InhalationExposure(BaseModel):
     """
-    Soluma yolu akut toksisite fiziksel maruziyet formu ve birimi.
+    Soluma yolu akut toksisite fiziksel maruziyet formu, birimi ve ATE menşei.
     """
     ate_val: Optional[float] = Field(None, description="Bileşenin bilinen soluma ATE değeri")
     form: Literal["buhar", "gaz", "toz_sis"] = Field("buhar", description="Fiziksel maruziyet formu")
     unit: str = Field("mg/L", description="Birim (Gaz için ppmV, buhar ve toz için mg/L)")
+    provenance: Optional[ATEProvenance] = Field(None, description="Soluma ATE menşei / denetim izi")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -184,6 +249,24 @@ class StructuredSubstance(BaseModel):
     ate_oral: Optional[float] = Field(None, description="Oral ATE (mg/kg)")
     ate_dermal: Optional[float] = Field(None, description="Dermal ATE (mg/kg)")
     inhalation: Optional[InhalationExposure] = Field(None, description="Soluma ATE ve maruziyet formu")
+    ate_oral_provenance: Optional[ATEProvenance] = Field(None, description="Oral ATE kaynak ve denetim izi")
+    ate_dermal_provenance: Optional[ATEProvenance] = Field(None, description="Dermal ATE kaynak ve denetim izi")
+
+    @property
+    def oral_ate_model(self) -> Optional[ATEProvenance]:
+        if self.ate_oral_provenance is not None:
+            return self.ate_oral_provenance
+        if self.ate_oral is not None and self.ate_oral > 0:
+            return ATEProvenance.create_experimental(self.ate_oral, route="oral", unit="mg/kg")
+        return None
+
+    @property
+    def dermal_ate_model(self) -> Optional[ATEProvenance]:
+        if self.ate_dermal_provenance is not None:
+            return self.ate_dermal_provenance
+        if self.ate_dermal is not None and self.ate_dermal > 0:
+            return ATEProvenance.create_experimental(self.ate_dermal, route="dermal", unit="mg/kg")
+        return None
     
     # Özel kimyasal özellikler
     is_isocyanate: bool = Field(False, description="İzosiyanat türevi mi?")

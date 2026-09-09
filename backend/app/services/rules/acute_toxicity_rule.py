@@ -4,13 +4,21 @@ Harmonik Formül: 100 / ATE_mix = Σ(Ci / ATEi)
 """
 
 from typing import List
-from app.models.regulatory import StructuredSubstance, CalculationContext, RuleResult, ClassifiedHazard
+from app.models.regulatory import (
+    StructuredSubstance,
+    CalculationContext,
+    RuleResult,
+    ClassifiedHazard,
+    ATEProvenance
+)
 from app.services.rules.base_rule import BaseHazardRule
 
 
 class AcuteToxicityRule(BaseHazardRule):
     """
     Oral, Dermal ve Soluma (Buhar, Gaz, Toz/Sis) yolları için ATE_mix hesaplar.
+    Her bileşenin ATE değeri ve menşei (ATEProvenance - deneysel vs dönüştürülmüş)
+    denetim izinde açıkça raporlanır.
     """
 
     ATE_CONVERSION_ORAL = {"H300": 5.0, "H301": 50.0, "H302": 500.0}
@@ -50,54 +58,88 @@ class AcuteToxicityRule(BaseHazardRule):
             codes = set(s.raw_h_codes + [h.h_code for h in s.hazards])
 
             # 1. ORAL
-            if s.ate_oral and s.ate_oral > 0:
-                ate_oral_sum += conc / s.ate_oral
-                has_oral_inputs = True
-            else:
+            prov_oral = s.oral_ate_model
+            if prov_oral is None:
                 for h_code, conv in self.ATE_CONVERSION_ORAL.items():
                     if h_code in codes:
-                        ate_oral_sum += conc / conv
-                        has_oral_inputs = True
+                        prov_oral = ATEProvenance.create_derived_conversion(
+                            conv, h_code, route="oral", unit="mg/kg", source_ref="SEA_ANNEX_I"
+                        )
                         break
 
+            if prov_oral is not None and prov_oral.ate > 0:
+                ate_oral_sum += conc / prov_oral.ate
+                has_oral_inputs = True
+                result.calculation_notes.append(
+                    f"• Akut Toksisite (Oral Katkı): [{s.name}] %{conc:.1f}, ATE = {prov_oral.ate:.1f} {prov_oral.unit} "
+                    f"(Kaynak: {prov_oral.value_source}, Tip: {prov_oral.source_type}, Ref: {prov_oral.source_reference})"
+                )
+
             # 2. DERMAL
-            if s.ate_dermal and s.ate_dermal > 0:
-                ate_dermal_sum += conc / s.ate_dermal
-                has_dermal_inputs = True
-            else:
+            prov_dermal = s.dermal_ate_model
+            if prov_dermal is None:
                 for h_code, conv in self.ATE_CONVERSION_DERMAL.items():
                     if h_code in codes:
-                        ate_dermal_sum += conc / conv
-                        has_dermal_inputs = True
+                        prov_dermal = ATEProvenance.create_derived_conversion(
+                            conv, h_code, route="dermal", unit="mg/kg", source_ref="SEA_ANNEX_I"
+                        )
                         break
+
+            if prov_dermal is not None and prov_dermal.ate > 0:
+                ate_dermal_sum += conc / prov_dermal.ate
+                has_dermal_inputs = True
+                result.calculation_notes.append(
+                    f"• Akut Toksisite (Dermal Katkı): [{s.name}] %{conc:.1f}, ATE = {prov_dermal.ate:.1f} {prov_dermal.unit} "
+                    f"(Kaynak: {prov_dermal.value_source}, Tip: {prov_dermal.source_type}, Ref: {prov_dermal.source_reference})"
+                )
 
             # 3. SOLUMA (INHALATION)
             inhal_form = s.inhalation.form if s.inhalation else "buhar"
-            inhal_val = s.inhalation.ate_val if s.inhalation else None
+            prov_inhal = s.inhalation.provenance if s.inhalation and s.inhalation.provenance else None
+            if prov_inhal is None and s.inhalation and s.inhalation.ate_val and s.inhalation.ate_val > 0:
+                unit = "ppmV" if inhal_form == "gaz" else "mg/L"
+                prov_inhal = ATEProvenance.create_experimental(
+                    s.inhalation.ate_val, route=f"inhalation_{inhal_form}", unit=unit
+                )
 
-            if inhal_val and inhal_val > 0:
-                if inhal_form == "gaz":
-                    ate_inhal_gas_sum += conc / inhal_val
-                    has_inhal_gas_inputs = True
-                elif inhal_form in ["toz_sis", "toz", "sis"]:
-                    ate_inhal_dust_sum += conc / inhal_val
-                    has_inhal_dust_inputs = True
-                else:
-                    ate_inhal_vapour_sum += conc / inhal_val
-                    has_inhal_vapour_inputs = True
-            else:
+            if prov_inhal is None:
                 for h_code in ["H330", "H331", "H332"]:
                     if h_code in codes:
                         if inhal_form == "gaz":
-                            ate_inhal_gas_sum += conc / self.ATE_CONVERSION_INHAL_GAS[h_code]
-                            has_inhal_gas_inputs = True
+                            conv = self.ATE_CONVERSION_INHAL_GAS[h_code]
+                            prov_inhal = ATEProvenance.create_derived_conversion(
+                                conv, h_code, route="inhalation_gas", unit="ppmV", source_ref="SEA_ANNEX_I"
+                            )
                         elif inhal_form in ["toz_sis", "toz", "sis"]:
-                            ate_inhal_dust_sum += conc / self.ATE_CONVERSION_INHAL_DUST[h_code]
-                            has_inhal_dust_inputs = True
+                            conv = self.ATE_CONVERSION_INHAL_DUST[h_code]
+                            prov_inhal = ATEProvenance.create_derived_conversion(
+                                conv, h_code, route="inhalation_dust", unit="mg/L", source_ref="SEA_ANNEX_I"
+                            )
                         else:
-                            ate_inhal_vapour_sum += conc / self.ATE_CONVERSION_INHAL_VAPOUR[h_code]
-                            has_inhal_vapour_inputs = True
+                            conv = self.ATE_CONVERSION_INHAL_VAPOUR[h_code]
+                            prov_inhal = ATEProvenance.create_derived_conversion(
+                                conv, h_code, route="inhalation_vapour", unit="mg/L", source_ref="SEA_ANNEX_I"
+                            )
                         break
+
+            if prov_inhal is not None and prov_inhal.ate > 0:
+                if inhal_form == "gaz":
+                    ate_inhal_gas_sum += conc / prov_inhal.ate
+                    has_inhal_gas_inputs = True
+                    lbl = "Soluma - Gaz"
+                elif inhal_form in ["toz_sis", "toz", "sis"]:
+                    ate_inhal_dust_sum += conc / prov_inhal.ate
+                    has_inhal_dust_inputs = True
+                    lbl = "Soluma - Toz/Sis"
+                else:
+                    ate_inhal_vapour_sum += conc / prov_inhal.ate
+                    has_inhal_vapour_inputs = True
+                    lbl = "Soluma - Buhar"
+
+                result.calculation_notes.append(
+                    f"• Akut Toksisite ({lbl} Katkı): [{s.name}] %{conc:.1f}, ATE = {prov_inhal.ate:.2f} {prov_inhal.unit} "
+                    f"(Kaynak: {prov_inhal.value_source}, Tip: {prov_inhal.source_type}, Ref: {prov_inhal.source_reference})"
+                )
 
         # Sınıflandırma Eşikleri Değerlendirmesi
         # Oral

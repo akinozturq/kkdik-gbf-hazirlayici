@@ -11,6 +11,7 @@ from app.models.regulatory import (
     SpecificConcentrationLimit,
     MFactor,
     InhalationExposure,
+    ATEProvenance,
     StructuredSubstance,
     CalculationContext,
     ClassificationResult,
@@ -255,18 +256,64 @@ class RegulatoryPipeline:
             # REG-007: Hedefli SCL Mimarisini uygula (genel skaler kör atamayı engeller)
             cls.apply_scl_to_hazards(parsed_hazards, comp, comp_name=name)
 
-            # Akut toksisite & soluma
-            ate_oral = cls.parse_float_safe(comp.get("akut_toksisite_oral"))
-            ate_dermal = cls.parse_float_safe(comp.get("akut_toksisite_dermal"))
-            ate_inhal = cls.parse_float_safe(comp.get("akut_toksisite_soluma"))
+            # REG-012: Akut toksisite & ATE Provenance (Denetim İzi)
+            raw_oral = comp.get("akut_toksisite_oral") if comp.get("akut_toksisite_oral") is not None else comp.get("ate_oral")
+            ate_oral = None
+            ate_oral_prov = None
+            if isinstance(raw_oral, dict):
+                ate_oral_prov = ATEProvenance(**raw_oral)
+                ate_oral = ate_oral_prov.ate
+            elif isinstance(raw_oral, ATEProvenance):
+                ate_oral_prov = raw_oral
+                ate_oral = raw_oral.ate
+            else:
+                ate_oral = cls.parse_float_safe(raw_oral)
+                if ate_oral is not None and ate_oral > 0:
+                    ate_oral_prov = ATEProvenance.create_experimental(ate_oral, route="oral", unit="mg/kg")
+
+            raw_dermal = comp.get("akut_toksisite_dermal") if comp.get("akut_toksisite_dermal") is not None else comp.get("ate_dermal")
+            ate_dermal = None
+            ate_dermal_prov = None
+            if isinstance(raw_dermal, dict):
+                ate_dermal_prov = ATEProvenance(**raw_dermal)
+                ate_dermal = ate_dermal_prov.ate
+            elif isinstance(raw_dermal, ATEProvenance):
+                ate_dermal_prov = raw_dermal
+                ate_dermal = raw_dermal.ate
+            else:
+                ate_dermal = cls.parse_float_safe(raw_dermal)
+                if ate_dermal is not None and ate_dermal > 0:
+                    ate_dermal_prov = ATEProvenance.create_experimental(ate_dermal, route="dermal", unit="mg/kg")
+
+            raw_inhal = comp.get("akut_toksisite_soluma") if comp.get("akut_toksisite_soluma") is not None else comp.get("ate_inhal")
+            if raw_inhal is None:
+                raw_inhal = comp.get("ate_inhalation")
             inhal_form = (comp.get("akut_toksisite_soluma_formu") or "buhar").lower()
+            norm_form = "gaz" if inhal_form == "gaz" else ("toz_sis" if inhal_form in ["toz_sis", "toz", "sis"] else "buhar")
+            norm_unit = "ppmV" if norm_form == "gaz" else "mg/L"
+
+            ate_inhal = None
+            ate_inhal_prov = None
+            if isinstance(raw_inhal, dict):
+                ate_inhal_prov = ATEProvenance(**raw_inhal)
+                ate_inhal = ate_inhal_prov.ate
+            elif isinstance(raw_inhal, ATEProvenance):
+                ate_inhal_prov = raw_inhal
+                ate_inhal = raw_inhal.ate
+            else:
+                ate_inhal = cls.parse_float_safe(raw_inhal)
+                if ate_inhal is not None and ate_inhal > 0:
+                    ate_inhal_prov = ATEProvenance.create_experimental(
+                        ate_inhal, route=f"inhalation_{norm_form}", unit=norm_unit
+                    )
 
             inhal_model = None
             if ate_inhal is not None or any(h in codes for h in ["H330", "H331", "H332"]):
                 inhal_model = InhalationExposure(
                     ate_val=ate_inhal,
-                    form="gaz" if inhal_form == "gaz" else ("toz_sis" if inhal_form in ["toz_sis", "toz", "sis"] else "buhar"),
-                    unit="ppmV" if inhal_form == "gaz" else "mg/L"
+                    form=norm_form,
+                    unit=norm_unit,
+                    provenance=ate_inhal_prov
                 )
 
             # İzosiyanat & M-faktörü
@@ -296,6 +343,7 @@ class RegulatoryPipeline:
             m_acute_model = MFactor.create(m_akut, source=m_akut_source)
             m_chronic_model = MFactor.create(m_kronik, source=m_kronik_source)
 
+            # REG-004: EUH066 Doğrulanmış Veri Kaynağı / Dayanak
             sub_has_euh066 = bool(
                 "EUH066" in codes or
                 comp.get("has_euh066") or
@@ -320,6 +368,8 @@ class RegulatoryPipeline:
                 ate_oral=ate_oral,
                 ate_dermal=ate_dermal,
                 inhalation=inhal_model,
+                ate_oral_provenance=ate_oral_prov,
+                ate_dermal_provenance=ate_dermal_prov,
                 is_isocyanate=is_iso,
                 m_factor_acute=m_akut,
                 m_factor_chronic=m_kronik,

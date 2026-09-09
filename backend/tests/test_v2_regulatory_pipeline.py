@@ -895,6 +895,83 @@ def test_reg011_stot_se3_rti_ne_and_cutoff_abstraction():
     assert "H373" in res_re2_active["h_ifadeleri"]
 
 
+def test_reg012_acute_toxicity_ate_provenance_audit_trail():
+    """
+    REG-012: Akut Toksisite ATE Provenance (Menşei / Denetim İzi) Modellemesi:
+    - Sayısal ATE, value_source, source_type ve source_reference alanlarının doğrulanması
+    - H-kodu dönüşümü (DERIVED, SEA_ANNEX_I, H302_CONVERSION)
+    - Doğrudan deneysel veri (EXPERIMENTAL, EXPLICIT_TEST_DATA)
+    - Yapılandırılmış ATE nesnesi ile girdi aktarımı
+    - Soluma maruziyet formları (toz/sis, buhar, gaz) denetim izi
+    """
+    from app.models.regulatory import ATEProvenance
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+    from app.services.classification_engine import ClassificationEngine
+
+    # 1. ATEProvenance model doğrudan doğrulama (Kullanıcı spesifikasyonuna tam uyum):
+    prov = ATEProvenance(
+        ate=500.0,
+        value_source="H302_CONVERSION",
+        source_type="DERIVED",
+        source_reference="SEA_ANNEX_I",
+        route="oral",
+        unit="mg/kg"
+    )
+    dumped = prov.model_dump()
+    assert dumped["ate"] == 500.0
+    assert dumped["value_source"] == "H302_CONVERSION"
+    assert dumped["source_type"] == "DERIVED"
+    assert dumped["source_reference"] == "SEA_ANNEX_I"
+
+    # 2. H302 dönüşümünün otomatik olarak provenance üretmesi ve calculation_steps içinde denetim izi:
+    # Sayısal ATE verilmemiş, sadece H302 verilmiş bileşen:
+    comp_derived = [{"ad": "Toksik Madde X", "konsantrasyon": "%50", "siniflandirma": "Acute Tox. 4 H302"}]
+    res_derived = ClassificationEngine.calculate_mixture_hazards(comp_derived)
+    assert "H302" in res_derived["h_ifadeleri"]
+    assert any(
+        "• Akut Toksisite (Oral Katkı): [Toksik Madde X] %50.0, ATE = 500.0 mg/kg (Kaynak: H302_CONVERSION, Tip: DERIVED, Ref: SEA_ANNEX_I)"
+        in step for step in res_derived["calculation_steps"]
+    )
+
+    # 3. Açıkça girilmiş yapılandırılmış ATE nesnesi (Tedarikçi SDS / Laboratuvar Test Raporu):
+    comp_explicit_struct = [{
+        "ad": "Özel Kimyasal Y",
+        "konsantrasyon": "%50",
+        "siniflandirma": "Acute Tox. 4 H302",
+        "akut_toksisite_oral": {
+            "ate": 350.0,
+            "value_source": "SUPPLIER_SDS",
+            "source_type": "EXPERIMENTAL",
+            "source_reference": "LAB_REPORT_2026_TEST_8"
+        }
+    }]
+    subs = RegulatoryPipeline.adapt_raw_components(comp_explicit_struct)
+    sub = subs[0]
+    assert sub.ate_oral == 350.0
+    assert sub.oral_ate_model.value_source == "SUPPLIER_SDS"
+    assert sub.oral_ate_model.source_type == "EXPERIMENTAL"
+    assert sub.oral_ate_model.source_reference == "LAB_REPORT_2026_TEST_8"
+
+    res_explicit = ClassificationEngine.calculate_mixture_hazards(comp_explicit_struct)
+    assert any(
+        "• Akut Toksisite (Oral Katkı): [Özel Kimyasal Y] %50.0, ATE = 350.0 mg/kg (Kaynak: SUPPLIER_SDS, Tip: EXPERIMENTAL, Ref: LAB_REPORT_2026_TEST_8)"
+        in step for step in res_explicit["calculation_steps"]
+    )
+
+    # 4. Soluma Toz/Sis yolu dönüşüm ve denetim izi:
+    comp_dust = [{
+        "ad": "İnce Toz Madde",
+        "konsantrasyon": "%50",
+        "siniflandirma": "Acute Tox. 4 H332",
+        "akut_toksisite_soluma_formu": "toz_sis"
+    }]
+    res_dust = ClassificationEngine.calculate_mixture_hazards(comp_dust)
+    assert any(
+        "• Akut Toksisite (Soluma - Toz/Sis Katkı): [İnce Toz Madde] %50.0, ATE = 1.50 mg/L (Kaynak: H332_CONVERSION, Tip: DERIVED, Ref: SEA_ANNEX_I)"
+        in step for step in res_dust["calculation_steps"]
+    )
+
+
 
 
 
