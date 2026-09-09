@@ -102,6 +102,60 @@ class STOTSE3Effect(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class ValidationIssue(BaseModel):
+    """
+    Regülatif doğrulama kuralı ihlali, çelişki veya uyarı detayı.
+    """
+    code: str = Field(..., description="Bulgu kodu (örn. 'CLASS_CODE_MISMATCH', 'INVALID_SCL_BOUNDS')")
+    severity: Literal["ERROR", "WARNING", "INFO"] = Field("WARNING", description="Önem seviyesi")
+    message: str = Field(..., description="Kullanıcı ve denetçi için açıklayıcı mesaj")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ParsedHazardAssertion(BaseModel):
+    """
+    Aşama 2: Ham metinden ayrıştırılmış doğrudan iddia (Parsed Assertion).
+    Metnin ne iddia ettiğini kaydeder; mevzuat doğruluğu veya geçerliliği varsayımı yapmaz.
+    Örn: 'Skin Corr. 1B H314 (SCL >= 1%)' ->
+      raw_text='Skin Corr. 1B H314 (SCL >= 1%)'
+      asserted_class='Skin Corr.'
+      asserted_category='1B'
+      asserted_codes=['H314']
+      asserted_scl=1.0
+      asserted_m_factor=None
+    """
+    raw_text: str = Field(..., description="Ayrıştırılan ham metin parçacığı")
+    asserted_class: Optional[str] = Field(None, description="Metinde tespit edilen ham sınıf ifadesi")
+    asserted_category: Optional[str] = Field(None, description="Metinde tespit edilen ham kategori ifadesi")
+    asserted_codes: List[str] = Field(default_factory=list, description="Metinde bulunan ham H ve EUH kodları")
+    asserted_scl: Optional[float] = Field(None, description="Metinde bulunan sayısal SCL değeri")
+    asserted_m_factor: Optional[float] = Field(None, description="Metinde bulunan sayısal M-faktörü")
+    has_euh066: bool = Field(False, description="Metinde EUH066 ifadesi veya kodu var mı?")
+    parsing_notes: List[str] = Field(default_factory=list, description="Ayrıştırma esnasındaki gözlemler")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class NormalizedHazard(BaseModel):
+    """
+    Aşama 3: Standartlaştırılmış Regülatif Veri (Normalized Regulatory Data).
+    Yazım varyasyonları, Türkçe terimler, kod biçimleri ve eksik alanlar
+    kanonik CLP / SEA terminolojisine dönüştürülmüştür.
+    """
+    raw_assertion: ParsedHazardAssertion = Field(..., description="Dayanak oluşturan ham ayrıştırma iddiası")
+    canonical_class: str = Field(..., description="Kanonik zararlılık sınıfı (örn. 'Skin Corr.')")
+    canonical_category: str = Field(..., description="Kanonik kategori (örn. '1B', 'CATEGORY_UNRESOLVED')")
+    canonical_code: str = Field(..., description="Kanonik H-kodu (örn. 'H314', 'H361d')")
+    scl: Optional[float] = Field(None, description="Normalize edilmiş SCL değeri")
+    m_factor: Optional[float] = Field(None, description="Normalize edilmiş M-faktörü")
+    has_euh066: bool = Field(False, description="EUH066 normalize varlık bilgisi")
+    euh066_source: Optional[str] = Field(None, description="EUH066 kaynak bilgisi")
+    normalization_notes: List[str] = Field(default_factory=list, description="Normalizasyon notları ve yapılan düzeltmeler")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class HazardEntry(BaseModel):
     """
     Bir bileşenin tekil zararlılık sınıfı profili.
@@ -118,6 +172,13 @@ class HazardEntry(BaseModel):
     has_euh066: bool = Field(False, description="Bu zararlılık veya bileşen açıkça EUH066 taşıyor mu?")
     euh066_source: Optional[str] = Field(None, description="EUH066 kaynak/uygulanabilirlik bilgisi ('explicit_code', 'annex_vi', 'supplier_sds')")
     stot_effect: Optional[STOTSE3Effect] = Field(None, description="STOT SE 3 etki ve kaynak modeli (H335/H336)")
+    validation_status: Literal["VALID", "CORRECTED", "CONTRADICTORY", "INVALID", "UNRESOLVED"] = Field(
+        "VALID", description="Regülatif doğrulama durumu: VALID | CORRECTED | CONTRADICTORY | INVALID | UNRESOLVED"
+    )
+    validation_issues: List[ValidationIssue] = Field(
+        default_factory=list, description="Tespit edilen doğrulama bulguları ve uyarılar"
+    )
+    raw_assertion: Optional[str] = Field(None, description="Ayrıştırılan ham iddia metni")
 
     @property
     def m_acute(self) -> MFactor:
@@ -154,6 +215,68 @@ class HazardEntry(BaseModel):
                 "scl": self.scl
             }
         return None
+
+
+class ValidatedHazard(BaseModel):
+    """
+    Aşama 4: Doğrulanmış Regülatif Veri (Validated Regulatory Data).
+    CLP / SEA kurallarına (H-kodu vs sınıf tutarlılığı, kategori sınırları, SCL ve M-faktörü limitleri,
+    CMR kategori çözünürlüğü) göre denetlenmiş ve doğrulanmış nesne.
+    """
+    normalized: NormalizedHazard = Field(..., description="Normalize edilmiş regülatif veri")
+    status: Literal["VALID", "CORRECTED", "CONTRADICTORY", "INVALID", "UNRESOLVED"] = Field(
+        "VALID", description="Doğrulama nihai durumu"
+    )
+    issues: List[ValidationIssue] = Field(default_factory=list, description="Tespit edilen doğrulama bulguları")
+    is_applicable_for_classification: bool = Field(
+        True, description="Bu zararlılık karışım sınıflandırma motorunda hesaba katılabilir mi?"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    def to_hazard_entry(self) -> HazardEntry:
+        """Sınıflandırma motorunun tüketeceği nihai tip güvenli HazardEntry nesnesine dönüştürür."""
+        norm = self.normalized
+        stot_eff = None
+        if norm.canonical_code == "H335":
+            stot_eff = STOTSE3Effect(
+                effect_type="respiratory_tract_irritation",
+                h_code="H335",
+                source="CLASSIFICATION"
+            )
+        elif norm.canonical_code == "H336":
+            stot_eff = STOTSE3Effect(
+                effect_type="narcotic_effects",
+                h_code="H336",
+                source="CLASSIFICATION"
+            )
+
+        m_acute = norm.m_factor if ("Acute" in norm.canonical_class or norm.canonical_code == "H400") else None
+        m_chronic = norm.m_factor if ("Chronic" in norm.canonical_class or norm.canonical_code == "H410") else None
+
+        # SCL sadece geçerli ise atanır (INVALID_SCL_BOUNDS durumunda SCL motoru bozmasın)
+        has_invalid_scl = any(i.code == "INVALID_SCL_BOUNDS" for i in self.issues)
+        scl_val = None if has_invalid_scl else norm.scl
+
+        # M-factor sadece geçerli ise atanır
+        has_invalid_m = any(i.code in ("INVALID_M_FACTOR", "INAPPLICABLE_M_FACTOR") for i in self.issues)
+        m_acute_val = None if has_invalid_m else m_acute
+        m_chronic_val = None if has_invalid_m else m_chronic
+
+        return HazardEntry(
+            hazard_class=norm.canonical_class,
+            category=norm.canonical_category,
+            h_code=norm.canonical_code,
+            scl=scl_val,
+            m_factor_acute=m_acute_val,
+            m_factor_chronic=m_chronic_val,
+            has_euh066=norm.has_euh066,
+            euh066_source=norm.euh066_source,
+            stot_effect=stot_eff,
+            validation_status=self.status,
+            validation_issues=self.issues,
+            raw_assertion=norm.raw_assertion.raw_text
+        )
 
 
 class ATEProvenance(BaseModel):

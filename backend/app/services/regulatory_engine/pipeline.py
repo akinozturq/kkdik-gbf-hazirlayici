@@ -253,6 +253,14 @@ class RegulatoryPipeline:
             if not codes:
                 codes = cls.extract_h_codes(sinif_str)
 
+            # REG-013 / Parser Mimari Denetimi: Doğrulama uyarılarını logla
+            for h in parsed_hazards:
+                if h.validation_status in ("CONTRADICTORY", "INVALID", "UNRESOLVED"):
+                    for issue in h.validation_issues:
+                        logger.warning(
+                            f"[Regulatory Validation - {h.validation_status}] '{name}': {issue.message} (Girdi: '{sinif_str}')"
+                        )
+
             # REG-007: Hedefli SCL Mimarisini uygula (genel skaler kör atamayı engeller)
             cls.apply_scl_to_hazards(parsed_hazards, comp, comp_name=name)
 
@@ -472,6 +480,20 @@ class RegulatoryPipeline:
             else:
                 conc_display = f"%{s.concentration.value:g}"
             calculation_steps.append(f"• {s.name} ({conc_display}): {codes_str}")
+
+        # REG-013: Girdi Veri Doğrulama ve Mevzuat Denetim İzi (Regulatory Validation Audit)
+        validation_warnings = []
+        for s in substances:
+            for h in s.hazards:
+                if h.validation_issues:
+                    for issue in h.validation_issues:
+                        if issue.severity in ("ERROR", "WARNING") and h.validation_status in ("CONTRADICTORY", "INVALID", "UNRESOLVED"):
+                            validation_warnings.append(
+                                f"• [{s.name}] Durum: {h.validation_status} -> {issue.message} (Girdi: '{h.raw_assertion or h.h_code}')"
+                            )
+        if validation_warnings:
+            calculation_steps.append("\n⚠️ GİRDİ VERİ DOĞRULAMA VE MEVZUAT UYGUNLUK DENETİMİ:")
+            calculation_steps.extend(validation_warnings)
 
         if has_ranges:
             calculation_steps.append("\n🔍 KONSANTRASYON ARALIĞI ÇİFT YÖNLÜ DENETİMİ (MIN / MAX BOUND CHECK):")

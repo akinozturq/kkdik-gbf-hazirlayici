@@ -972,6 +972,95 @@ def test_reg012_acute_toxicity_ate_provenance_audit_trail():
     )
 
 
+def test_reg013_parser_4stage_pipeline_and_validation():
+    """
+    REG-013: 4 Aşamalı Parser Mimarisi ve Regülatif Doğrulama Motoru
+    Akış:
+      raw text ➔ parsed assertion ➔ normalized regulatory data ➔ validated regulatory data ➔ classification engine
+    """
+    from app.services.regulatory_engine.parser import RegulatoryClassificationParser
+    from app.services.classification_engine import ClassificationEngine
+    from app.models.regulatory import ParsedHazardAssertion, NormalizedHazard, ValidatedHazard
+
+    # 1. Aşama 1 -> Aşama 2: Ham metinden doğrudan iddiaların (ParsedHazardAssertion) çıkarılması
+    raw = "Skin Corr. 1B H314 (SCL >= 1%), Eye Dam. 1 H318 (SCL >= 3%)"
+    assertions = RegulatoryClassificationParser.parse_assertions(raw)
+    assert len(assertions) == 2
+    assert isinstance(assertions[0], ParsedHazardAssertion)
+    assert assertions[0].asserted_class == "Skin Corr."
+    assert assertions[0].asserted_category == "1B"
+    assert assertions[0].asserted_codes == ["H314"]
+    assert assertions[0].asserted_scl == 1.0
+
+    # 2. Aşama 2 -> Aşama 3: İddianın kanonik terminolojiye dönüştürülmesi (NormalizedHazard)
+    normalized_list = RegulatoryClassificationParser.normalize_assertion(assertions[0])
+    assert len(normalized_list) == 1
+    norm = normalized_list[0]
+    assert isinstance(norm, NormalizedHazard)
+    assert norm.canonical_class == "Skin Corr."
+    assert norm.canonical_category == "1B"
+    assert norm.canonical_code == "H314"
+    assert norm.scl == 1.0
+
+    # 3. Aşama 3 -> Aşama 4: Regülatif Doğrulama (ValidatedHazard) - Geçerli durum (VALID)
+    validated = RegulatoryClassificationParser.validate_normalized(norm)
+    assert isinstance(validated, ValidatedHazard)
+    assert validated.status == "VALID"
+    assert len(validated.issues) == 0
+    hazard_entry = validated.to_hazard_entry()
+    assert hazard_entry.validation_status == "VALID"
+    assert hazard_entry.scl == 1.0
+
+    # 4. Çelişki Denetimi (CONTRADICTORY - H-Kodu vs Zararlılık Sınıfı Uyuşmazlığı)
+    # H302 Akut Toksisitedir; metinde Flam. Liq. iddia edilmişse çelişki tespit edilmelidir
+    val_contradictory = RegulatoryClassificationParser.process_to_validated_hazards("Flam. Liq. 1 H302")
+    assert len(val_contradictory) == 1
+    assert val_contradictory[0].status == "CONTRADICTORY"
+    assert any(i.code == "CLASS_CODE_MISMATCH" and i.severity == "ERROR" for i in val_contradictory[0].issues)
+
+    # 5. Geçersiz SCL Sınır Denetimi (INVALID - SCL > 100%)
+    val_invalid_scl = RegulatoryClassificationParser.process_to_validated_hazards("Skin Corr. 1B H314 (SCL >= 150%)")
+    assert len(val_invalid_scl) == 1
+    assert val_invalid_scl[0].status == "INVALID"
+    assert any(i.code == "INVALID_SCL_BOUNDS" for i in val_invalid_scl[0].issues)
+    # Geçersiz SCL motora taşınmamalı (None olmalıdır)
+    assert val_invalid_scl[0].to_hazard_entry().scl is None
+
+    # 6. Geçersiz M-Faktörü Denetimi (INVALID - M < 1.0)
+    val_invalid_m = RegulatoryClassificationParser.process_to_validated_hazards("Aquatic Chronic 1 H410 (M=0)")
+    assert len(val_invalid_m) == 1
+    assert val_invalid_m[0].status == "INVALID"
+    assert any(i.code == "INVALID_M_FACTOR" for i in val_invalid_m[0].issues)
+
+    # 7. Uygulanamaz M-Faktörü Denetimi (CORRECTED / INAPPLICABLE)
+    # Alevlenir sıvıya M-faktörü eklenemez
+    val_inapp_m = RegulatoryClassificationParser.process_to_validated_hazards("Flam. Liq. 2 H225 (M=10)")
+    assert len(val_inapp_m) == 1
+    assert val_inapp_m[0].status == "CORRECTED"
+    assert any(i.code == "INAPPLICABLE_M_FACTOR" for i in val_inapp_m[0].issues)
+
+    # 8. Geçersiz Kategori Denetimi (CONTRADICTORY - Göz Tahrişi Kategori 1 Olamaz)
+    val_invalid_cat = RegulatoryClassificationParser.process_to_validated_hazards("Eye Irrit. 1 H319")
+    assert len(val_invalid_cat) == 1
+    assert val_invalid_cat[0].status == "CONTRADICTORY"
+    assert any(i.code == "INVALID_CATEGORY" for i in val_invalid_cat[0].issues)
+
+    # 9. CMR Kategori Belirsizlik Denetimi (UNRESOLVED)
+    val_unresolved = RegulatoryClassificationParser.process_to_validated_hazards("H350")
+    assert len(val_unresolved) == 1
+    assert val_unresolved[0].status == "UNRESOLVED"
+    assert any(i.code == "CMR_CATEGORY_UNRESOLVED" for i in val_unresolved[0].issues)
+
+    # 10. Karışım Hesaplama Motorunda Denetim İzi (Audit Trail)
+    # Reçetede çelişkili girdi olduğunda calculation_steps içinde doğrulama uyarısı listelenmelidir
+    res_audit = ClassificationEngine.calculate_mixture_hazards([
+        {"ad": "Uyumsuz Çözelti", "konsantrasyon": "%10", "siniflandirma": "Flam. Liq. 1 H302"}
+    ])
+    assert any("⚠️ GİRDİ VERİ DOĞRULAMA VE MEVZUAT UYGUNLUK DENETİMİ:" in step for step in res_audit["calculation_steps"])
+    assert any("Durum: CONTRADICTORY" in step and "CLASS_CODE_MISMATCH" not in step for step in res_audit["calculation_steps"])
+
+
+
 
 
 
