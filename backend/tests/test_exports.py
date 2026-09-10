@@ -1,4 +1,6 @@
+import io
 import pytest
+from docx import Document
 from fastapi.testclient import TestClient
 
 def test_export_docx_endpoint(client: TestClient):
@@ -28,6 +30,16 @@ def test_export_docx_endpoint(client: TestClient):
     assert docx_res.status_code == 200
     assert "application/vnd.openxmlformats-officedocument.wordprocessingml.document" in docx_res.headers["content-type"]
     assert len(docx_res.content) > 1000
+
+    doc = Document(io.BytesIO(docx_res.content))
+    footer_tables = doc.sections[0].footer.tables
+    assert len(footer_tables) == 1
+    row = footer_tables[0].rows[0]
+    assert len(row.cells) == 4
+    assert "POLCHEM" in row.cells[0].text and "www.polchem.com.tr" in row.cells[0].text
+    assert "AYPOL" in row.cells[1].text and "www.aypol.com.tr" in row.cells[1].text
+    assert "GÖKAY" in row.cells[2].text and "www.gokayboya.com.tr" in row.cells[2].text
+    assert "Sayfa" in row.cells[3].text
 
 def test_export_pdf_endpoint(client: TestClient):
     # 1. Create a test product
@@ -117,6 +129,13 @@ def test_export_english_docx_and_pdf(client: TestClient):
     docx_en_res = client.get(f"/api/products/{prod_id}/export/docx?lang=en")
     assert docx_en_res.status_code == 200
     assert len(docx_en_res.content) > 1000
+
+    doc_en = Document(io.BytesIO(docx_en_res.content))
+    footer_en_tables = doc_en.sections[0].footer.tables
+    assert len(footer_en_tables) == 1
+    row_en = footer_en_tables[0].rows[0]
+    assert "POLCHEM" in row_en.cells[0].text
+    assert "Page" in row_en.cells[3].text
 
     # English PDF
     pdf_en_res = client.get(f"/api/products/{prod_id}/export/pdf?lang=en")

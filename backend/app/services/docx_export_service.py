@@ -83,6 +83,8 @@ class DocxExportService:
                     text = text.replace("Yenileme Tarihi", "Revision Date")
                     text = text.replace("Revizyon No", "Revision No")
                 content = text.encode("utf-8")
+            elif item.filename in ("word/footer1.xml", "word/footer2.xml"):
+                content = cls._generate_footer_xml(lang=lang_clean).encode("utf-8")
             zip_out.writestr(item, content)
 
         zip_in.close()
@@ -118,6 +120,84 @@ class DocxExportService:
         doc.save(output_stream)
         output_stream.seek(0)
         return output_stream
+
+    @classmethod
+    def _generate_footer_xml(cls, lang: str = "tr") -> str:
+        lang_clean = (lang or "tr").lower()
+        t = translation_service.get_sections(lang_clean)
+        meta_t = t.get("meta", {})
+        page_label = meta_t.get("page") or ("Page" if lang_clean == "en" else "Sayfa")
+        of_label = meta_t.get("of") or ("of" if lang_clean == "en" else "/")
+
+        return (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">\n'
+            '  <w:tbl>\n'
+            '    <w:tblPr>\n'
+            '      <w:tblW w:w="5000" w:type="pct"/>\n'
+            '      <w:jc w:val="center"/>\n'
+            '      <w:tblBorders>\n'
+            '        <w:top w:val="single" w:sz="6" w:space="0" w:color="333333"/>\n'
+            '        <w:left w:val="none"/>\n'
+            '        <w:bottom w:val="none"/>\n'
+            '        <w:right w:val="none"/>\n'
+            '        <w:insideH w:val="none"/>\n'
+            '        <w:insideV w:val="none"/>\n'
+            '      </w:tblBorders>\n'
+            '      <w:tblCellMar>\n'
+            '        <w:top w:w="60" w:type="dxa"/>\n'
+            '        <w:bottom w:w="40" w:type="dxa"/>\n'
+            '        <w:left w:w="40" w:type="dxa"/>\n'
+            '        <w:right w:w="40" w:type="dxa"/>\n'
+            '      </w:tblCellMar>\n'
+            '    </w:tblPr>\n'
+            '    <w:tblGrid>\n'
+            '      <w:gridCol w:w="2527"/>\n'
+            '      <w:gridCol w:w="2527"/>\n'
+            '      <w:gridCol w:w="2527"/>\n'
+            '      <w:gridCol w:w="1445"/>\n'
+            '    </w:tblGrid>\n'
+            '    <w:tr>\n'
+            '      <w:trPr><w:cantSplit/></w:trPr>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr><w:tcW w:w="1400" w:type="pct"/><w:vAlign w:val="center"/></w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="left"/><w:spacing w:before="40" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr><w:t>POLCHEM</w:t></w:r>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr><w:t xml:space="preserve"> | www.polchem.com.tr</w:t></w:r>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr><w:tcW w:w="1400" w:type="pct"/><w:vAlign w:val="center"/></w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="center"/><w:spacing w:before="40" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr><w:t>AYPOL</w:t></w:r>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr><w:t xml:space="preserve"> | www.aypol.com.tr</w:t></w:r>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr><w:tcW w:w="1400" w:type="pct"/><w:vAlign w:val="center"/></w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="center"/><w:spacing w:before="40" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr><w:t>GÖKAY</w:t></w:r>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr><w:t xml:space="preserve"> | www.gokayboya.com.tr</w:t></w:r>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr><w:tcW w:w="800" w:type="pct"/><w:vAlign w:val="center"/></w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="right"/><w:spacing w:before="40" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>\n'
+            f'          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr><w:t xml:space="preserve">{page_label} </w:t></w:r>\n'
+            '          <w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>\n'
+            f'          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr><w:t xml:space="preserve"> {of_label} </w:t></w:r>\n'
+            '          <w:fldSimple w:instr="NUMPAGES"><w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '    </w:tr>\n'
+            '  </w:tbl>\n'
+            '</w:ftr>'
+        )
 
     @classmethod
     def _add_section_banner(cls, doc, title: str):
