@@ -9,7 +9,7 @@ KKDİK Ek-2, SEA yönetmelikleri (Ek-1 & Ek-4), CLP (EC 1272/2008) ve REACH Anne
 * **Yapay Zekâ:** Google Gemini (1.5 Flash / 2.5 Flash Lite) + Deterministik Sözlük Hibrit Çeviri Motoru
 * **Dışa Aktarma:** `python-docx` (Word), `xhtml2pdf` / `reportlab` (Lazy-load PDF), Jinja2 (HTML Önizleme)
 * **Taşımacılık Motoru:** ADR Sınıfı, PG, UN Numarası ve Tünel Kodları (`transport_engine.py`)
-* **Test Altyapısı:** Pytest (139 otomatize test, %100 başarılı)
+* **Test Altyapısı:** Pytest (144 otomatize test, %100 başarılı)
 
 ---
 
@@ -161,5 +161,5 @@ python -m uvicorn app.main:app --reload --port 8000
 ```powershell
 python -m pytest backend/tests -v --tb=short
 ```
-*(139 passed in ~6.8s)*
+*(144 passed in ~6.7s)*
 

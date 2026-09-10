@@ -6,7 +6,7 @@ T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı **KKDİK Yönetme
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.10+-e92063.svg)](https://docs.pydantic.dev/)
 [![React](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://react.dev/)
-[![Tests](https://img.shields.io/badge/Tests-139%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-144%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/Mevzuat-KKD%C4%B0K%20%2F%20SEA%20%2F%20CLP-orange.svg)]()
 
 ---
