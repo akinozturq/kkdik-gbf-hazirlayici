@@ -207,14 +207,14 @@
         <td style="width: 50%; text-align: center;">
           <div class="doc-title">{{ t.title or 'GÜVENLİK BİLGİ FORMU' }}</div>
           <div class="doc-subtitle">
-            {{ t.subtitle or '23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete KKDİK Yönetmeliği uyarınca hazırlanmıştır.' }}
+            {{ t.subtitle or 'Bu belge, 23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan Kimyasalların Kaydı, Değerlendirilmesi, İzni ve Kısıtlanmasına İlişkin Yönetmelik (KKDİK) uyarınca hazırlanmıştır.' }}
           </div>
         </td>
         <td style="width: 25%;">
           <div class="meta-box">
-            <div><b>{{ t.meta.compilation_date or 'Hazırlama' }}:</b> {{ sds.meta.hazirlama_tarihi or '01.01.2026' }}</div>
+            <div><b>{{ t.meta.compilation_date or 'Hazırlama Tarihi' }}:</b> {{ sds.meta.hazirlama_tarihi or '01.01.2026' }}</div>
             <div><b>{{ t.meta.revision_no or 'Revizyon No' }}:</b> {{ sds.meta.revizyon_no or '00' }}</div>
-            <div><b>{{ t.meta.revision_date or 'Rev. Tarihi' }}:</b> {{ sds.meta.revizyon_tarihi or sds.meta.hazirlama_tarihi or '01.01.2026' }}</div>
+            <div><b>{{ t.meta.revision_date or 'Revizyon Tarihi' }}:</b> {{ sds.meta.revizyon_tarihi or sds.meta.hazirlama_tarihi or '01.01.2026' }}</div>
           </div>
         </td>
       </tr>

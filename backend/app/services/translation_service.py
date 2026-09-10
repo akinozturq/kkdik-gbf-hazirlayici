@@ -353,10 +353,10 @@ P_STATEMENTS_EN = {
 
 SECTIONS_TR = {
     "title": "GÜVENLİK BİLGİ FORMU",
-    "subtitle": "Zararlı Maddeler ve Karışımlara İlişkin Güvenlik Bilgi Formları Hakkında Yönetmelik (13.12.2014 - 29204 Resmi Gazete) ve KKDİK Uyarınca",
+    "subtitle": "Bu belge, 23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan Kimyasalların Kaydı, Değerlendirilmesi, İzni ve Kısıtlanmasına İlişkin Yönetmelik (KKDİK) uyarınca hazırlanmıştır.",
     "meta": {
         "compilation_date": "Hazırlama Tarihi",
-        "revision_date": "Yenileme Tarihi",
+        "revision_date": "Revizyon Tarihi",
         "revision_no": "Revizyon No",
         "form_no": "Form / GBF No",
         "page": "Sayfa",

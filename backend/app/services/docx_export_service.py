@@ -73,16 +73,12 @@ class DocxExportService:
         for item in zip_in.infolist():
             content = zip_in.read(item.filename)
             if item.filename in ("word/header1.xml", "word/header2.xml"):
-                text = content.decode("utf-8")
-                text = re.sub(r'<w:t>16\.03\.2019</w:t>', f'<w:t>{hazirlama_tarihi}</w:t>', text)
-                text = re.sub(r'<w:t>01</w:t>', f'<w:t>{revizyon_no}</w:t>', text)
-                text = re.sub(r'<w:t>24\.06\.2026</w:t>', f'<w:t>{revizyon_tarihi}</w:t>', text)
-                if lang_clean == "en":
-                    text = text.replace("GÜVENLİK BİLGİ FORMU", "SAFETY DATA SHEET")
-                    text = text.replace("Hazırlama Tarihi", "Compilation Date")
-                    text = text.replace("Yenileme Tarihi", "Revision Date")
-                    text = text.replace("Revizyon No", "Revision No")
-                content = text.encode("utf-8")
+                content = cls._generate_header_xml(
+                    hazirlama_tarihi=hazirlama_tarihi,
+                    revizyon_no=revizyon_no,
+                    revizyon_tarihi=revizyon_tarihi,
+                    lang=lang_clean,
+                ).encode("utf-8")
             elif item.filename in ("word/footer1.xml", "word/footer2.xml"):
                 content = cls._generate_footer_xml(lang=lang_clean).encode("utf-8")
             zip_out.writestr(item, content)
@@ -120,6 +116,163 @@ class DocxExportService:
         doc.save(output_stream)
         output_stream.seek(0)
         return output_stream
+
+    @classmethod
+    def _generate_header_xml(
+        cls,
+        hazirlama_tarihi: str,
+        revizyon_no: str,
+        revizyon_tarihi: str,
+        lang: str = "tr",
+    ) -> str:
+        lang_clean = (lang or "tr").lower()
+        t = translation_service.get_sections(lang_clean)
+        meta_t = t.get("meta", {})
+
+        title = t.get("title") or ("SAFETY DATA SHEET" if lang_clean == "en" else "GÜVENLİK BİLGİ FORMU")
+        subtitle = t.get("subtitle") or (
+            "According to Regulation (EC) No. 1907/2006 (REACH), Annex II and Regulation (EC) No. 1272/2008 (CLP)"
+            if lang_clean == "en"
+            else "Bu belge, 23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan Kimyasalların Kaydı, Değerlendirilmesi, İzni ve Kısıtlanmasına İlişkin Yönetmelik (KKDİK) uyarınca hazırlanmıştır."
+        )
+        compilation_label = meta_t.get("compilation_date") or ("Compilation Date" if lang_clean == "en" else "Hazırlama Tarihi")
+        rev_no_label = meta_t.get("revision_no") or ("Revision No" if lang_clean == "en" else "Revizyon No")
+        rev_date_label = meta_t.get("revision_date") or ("Revision Date" if lang_clean == "en" else "Revizyon Tarihi")
+
+        h_tarih = hazirlama_tarihi or "01.01.2026"
+        r_no = revizyon_no or "00"
+        r_tarih = revizyon_tarihi or h_tarih
+
+        return (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+            'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+            'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">\n'
+            '  <w:tbl>\n'
+            '    <w:tblPr>\n'
+            '      <w:tblW w:w="5000" w:type="pct"/>\n'
+            '      <w:jc w:val="center"/>\n'
+            '      <w:tblBorders>\n'
+            '        <w:top w:val="none"/>\n'
+            '        <w:left w:val="none"/>\n'
+            '        <w:bottom w:val="single" w:sz="10" w:space="0" w:color="000000"/>\n'
+            '        <w:right w:val="none"/>\n'
+            '        <w:insideH w:val="none"/>\n'
+            '        <w:insideV w:val="none"/>\n'
+            '      </w:tblBorders>\n'
+            '      <w:tblCellMar>\n'
+            '        <w:top w:w="40" w:type="dxa"/>\n'
+            '        <w:bottom w:w="60" w:type="dxa"/>\n'
+            '        <w:left w:w="40" w:type="dxa"/>\n'
+            '        <w:right w:w="40" w:type="dxa"/>\n'
+            '      </w:tblCellMar>\n'
+            '    </w:tblPr>\n'
+            '    <w:tblGrid>\n'
+            '      <w:gridCol w:w="2256"/>\n'
+            '      <w:gridCol w:w="4514"/>\n'
+            '      <w:gridCol w:w="2256"/>\n'
+            '    </w:tblGrid>\n'
+            '    <w:tr>\n'
+            '      <w:trPr><w:cantSplit/></w:trPr>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr><w:tcW w:w="1250" w:type="pct"/><w:vAlign w:val="center"/></w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0"/></w:pPr>\n'
+            '          <w:r>\n'
+            '            <w:drawing>\n'
+            '              <wp:inline distT="0" distB="0" distL="0" distR="0">\n'
+            '                <wp:extent cx="1371600" cy="457200"/>\n'
+            '                <wp:effectExtent l="0" t="0" r="0" b="0"/>\n'
+            '                <wp:docPr id="1" name="Logo"/>\n'
+            '                <wp:cNvGraphicFramePr>\n'
+            '                  <a:graphicFrameLocks noChangeAspect="1"/>\n'
+            '                </wp:cNvGraphicFramePr>\n'
+            '                <a:graphic>\n'
+            '                  <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">\n'
+            '                    <pic:pic>\n'
+            '                      <pic:nvPicPr>\n'
+            '                        <pic:cNvPr id="1" name="image1.png"/>\n'
+            '                        <pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr>\n'
+            '                      </pic:nvPicPr>\n'
+            '                      <pic:blipFill>\n'
+            '                        <a:blip r:embed="rId1"/>\n'
+            '                        <a:stretch><a:fillRect/></a:stretch>\n'
+            '                      </pic:blipFill>\n'
+            '                      <pic:spPr>\n'
+            '                        <a:xfrm><a:off x="0" y="0"/><a:ext cx="1371600" cy="457200"/></a:xfrm>\n'
+            '                        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>\n'
+            '                      </pic:spPr>\n'
+            '                    </pic:pic>\n'
+            '                  </a:graphicData>\n'
+            '                </a:graphic>\n'
+            '              </wp:inline>\n'
+            '            </w:drawing>\n'
+            '          </w:r>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr><w:tcW w:w="2500" w:type="pct"/><w:vAlign w:val="center"/></w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="20"/></w:pPr>\n'
+            '          <w:r>\n'
+            '            <w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/><w:color w:val="000000"/></w:rPr>\n'
+            f'            <w:t>{title}</w:t>\n'
+            '          </w:r>\n'
+            '        </w:p>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r>\n'
+            '            <w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="14"/><w:szCs w:val="14"/><w:color w:val="333333"/></w:rPr>\n'
+            f'            <w:t>{subtitle}</w:t>\n'
+            '          </w:r>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '      <w:tc>\n'
+            '        <w:tcPr>\n'
+            '          <w:tcW w:w="1250" w:type="pct"/>\n'
+            '          <w:vAlign w:val="center"/>\n'
+            '          <w:tcBorders>\n'
+            '            <w:top w:val="single" w:sz="5" w:space="0" w:color="333333"/>\n'
+            '            <w:left w:val="single" w:sz="5" w:space="0" w:color="333333"/>\n'
+            '            <w:bottom w:val="single" w:sz="5" w:space="0" w:color="333333"/>\n'
+            '            <w:right w:val="single" w:sz="5" w:space="0" w:color="333333"/>\n'
+            '          </w:tcBorders>\n'
+            '          <w:tcMar>\n'
+            '            <w:top w:w="40" w:type="dxa"/>\n'
+            '            <w:bottom w:w="40" w:type="dxa"/>\n'
+            '            <w:left w:w="80" w:type="dxa"/>\n'
+            '            <w:right w:w="80" w:type="dxa"/>\n'
+            '          </w:tcMar>\n'
+            '        </w:tcPr>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="20" w:line="200" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr>'
+            f'<w:t xml:space="preserve">{compilation_label}: </w:t></w:r>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr>'
+            f'<w:t>{h_tarih}</w:t></w:r>\n'
+            '        </w:p>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="20" w:line="200" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr>'
+            f'<w:t xml:space="preserve">{rev_no_label}: </w:t></w:r>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr>'
+            f'<w:t>{r_no}</w:t></w:r>\n'
+            '        </w:p>\n'
+            '        <w:p>\n'
+            '          <w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="auto"/></w:pPr>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:b/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="000000"/></w:rPr>'
+            f'<w:t xml:space="preserve">{rev_date_label}: </w:t></w:r>\n'
+            '          <w:r><w:rPr><w:rFonts w:ascii="Google Sans" w:hAnsi="Google Sans" w:cs="Google Sans"/><w:sz w:val="15"/><w:szCs w:val="15"/><w:color w:val="333333"/></w:rPr>'
+            f'<w:t>{r_tarih}</w:t></w:r>\n'
+            '        </w:p>\n'
+            '      </w:tc>\n'
+            '    </w:tr>\n'
+            '  </w:tbl>\n'
+            '  <w:p><w:pPr><w:spacing w:before="0" w:after="80"/></w:pPr></w:p>\n'
+            '</w:hdr>'
+        )
 
     @classmethod
     def _generate_footer_xml(cls, lang: str = "tr") -> str:

@@ -32,6 +32,17 @@ def test_export_docx_endpoint(client: TestClient):
     assert len(docx_res.content) > 1000
 
     doc = Document(io.BytesIO(docx_res.content))
+    # Header check
+    header_tables = doc.sections[0].header.tables
+    assert len(header_tables) == 1
+    h_row = header_tables[0].rows[0]
+    assert len(h_row.cells) == 3
+    assert "GÜVENLİK BİLGİ FORMU" in h_row.cells[1].text
+    assert "Bu belge, 23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan" in h_row.cells[1].text
+    assert "Hazırlama Tarihi" in h_row.cells[2].text and "18.08.2026" in h_row.cells[2].text
+    assert "Revizyon No" in h_row.cells[2].text and "01" in h_row.cells[2].text
+
+    # Footer check
     footer_tables = doc.sections[0].footer.tables
     assert len(footer_tables) == 1
     row = footer_tables[0].rows[0]
@@ -79,6 +90,7 @@ def test_preview_html_endpoint(client: TestClient):
     assert html_res.status_code == 200
     assert "text/html" in html_res.headers["content-type"]
     assert "GÜVENLİK BİLGİ FORMU" in html_res.text
+    assert "Bu belge, 23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan" in html_res.text
     assert "Epoksi Astar" in html_res.text
 
     # Test English HTML Preview (REACH Annex II)
@@ -131,6 +143,12 @@ def test_export_english_docx_and_pdf(client: TestClient):
     assert len(docx_en_res.content) > 1000
 
     doc_en = Document(io.BytesIO(docx_en_res.content))
+    header_en_tables = doc_en.sections[0].header.tables
+    assert len(header_en_tables) == 1
+    assert "SAFETY DATA SHEET" in header_en_tables[0].rows[0].cells[1].text
+    assert "According to Regulation (EC) No. 1907/2006" in header_en_tables[0].rows[0].cells[1].text
+    assert "Compilation Date" in header_en_tables[0].rows[0].cells[2].text
+
     footer_en_tables = doc_en.sections[0].footer.tables
     assert len(footer_en_tables) == 1
     row_en = footer_en_tables[0].rows[0]
