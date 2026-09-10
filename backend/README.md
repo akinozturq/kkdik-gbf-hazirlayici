@@ -1,14 +1,39 @@
 # KKDİK Uyumlu SDS / GBF Hazırlayıcısı — Backend Servisi
 
-KKDİK Ek-2, SEA yönetmelikleri ve REACH Annex II standartlarına uygun olarak geliştirilmiş Güvenlik Bilgi Formu (SDS/GBF) hazırlama, otomatik karışım zararlılık hesaplama, yapay zekâ çeviri ve ürün yönetim sistemi backend altyapısı.
+KKDİK Ek-2, SEA yönetmelikleri (Ek-1 & Ek-4), CLP (EC 1272/2008) ve REACH Annex II standartlarına tam uyumlu olarak geliştirilmiş Güvenlik Bilgi Formu (SDS/GBF) hazırlama, otomatik karışım zararlılık hesaplama, veri kalitesi & belirsizlik analizi, yapay zekâ destekli çeviri, ADR taşımacılık ve ürün yönetim sistemi backend altyapısı.
 
 ## Mimari ve Teknolojiler
-* **Framework:** Python + FastAPI
-* **Veri Doğrulama & Modelleme:** Pydantic v2 (16 Bölümlük SDS Modeli)
+* **Framework:** Python 3.12 + FastAPI
+* **Veri Doğrulama & Modelleme:** Pydantic v2 (16 Bölümlük SDS Şeması ve Tip-Güvenli Regülatif Modeller)
 * **Veritabanı (ORM):** SQLite + SQLAlchemy
 * **Yapay Zekâ:** Google Gemini (1.5 Flash / 2.5 Flash Lite) + Deterministik Sözlük Hibrit Çeviri Motoru
-* **Dışa Aktarma:** `python-docx` (Word), `xhtml2pdf` / `reportlab` (PDF), Jinja2 (HTML Önizleme)
-* **Test Altyapısı:** Pytest + TestClient (57/57 birim ve entegrasyon testi)
+* **Dışa Aktarma:** `python-docx` (Word), `xhtml2pdf` / `reportlab` (Lazy-load PDF), Jinja2 (HTML Önizleme)
+* **Taşımacılık Motoru:** ADR Sınıfı, PG, UN Numarası ve Tünel Kodları (`transport_engine.py`)
+* **Test Altyapısı:** Pytest (139 otomatize test, %100 başarılı)
+
+---
+
+## 🏗️ Regülasyon Motoru Mimarisi (Regulatory Pipeline v2)
+
+Backend sınıflandırma motoru; **Pipeline Pattern** ve **Strategy Pattern** prensipleriyle tasarlanmış çok aşamalı bir yapıya sahiptir:
+
+1. **Input Katmanı:** Ham bileşenler, konsantrasyonlar ve fiziksel test parametreleri (Parlama Noktası, Kinematik Viskozite, pH, Fiziksel Hal).
+2. **Normalization (`RegulatoryParser`):** Ham metinleri kanonik CLP/SEA tehlike sınıflarına, H-kodlarına, SCL değerlerine ve M-faktörlerine dönüştürür.
+3. **Data Quality (`DataQualityAssessor`):**
+   * Konsantrasyon belirsizliklerini (`range`, `less_than`, `greater_than`) tespit eder ve `UNCERTAIN` kalitesine atar.
+   * Reçetedeki toplam konsantrasyon kontrolünü yapar: $\Sigma_{min} > 100\%$ ise `ERROR` / `CONTRADICTORY`, $\Sigma_{max} > 100\%$ ise `WARNING` / `UNCERTAIN`.
+   * Eksik fiziksel test gereksinimlerini (örn. alevlenir sıvılarda parlama noktası eksikliği) denetler (`INSUFFICIENT_DATA`).
+4. **Rule Strategies (`app/services/rules/`):**
+   * `FlammableLiquidRule`: Parlama ve kaynama noktası eşikleri.
+   * `SkinEyeRule`: Cilt aşınması 1A/1B/1C, tahriş (Kat 2) ve göz hasarı/tahrişi toplanabilirlik kuralları ve SCL entegrasyonu.
+   * `AspirationHazardRule`: Viskozite ($\le 20.5\text{ mm}^2/\text{s}$) ve konsantrasyon ($\ge 10\%$) eşleşmesi.
+   * `AcuteToxicityRule`: ATE_mix harmonik formülü ve Tablo 3.1.2 dönüşüm değerleri.
+   * `AquaticRule`: Akut/Kronik toplanabilirlik ve M-faktörü çarpanları.
+   * `CMRRule` & `STOTRule`: Kanserojenlik, mutajenlik, üreme toksisitesi ve hedef organ toksisitesi eşikleri.
+   * `SupplementalHazardRule`: EUH066, EUH204, EUH208 tamamlayıcı zararlılıklar.
+5. **Evidence & Dual Projection:** Aralık içeren bileşenler için hem minimum hem maksimum değerler simüle edilerek kesin durumlar (`DEFINITELY_TRUE`, `DEFINITELY_FALSE`) ile aralık eşiği durumları (`INDETERMINATE`) ayrıştırılır.
+6. **Precedence (`PictogramPrecedenceMatrix`):** `pictogram_precedence_matrix.json` tablosu üzerinden SEA Madde 26 / CLP Art. 26 bildirimsel kuralları çalıştırılarak piktogramlar elenir (GHS06 > GHS07, GHS05 > GHS07 vb.) ve denetim kaydı oluşturulur.
+7. **Label Generator (`LabelGenerator`):** SEA Ek-4 uyarınca P-kodları türetilir ve hiyerarşik fazlalıklar ayıklanır.
 
 ---
 
@@ -17,49 +42,56 @@ KKDİK Ek-2, SEA yönetmelikleri ve REACH Annex II standartlarına uygun olarak 
 ```
 backend/
 ├── app/
-│   ├── data/                   # Mevzuat referans veritabanı (JSON)
-│   │   ├── h_statements.json   # CLP/KKDİK Türkçe H-ifadeleri
-│   │   ├── p_statements.json   # Türkçe P-ifadeleri
-│   │   ├── pictograms.json     # GHS Tehlike Piktogramları (GHS01-GHS09)
-│   │   ├── h_to_p_map.json     # SEA Ek-4 H -> P haritalama kuralları
-│   │   └── raw_materials.json  # Standart hammadde kütüphanesi (ATE & M-Faktörlü)
-│   ├── models/                 # SQLAlchemy DB modelleri
-│   │   └── db_models.py        # Product ve Category tabloları
-│   ├── routers/                # FastAPI endpoint yönlendiricileri
-│   │   ├── products.py         # Ürün CRUD, kopyalama, doğrulama, hesaplama, ihracat
-│   │   ├── references.py       # H/P/Piktogram/Hammadde referans kütüphanesi
-│   │   └── ai.py               # Gemini AI yapılandırma ve çeviri endpoint'leri
-│   ├── schemas/                # Pydantic şemaları
-│   │   ├── sds_sections.py     # 16 Bölümlük SDS Ağaç Şeması (B1 - B16)
-│   │   ├── product.py          # Ürün CRUD ve listeleme şemaları
-│   │   ├── validation.py       # KKDİK doğrulama ve ilerleme şemaları
-│   │   ├── reference.py        # Referans veri şemaları
-│   │   └── ai.py               # AI ayar ve çeviri şemaları
-│   ├── services/               # İş mantığı ve mevzuat motorları
-│   │   ├── classification_engine.py # SEA Ek-1 Karışım Hesaplama, ATE_mix & M-faktörü
-│   │   ├── product_service.py  # Ürün CRUD, kopyalama ve autosave
-│   │   ├── validator_service.py# KKDİK Ek-2 Bölüm 4 doğrulama motoru
-│   │   ├── reference_service.py# H-kod ayrıştırma ve sözlük servisi
-│   │   ├── docx_export_service.py # Word (.docx) ihracat motoru (TR & EN)
-│   │   ├── pdf_export_service.py  # PDF ihracat motoru (TR & EN)
-│   │   ├── translation_service.py # Deterministik derin çeviri motoru
-│   │   └── gemini_service.py   # Google Gemini AI entegrasyonu
-│   ├── templates/              # Antetli GBF Şablonu, Fontlar & Piktogramlar
-│   ├── config.py               # Yapılandırma ve ortam değişkenleri
-│   ├── database.py             # SQLite bağlantı ve Session yönetimi
-│   └── main.py                 # FastAPI ana uygulama ve middleware
-├── tests/                      # 57 Adet Otomasyon Testi
-│   ├── conftest.py             # SQLite bellek içi test fikstürleri
-│   ├── test_models.py          # 16 Bölümlük Pydantic modelleri testleri
-│   ├── test_validators.py      # KKDİK Ek-2 doğrulama kuralları testleri
-│   ├── test_product_crud.py    # CRUD, duplicate ve API entegrasyon testleri
-│   ├── test_references.py      # Mevzuat kütüphanesi API testleri
-│   ├── test_classification_engine.py # Karışım hesaplama, ATE_mix & M-faktör testleri
-│   ├── test_exports.py         # Word, PDF & HTML ihracat testleri
-│   ├── test_translation_deep.py# Deterministik çeviri motoru testleri
-│   └── test_ai.py              # AI konfigürasyon testleri
+│   ├── data/
+│   │   ├── h_statements.json               # CLP/KKDİK Türkçe H-ifadeleri
+│   │   ├── p_statements.json               # Türkçe P-ifadeleri
+│   │   ├── pictograms.json                 # GHS Tehlike Piktogramları (GHS01-GHS09)
+│   │   ├── h_to_p_map.json                 # SEA Ek-4 H -> P haritalama kuralları
+│   │   ├── raw_materials.json              # Standart hammadde kütüphanesi (ATE & M-Faktörlü)
+│   │   ├── pictogram_precedence_matrix.json# SEA Md. 26 Piktogram Öncelik Matrisi
+│   │   ├── regulatory_test_matrix.csv      # Resmî Regülasyon Test Matrisi (CSV)
+│   │   └── regulatory_test_matrix.json     # Resmî Regülasyon Test Matrisi (JSON)
+│   ├── models/
+│   │   ├── db_models.py                    # Product ve Category SQLAlchemy modelleri
+│   │   └── regulatory.py                   # StructuredSubstance, DataQuality, ATE modelleri
+│   ├── routers/
+│   │   ├── products.py                     # Ürün CRUD, kopyalama, doğrulama, hesaplama, ihracat
+│   │   ├── references.py                   # H/P/Piktogram/Hammadde referans kütüphanesi
+│   │   └── ai.py                           # Gemini AI yapılandırma ve çeviri endpoint'leri
+│   ├── schemas/                            # Pydantic şemaları
+│   │   ├── sds_sections.py                 # 16 Bölümlük SDS Ağaç Şeması (B1 - B16)
+│   │   ├── product.py                      # Ürün CRUD ve listeleme şemaları
+│   │   ├── validation.py                   # KKDİK doğrulama ve ilerleme şemaları
+│   │   ├── reference.py                    # Referans veri şemaları
+│   │   └── ai.py                           # AI ayar ve çeviri şemaları
+│   ├── services/                           # İş mantığı ve mevzuat motorları
+│   │   ├── regulatory_engine/              # Pipeline, DataQuality, Parser, Precedence, Label
+│   │   ├── rules/                          # Kural Stratejileri (Flammable, Skin, Eye, CMR, STOT, Aquatic, Acute)
+│   │   ├── classification_engine.py        # Motor cephesi (Facade)
+│   │   ├── transport_engine.py             # ADR Taşımacılık Sınıflandırma Motoru
+│   │   ├── product_service.py              # Ürün CRUD, kopyalama ve autosave
+│   │   ├── validator_service.py            # KKDİK Ek-2 Bölüm 4 doğrulama motoru
+│   │   ├── reference_service.py            # H-kod ayrıştırma ve sözlük servisi
+│   │   ├── docx_export_service.py          # Word (.docx) ihracat motoru (TR & EN)
+│   │   ├── pdf_export_service.py           # PDF ihracat motoru (Lazy import korumalı)
+│   │   ├── translation_service.py          # Deterministik derin çeviri motoru
+│   │   └── gemini_service.py               # Google Gemini AI entegrasyonu
+│   ├── templates/                          # Antetli GBF Şablonu, Fontlar & Piktogramlar
+│   ├── config.py                           # Yapılandırma ve ortam değişkenleri
+│   ├── database.py                         # SQLite bağlantı ve Session yönetimi
+│   └── main.py                             # FastAPI ana uygulama ve middleware
+├── tests/                                  # 139 Adet Otomasyon Testi
+│   ├── test_regulatory_test_matrix.py      # 28 adet SEA/CLP benchmark testi
+│   ├── test_classification_engine.py       # ATE_mix, M-faktör, toplanabilirlik testleri
+│   ├── test_validators.py                  # KKDİK Ek-2 doğrulama kuralları testleri
+│   ├── test_models.py                      # 16 Bölümlük Pydantic modelleri testleri
+│   ├── test_product_crud.py                # CRUD, duplicate ve API entegrasyon testleri
+│   ├── test_references.py                  # Mevzuat kütüphanesi API testleri
+│   ├── test_exports.py                     # Word, PDF & HTML ihracat testleri
+│   ├── test_translation_deep.py            # Deterministik çeviri motoru testleri
+│   └── test_ai.py                          # AI konfigürasyon testleri
 ├── requirements.txt
-└── run.py                      # Backend sunucu başlatıcı
+└── run.py                                  # Backend sunucu başlatıcı
 ```
 
 ---
@@ -121,14 +153,13 @@ backend/
 ### Sunucuyu Başlatma
 ```powershell
 cd backend
-python run.py
+python -m uvicorn app.main:app --reload --port 8000
 ```
 * API Dokümantasyonu (Swagger): `http://127.0.0.1:8000/docs`
 
 ### Testleri Çalıştırma
 ```powershell
-$env:PYTHONPATH="backend"
-python -m pytest backend/tests -v
+python -m pytest backend/tests -v --tb=short
 ```
-*(57 passed in ~5.4s)*
+*(139 passed in ~6.8s)*
 
