@@ -466,9 +466,7 @@ class RegulatoryPipeline:
                 rule_results=[]
             )
 
-        has_ranges = any(s.concentration.qualifier in ("range", "less_than") for s in substances)
-        substances_max = self.project_substances(substances, "max")
-        substances_min = self.project_substances(substances, "min")
+        has_ranges = any(s.concentration.qualifier in ("range", "less_than", "greater_than") for s in substances)
 
         all_hazards: List[Dict[str, Any]] = []
         all_h_codes: Set[str] = set()
@@ -487,6 +485,8 @@ class RegulatoryPipeline:
                 conc_display = f"%{s.concentration.min_val:g} - %{s.concentration.max_val:g} (Aralık)"
             elif s.concentration.qualifier == "less_than":
                 conc_display = f"<%{s.concentration.value:g}"
+            elif s.concentration.qualifier == "greater_than":
+                conc_display = f">%{s.concentration.value:g}"
             else:
                 conc_display = f"%{s.concentration.value:g}"
             calculation_steps.append(f"• {s.name} ({conc_display}): {codes_str}")
@@ -509,6 +509,10 @@ class RegulatoryPipeline:
         from app.services.regulatory_engine.data_quality import DataQualityAssessor
         data_quality = DataQualityAssessor.assess_mixture(substances, context)
         context.data_quality = data_quality
+
+        # Projeksiyonlar DataQuality'den SONRA oluşturulur — data_quality deep copy ile taşınır
+        substances_max = self.project_substances(substances, "max")
+        substances_min = self.project_substances(substances, "min")
 
         calculation_steps.append("\n🔬 VERİ KALİTESİ VE BELİRSİZLİK PROFİLİ (DATA QUALITY ASSESSMENT):")
         calculation_steps.append(

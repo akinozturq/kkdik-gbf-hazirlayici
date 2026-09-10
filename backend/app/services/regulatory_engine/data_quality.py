@@ -56,11 +56,21 @@ class DataQualityAssessor:
                 f"Konsantrasyon aralık olarak belirtilmiş (%{min_v:g} - %{max_v:g}), kesinlik UNCERTAIN."
             )
             uncertainty_score += min(0.5, spread / 50.0)
-        elif concentration.qualifier in ("less_than", "greater_than"):
-            concentration_quality = "BOUNDED"
-            flags.append(f"CONCENTRATION_{concentration.qualifier.upper()}")
+        elif concentration.qualifier == "greater_than":
+            concentration_quality = "UNCERTAIN"
+            upper_bound = 100.0
+            spread = max(0.0, upper_bound - concentration.value)
+            flags.append("CONCENTRATION_GREATER_THAN_UNCERTAINTY")
             details.append(
-                f"Konsantrasyon tek taraflı sınırla belirtilmiş ({concentration.qualifier} %{concentration.value:g}), kesinlik BOUNDED."
+                f"Konsantrasyon alt sınır olarak belirtilmiş (>%{concentration.value:g}), "
+                f"gerçek değer %{concentration.value:g} ile %100 arasında olabilir. Kesinlik UNCERTAIN."
+            )
+            uncertainty_score += min(0.5, spread / 50.0)
+        elif concentration.qualifier == "less_than":
+            concentration_quality = "BOUNDED"
+            flags.append("CONCENTRATION_LESS_THAN")
+            details.append(
+                f"Konsantrasyon üst sınır olarak belirtilmiş (<%{concentration.value:g}), kesinlik BOUNDED."
             )
             uncertainty_score += 0.2
         else:
@@ -134,7 +144,7 @@ class DataQualityAssessor:
 
         for s in substances:
             dq = s.data_quality
-            if dq is None or (dq.quality_level == "CONFIRMED" and s.concentration.qualifier == "range"):
+            if dq is None or (dq.quality_level == "CONFIRMED" and s.concentration.qualifier in ("range", "greater_than")):
                 dq = cls.assess_substance(
                     name=s.name,
                     concentration=s.concentration,

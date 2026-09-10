@@ -1224,6 +1224,87 @@ def test_reg011_eight_stage_pipeline_and_data_quality_layer():
     assert any("VERİ KALİTESİ VE BELİRSİZLİK PROFİLİ" in step for step in res_engine["calculation_steps"])
 
 
+def test_reg014_greater_than_qualifier_uncertainty_and_indeterminate():
+    """
+    REG-014: greater_than qualifier'ının mantıksal bütünlüğü.
+
+    Problem (düzeltilmeden önce):
+      Konsantrasyon modeli 4 qualifier destekliyor: exact, less_than, greater_than, range.
+      Ancak pipeline'ın belirsizlik tetikleyicisi (has_ranges) sadece range ve less_than
+      ile sınırlıydı. greater_than atlanıyordu.
+
+    Beklenti:
+      1. DataQualityAssessor: >%8 → quality_level = UNCERTAIN, concentration_quality = UNCERTAIN
+      2. Pipeline: greater_than olan bileşenler için min/max çift yönlü değerlendirme yapılmalı
+      3. Pipeline: Eğer min'de eşik aşılmaz ama max'ta aşılırsa → INDETERMINATE
+      4. Display: >%8 olarak gösterilmeli (<%8 veya %8 değil)
+    """
+    from app.services.regulatory_engine.data_quality import DataQualityAssessor
+    from app.models.regulatory import (
+        ConcentrationValue, HazardEntry, StructuredSubstance,
+        CalculationContext
+    )
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+
+    # 1. DataQualityAssessor: greater_than → UNCERTAIN
+    conc_gt = ConcentrationValue(value=8.0, qualifier="greater_than")
+    hazards_h304 = [HazardEntry(h_code="H304", hazard_class="Asp. Tox.", category="1")]
+    dq = DataQualityAssessor.assess_substance(
+        name="Solvent X", concentration=conc_gt, hazards=hazards_h304
+    )
+    assert dq.quality_level == "UNCERTAIN", \
+        f"greater_than kalite seviyesi UNCERTAIN olmalı, bulundu: {dq.quality_level}"
+    assert dq.concentration_quality == "UNCERTAIN", \
+        f"greater_than konsantrasyon kalitesi UNCERTAIN olmalı, bulundu: {dq.concentration_quality}"
+    assert "CONCENTRATION_GREATER_THAN_UNCERTAINTY" in dq.flags
+    assert dq.uncertainty_score > 0.0
+
+    # less_than hâlâ BOUNDED olarak kalmalı (farklılaşma)
+    conc_lt = ConcentrationValue(value=5.0, qualifier="less_than")
+    dq_lt = DataQualityAssessor.assess_substance(
+        name="Solvent Y", concentration=conc_lt, hazards=hazards_h304
+    )
+    assert dq_lt.concentration_quality == "BOUNDED", \
+        f"less_than konsantrasyon kalitesi BOUNDED olmalı, bulundu: {dq_lt.concentration_quality}"
+    assert "CONCENTRATION_LESS_THAN" in dq_lt.flags
+
+    # 2. Pipeline: greater_than → has_ranges True → çift yönlü değerlendirme
+    # Senaryo: Bileşen >%8 H304 (Aspirasyon). Eşik %10.
+    # min projeksiyonu: %8 (eşiğin altı) → sınıflandırılmaz
+    # max projeksiyonu: %100 (eşiğin üstü) → sınıflandırılır → INDETERMINATE
+    substances = [
+        StructuredSubstance(
+            name="Alifatik Hidrokarbonlar",
+            cas_no="64742-49-0",
+            concentration=ConcentrationValue(value=8.0, qualifier="greater_than"),
+            raw_h_codes=["H304"],
+            hazards=[HazardEntry(h_code="H304", hazard_class="Asp. Tox.", category="1")],
+        )
+    ]
+    context = CalculationContext(kinematik_viskozite_40c=15.0)  # viskozite geçerli
+    pipeline = RegulatoryPipeline()
+    result = pipeline.execute(substances, context)
+
+    # Aspiration kuralı: min'de %8 < %10 eşik → yok, max'ta %100 > %10 → var → INDETERMINATE
+    asp_rule = next(r for r in result.rule_results if r.rule_name == "AspirationHazardRule")
+    assert asp_rule.status == "INDETERMINATE", \
+        f"greater_than ile eşik kapsamında olan bileşen INDETERMINATE olmalı, bulundu: {asp_rule.status}"
+    assert asp_rule.evidence["has_uncertain_data"] is True
+    assert asp_rule.evidence["component_data_qualities"]["Alifatik Hidrokarbonlar"] == "UNCERTAIN"
+
+    # 3. Display format: >% gösterimi
+    conc_display_found = any(">%8" in step for step in result.calculation_steps)
+    assert conc_display_found, \
+        "greater_than bileşeni hesaplama adımlarında '>%8' olarak gösterilmeli"
+
+    # 4. Çift yönlü denetim mesajı gösterilmeli
+    dual_check_found = any("ÇİFT YÖNLÜ" in step or "MIN / MAX" in step for step in result.calculation_steps)
+    assert dual_check_found, \
+        "greater_than bileşeni olan karışımda çift yönlü denetim mesajı gösterilmeli"
+
+    # 5. DataQuality karışım düzeyinde UNCERTAIN
+    assert result.data_quality is not None
+    assert result.data_quality.has_uncertain_components is True
 
 
 
