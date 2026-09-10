@@ -2,15 +2,49 @@ import io
 import os
 import base64
 from jinja2 import Environment, FileSystemLoader
-from reportlab import rl_config
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase.pdfmetrics import registerFontFamily
-import xhtml2pdf.default as xhtml2pdf_default
-from xhtml2pdf import pisa
 
-# Allow ReportLab to gracefully handle dynamic table padding without throwing negative availWidth errors
-rl_config.allowTableBoundsErrors = 3
+# NOT: xhtml2pdf ve reportlab import'ları modül seviyesinden kaldırıldı.
+# Bu kütüphaneler yalnızca PDF oluşturma anında (lazy import) yüklenir.
+# Böylece bu paketler kurulu olmasa bile test collection ve diğer servisler etkilenmez.
+
+_pdf_libs_loaded = False
+_pisa = None
+_xhtml2pdf_default = None
+_rl_config = None
+_pdfmetrics = None
+_TTFont = None
+_registerFontFamily = None
+
+
+def _ensure_pdf_libs():
+    """PDF kütüphanelerini ilk kullanımda yükler (lazy import)."""
+    global _pdf_libs_loaded, _pisa, _xhtml2pdf_default
+    global _rl_config, _pdfmetrics, _TTFont, _registerFontFamily
+    if _pdf_libs_loaded:
+        return
+    try:
+        from reportlab import rl_config as _rl_cfg
+        from reportlab.pdfbase import pdfmetrics as _pm
+        from reportlab.pdfbase.ttfonts import TTFont as _ttf
+        from reportlab.pdfbase.pdfmetrics import registerFontFamily as _rff
+        import xhtml2pdf.default as _xd
+        from xhtml2pdf import pisa as _p
+
+        _rl_config = _rl_cfg
+        _pdfmetrics = _pm
+        _TTFont = _ttf
+        _registerFontFamily = _rff
+        _xhtml2pdf_default = _xd
+        _pisa = _p
+
+        # Allow ReportLab to gracefully handle dynamic table padding
+        _rl_config.allowTableBoundsErrors = 3
+        _pdf_libs_loaded = True
+    except ImportError as e:
+        raise ImportError(
+            f"PDF oluşturma için gerekli kütüphane yüklenemedi: {e}. "
+            "Lütfen 'pip install xhtml2pdf reportlab' komutunu çalıştırınız."
+        ) from e
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
 FONTS_DIR = os.path.join(TEMPLATE_DIR, "fonts")
@@ -25,6 +59,8 @@ def _register_fonts():
     global _FONTS_REGISTERED
     if _FONTS_REGISTERED:
         return
+
+    _ensure_pdf_libs()
 
     gs_reg = os.path.join(FONTS_DIR, "GoogleSans-Regular.ttf")
     gs_bold = os.path.join(FONTS_DIR, "GoogleSans-Bold.ttf")
@@ -43,12 +79,12 @@ def _register_fonts():
                 gs_bi = os.path.join(win_fonts, "GoogleSans-BoldItalic.ttf")
 
     if os.path.exists(gs_reg):
-        pdfmetrics.registerFont(TTFont('GoogleSans', gs_reg))
-        pdfmetrics.registerFont(TTFont('GoogleSans-Bold', gs_bold if os.path.exists(gs_bold) else gs_reg))
-        pdfmetrics.registerFont(TTFont('GoogleSans-Italic', gs_italic if os.path.exists(gs_italic) else gs_reg))
-        pdfmetrics.registerFont(TTFont('GoogleSans-BoldItalic', gs_bi if os.path.exists(gs_bi) else gs_reg))
+        _pdfmetrics.registerFont(_TTFont('GoogleSans', gs_reg))
+        _pdfmetrics.registerFont(_TTFont('GoogleSans-Bold', gs_bold if os.path.exists(gs_bold) else gs_reg))
+        _pdfmetrics.registerFont(_TTFont('GoogleSans-Italic', gs_italic if os.path.exists(gs_italic) else gs_reg))
+        _pdfmetrics.registerFont(_TTFont('GoogleSans-BoldItalic', gs_bi if os.path.exists(gs_bi) else gs_reg))
 
-        registerFontFamily(
+        _registerFontFamily(
             'GoogleSans',
             normal='GoogleSans',
             bold='GoogleSans-Bold',
@@ -63,7 +99,7 @@ def _register_fonts():
             'helvetica', 'helvetica-bold',
             'sansserif', 'sans', 'sans-serif'
         ]:
-            xhtml2pdf_default.DEFAULT_FONT[alias] = 'GoogleSans' if 'bold' not in alias else 'GoogleSans-Bold'
+            _xhtml2pdf_default.DEFAULT_FONT[alias] = 'GoogleSans' if 'bold' not in alias else 'GoogleSans-Bold'
 
         _FONTS_REGISTERED = True
 
@@ -198,12 +234,13 @@ class PdfExportService:
 
     @classmethod
     def generate_pdf(cls, product_dict: dict, lang: str = "tr") -> io.BytesIO:
+        _ensure_pdf_libs()
         _register_fonts()
-        rl_config.allowTableBoundsErrors = 3
+        _rl_config.allowTableBoundsErrors = 3
         html_content = cls.render_html(product_dict, lang=lang)
         pdf_stream = io.BytesIO()
 
-        pisa_status = pisa.CreatePDF(html_content, dest=pdf_stream, encoding='utf-8')
+        pisa_status = _pisa.CreatePDF(html_content, dest=pdf_stream, encoding='utf-8')
         if pisa_status.err:
             raise RuntimeError(f"PDF oluşturma sırasında hata meydana geldi (kod: {pisa_status.err})")
 
