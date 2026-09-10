@@ -19,12 +19,20 @@ class LabelGenerator:
     """
 
     _H_TO_P_MAP: Optional[Dict[str, List[str]]] = None
+    _PRECEDENCE_MATRIX: Optional[Any] = None
 
     @classmethod
     def _load_p_map(cls):
         if cls._H_TO_P_MAP is None and os.path.exists(H_TO_P_PATH):
             with open(H_TO_P_PATH, "r", encoding="utf-8") as f:
                 cls._H_TO_P_MAP = json.load(f)
+
+    @classmethod
+    def get_precedence_matrix(cls):
+        if cls._PRECEDENCE_MATRIX is None:
+            from app.services.regulatory_engine.precedence_matrix import PictogramPrecedenceMatrix
+            cls._PRECEDENCE_MATRIX = PictogramPrecedenceMatrix()
+        return cls._PRECEDENCE_MATRIX
 
     @classmethod
     def resolve_label_elements(
@@ -45,27 +53,12 @@ class LabelGenerator:
         else:
             final_warning = "Yok"
 
-        # 2. GHS PİKTOGRAM ÖNCELİK VE ELEME KURALLARI (SEA Madde 26 & 28)
-        filtered_piktogramlar = set(raw_pictograms)
-
-        # Kural A: GHS06 (Kafatası) varsa, GHS07 (Ünlem) yalnızca akut toksisite nedeniyle verildiyse elenir.
-        # Eğer GHS07 cilt tahrişi (H315), göz tahrişi (H319) veya STOT SE 3 (H335/H336) kaynaklıysa KORUNUR.
-        if "GHS06" in filtered_piktogramlar:
-            ghs07_exceptions = {"H315", "H319", "H317", "H335", "H336"}
-            if not any(c in raw_h_codes for c in ghs07_exceptions):
-                filtered_piktogramlar.discard("GHS07")
-
-        # Kural B: GHS05 (Aşındırıcı - Cilt/Göz) varsa, cilt veya göz tahrişinden gelen GHS07 elenir.
-        if "GHS05" in filtered_piktogramlar:
-            ghs07_non_skin_eye = {"H302", "H312", "H332", "H317", "H335", "H336"}
-            if not any(c in raw_h_codes for c in ghs07_non_skin_eye):
-                filtered_piktogramlar.discard("GHS07")
-
-        # Kural C: GHS08 (Sağlık Zararı - Solunum Hassaslaşması) varsa, cilt hassaslaşmasından (H317) gelen GHS07 elenir.
-        if "GHS08" in filtered_piktogramlar and "H334" in raw_h_codes:
-            ghs07_other = {"H302", "H312", "H332", "H315", "H319", "H335", "H336"}
-            if not any(c in raw_h_codes for c in ghs07_other):
-                filtered_piktogramlar.discard("GHS07")
+        # 2. GHS PİKTOGRAM ÖNCELİK VE ELEME MATRİSİ (SEA Madde 26 & CLP Article 26)
+        matrix = cls.get_precedence_matrix()
+        filtered_piktogramlar, precedence_audit_log = matrix.resolve(
+            raw_pictograms=raw_pictograms,
+            raw_h_codes=raw_h_codes
+        )
 
         # 3. P-KODLARI HARİTALAMA & ELEME (SEA Ek-4 & Madde 30(1))
         p_set = set()
@@ -102,5 +95,6 @@ class LabelGenerator:
             "euh_ifadeleri": sorted_euh,
             "piktogramlar": sorted_piktograms,
             "uyari_kelimesi": final_warning,
-            "p_ifadeleri": sorted_p
+            "p_ifadeleri": sorted_p,
+            "precedence_audit_log": precedence_audit_log
         }

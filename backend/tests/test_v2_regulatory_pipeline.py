@@ -1514,6 +1514,99 @@ def test_reg016_domain_constraints_and_non_negative_validation():
     assert RegulatoryPipeline.parse_float_safe("500 mg/kg", min_val=0.0001) == 500.0
 
 
+def test_reg017_pictogram_precedence_matrix_and_audit_trail():
+    """
+    REG-017: PictogramPrecedenceMatrix (SEA Madde 26 / CLP Article 26).
+
+    1. GHS06 (Akut Toks. 1-3) vs GHS07 (Akut Toks. 4):
+       - Sadece akut toksisite varsa GHS07 elenir.
+       - Cilt tahrişi (H315) gibi bağımsız bir zararlılık varsa GHS07 korunur.
+    2. GHS05 (Aşındırıcı) vs GHS07 (Tahriş Edici):
+       - Cilt/göz tahrişi kaynaklı GHS07 elenir.
+       - Akut Toks. 4 (H302) varsa GHS07 korunur.
+    3. GHS08 (H334 Solunum Hass.) vs GHS07 (H317 Cilt Hass.):
+       - H334 varlığında H317 kaynaklı GHS07 elenir.
+    4. GHS01 (Patlayıcı) vs GHS02 (Alevlenir):
+       - GHS01 varlığında GHS02 baskılanır.
+    5. Denetim İzi (Audit Trail):
+       - Elenen piktogramların gerekçesi ve mevzuat maddesi kaydedilir.
+    """
+    from app.services.regulatory_engine.precedence_matrix import PictogramPrecedenceMatrix
+    from app.services.regulatory_engine.label_generator import LabelGenerator
+
+    matrix = PictogramPrecedenceMatrix()
+
+    # Senaryo 1a: GHS06 + GHS07 (Sadece akut toksisite: H301 + H302) -> GHS07 elenmeli
+    res_p1a, audit1a = matrix.resolve(
+        raw_pictograms={"GHS06", "GHS07"},
+        raw_h_codes={"H301", "H302"}
+    )
+    assert "GHS06" in res_p1a
+    assert "GHS07" not in res_p1a
+    assert len(audit1a) == 1
+    assert audit1a[0]["dominant_pictogram"] == "GHS06"
+    assert audit1a[0]["suppressed_pictogram"] == "GHS07"
+    assert "SEA Madde 26(1)(a)" in audit1a[0]["legal_reference"]
+
+    # Senaryo 1b: GHS06 + GHS07 (Akut toks + Cilt Tahrişi: H301 + H315) -> GHS07 korunmalı!
+    res_p1b, audit1b = matrix.resolve(
+        raw_pictograms={"GHS06", "GHS07"},
+        raw_h_codes={"H301", "H315"}
+    )
+    assert "GHS06" in res_p1b
+    assert "GHS07" in res_p1b
+    assert len(audit1b) == 0  # H315 koruyucu olduğu için baskılama yapılmadı
+
+    # Senaryo 2a: GHS05 + GHS07 (Cilt Aşınması + Göz Tahrişi: H314 + H319) -> GHS07 elenmeli
+    res_p2a, audit2a = matrix.resolve(
+        raw_pictograms={"GHS05", "GHS07"},
+        raw_h_codes={"H314", "H319"}
+    )
+    assert "GHS05" in res_p2a
+    assert "GHS07" not in res_p2a
+    assert any(a["dominant_pictogram"] == "GHS05" for a in audit2a)
+
+    # Senaryo 2b: GHS05 + GHS07 (Cilt Aşınması + Akut Toks 4: H314 + H302) -> GHS07 korunmalı!
+    res_p2b, audit2b = matrix.resolve(
+        raw_pictograms={"GHS05", "GHS07"},
+        raw_h_codes={"H314", "H302"}
+    )
+    assert "GHS05" in res_p2b
+    assert "GHS07" in res_p2b
+
+    # Senaryo 3: GHS08 + GHS07 (Solunum Hass. H334 + Cilt Hass. H317) -> GHS07 elenmeli
+    res_p3, audit3 = matrix.resolve(
+        raw_pictograms={"GHS08", "GHS07"},
+        raw_h_codes={"H334", "H317"}
+    )
+    assert "GHS08" in res_p3
+    assert "GHS07" not in res_p3
+    assert any(a["dominant_pictogram"] == "GHS08" and a["suppressed_pictogram"] == "GHS07" for a in audit3)
+
+    # Senaryo 4: GHS01 + GHS02 (Patlayıcı H201 + Alevlenir H225) -> GHS02 baskılanmalı
+    res_p4, audit4 = matrix.resolve(
+        raw_pictograms={"GHS01", "GHS02"},
+        raw_h_codes={"H201", "H225"}
+    )
+    assert "GHS01" in res_p4
+    assert "GHS02" not in res_p4
+    assert any(a["dominant_pictogram"] == "GHS01" and a["suppressed_pictogram"] == "GHS02" for a in audit4)
+
+    # Senaryo 5: LabelGenerator uçtan uca entegrasyonu
+    lbl = LabelGenerator.resolve_label_elements(
+        raw_hazards=[],
+        raw_h_codes={"H301", "H302"},
+        raw_euh_codes=set(),
+        raw_pictograms={"GHS06", "GHS07"},
+        rule_warning_words=["Tehlike"]
+    )
+    assert "GHS06" in lbl["piktogramlar"]
+    assert "GHS07" not in lbl["piktogramlar"]
+    assert "precedence_audit_log" in lbl
+    assert len(lbl["precedence_audit_log"]) == 1
+
+
+
 
 
 

@@ -647,6 +647,10 @@ class ClassificationResult(BaseModel):
     data_quality: Optional[MixtureDataQuality] = Field(
         None, description="Karışım veri kalitesi ve regülatif güvenilirlik profili"
     )
+    precedence_audit_log: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Piktogram öncelik ve eleme denetim izi (PictogramPrecedenceMatrix)"
+    )
 
 
 class HazardThreshold(BaseModel):

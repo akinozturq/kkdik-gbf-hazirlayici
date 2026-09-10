@@ -663,6 +663,15 @@ class RegulatoryPipeline:
             rule_warning_words=warning_words
         )
 
+        prec_log = resolved_labels.get("precedence_audit_log", [])
+        if prec_log:
+            calculation_steps.append("\n🏷️ PİKTOGRAM ÖNCELİK VE BASKILAMA DENETİM İZİ (SEA MADDE 26 / CLP ART. 26):")
+            for entry in prec_log:
+                calculation_steps.append(
+                    f"• [{entry['legal_reference']}] {entry['dominant_pictogram']} önceliği nedeniyle "
+                    f"{entry['suppressed_pictogram']} elendi ({entry['reason']})"
+                )
+
         return ClassificationResult(
             siniflandirmalar=resolved_labels["siniflandirmalar"],
             h_ifadeleri=resolved_labels["h_ifadeleri"],
@@ -674,6 +683,7 @@ class RegulatoryPipeline:
             rule_results=rule_results,
             has_indeterminate=bool(indeterminate_hazards),
             indeterminate_hazards=indeterminate_hazards,
-            data_quality=data_quality
+            data_quality=data_quality,
+            precedence_audit_log=prec_log
         )
 

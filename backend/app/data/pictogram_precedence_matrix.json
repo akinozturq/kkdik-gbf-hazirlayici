@@ -1,0 +1,47 @@
+[
+  {
+    "rule_id": "PREC_01_GHS06_OVER_GHS07",
+    "dominant_pictogram": "GHS06",
+    "suppressed_pictogram": "GHS07",
+    "trigger_h_codes": ["H300", "H301", "H310", "H311", "H330", "H331"],
+    "preserving_h_codes": ["H315", "H319", "H317", "H335", "H336"],
+    "legal_reference": "SEA Madde 26(1)(a) / CLP Article 26.1(a)",
+    "description": "GHS06 (Kafatası) varsa, akut toksisiteden gelen GHS07 (Ünlem) etikette yer almaz. Cilt/göz tahrişi veya STOT SE 3 varsa GHS07 korunur."
+  },
+  {
+    "rule_id": "PREC_02_GHS05_OVER_GHS07",
+    "dominant_pictogram": "GHS05",
+    "suppressed_pictogram": "GHS07",
+    "trigger_h_codes": ["H314", "H318"],
+    "preserving_h_codes": ["H302", "H312", "H332", "H317", "H335", "H336"],
+    "legal_reference": "SEA Madde 26(1)(b) / CLP Article 26.1(b)",
+    "description": "GHS05 (Aşındırıcı) varsa, cilt veya göz tahrişinden (H315, H319) gelen GHS07 (Ünlem) etikette yer almaz. Akut toksisite veya diğer zararlılıklar varsa GHS07 korunur."
+  },
+  {
+    "rule_id": "PREC_03_GHS08_OVER_GHS07",
+    "dominant_pictogram": "GHS08",
+    "suppressed_pictogram": "GHS07",
+    "trigger_h_codes": ["H334"],
+    "preserving_h_codes": ["H302", "H312", "H332", "H315", "H319", "H335", "H336"],
+    "legal_reference": "SEA Madde 26(1)(c) / CLP Article 26.1(c)",
+    "description": "GHS08 (Solunum Hassaslaştırma - H334) varsa, cilt hassaslaşmasından (H317) gelen GHS07 (Ünlem) etikette yer almaz."
+  },
+  {
+    "rule_id": "PREC_04_GHS01_OVER_GHS02",
+    "dominant_pictogram": "GHS01",
+    "suppressed_pictogram": "GHS02",
+    "trigger_h_codes": ["H200", "H201", "H202", "H203", "H204", "H205"],
+    "preserving_h_codes": [],
+    "legal_reference": "SEA Madde 26(1)(d) / CLP Article 26.1(d)",
+    "description": "GHS01 (Patlayan bomba) varsa, GHS02 (Alev) etikette isteğe bağlıdır ve kural gereği baskılanır."
+  },
+  {
+    "rule_id": "PREC_05_GHS01_OVER_GHS03",
+    "dominant_pictogram": "GHS01",
+    "suppressed_pictogram": "GHS03",
+    "trigger_h_codes": ["H200", "H201", "H202", "H203", "H204", "H205"],
+    "preserving_h_codes": [],
+    "legal_reference": "SEA Madde 26(1)(d) / CLP Article 26.1(d)",
+    "description": "GHS01 (Patlayan bomba) varsa, GHS03 (Alev çemberi) etikette isteğe bağlıdır ve kural gereği baskılanır."
+  }
+]
