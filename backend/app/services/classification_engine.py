@@ -90,19 +90,25 @@ class ClassificationEngine:
         bilesenler: List[Dict[str, Any]],
         parlama_noktasi: Optional[float] = None,
         kaynama_noktasi: Optional[float] = None,
-        kinematik_viskozite: Optional[float] = None
+        kinematik_viskozite: Optional[float] = None,
+        ph: Optional[float] = None,
+        kinematik_viskozite_40c: Optional[float] = None,
+        fiziksel_hal: Optional[str] = "Sıvı"
     ) -> Dict[str, Any]:
         """
         SEA Yönetmeliği Ek-1 toplanabilirlik ve eşik değer kurallarına göre
         karışımın sınıflandırmasını, H-kodlarını, Piktogramlarını, Uyarı Kelimesini
         ve adım adım hesaplama açıklamalarını üretir.
         """
+        visk = kinematik_viskozite_40c if kinematik_viskozite_40c is not None else kinematik_viskozite
         pipeline = cls.get_pipeline()
         substances = pipeline.adapt_raw_components(bilesenler)
         context = CalculationContext(
             parlama_noktasi=parlama_noktasi,
             kaynama_noktasi=kaynama_noktasi,
-            kinematik_viskozite_40c=kinematik_viskozite
+            kinematik_viskozite_40c=visk,
+            ph=ph,
+            fiziksel_hal=fiziksel_hal
         )
         result = pipeline.execute(substances, context)
         return {

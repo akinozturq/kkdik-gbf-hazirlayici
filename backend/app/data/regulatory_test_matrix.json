@@ -1,0 +1,453 @@
+[
+  {
+    "reg_id": "REG-ASP-001",
+    "hazard_class": "Aspiration",
+    "description": "Aspirasyon Kategori 1: >=%10 H304 ve kinematik viskozite <= 20.5 mm2/s",
+    "input_components": [
+      {"ad": "Aspirasyon Solventi", "konsantrasyon": "%12", "siniflandirma": "Asp. Tox. 1 H304"}
+    ],
+    "input_context": {"kinematik_viskozite_40c": 15.0},
+    "threshold_condition": "Σ(Asp. Tox. 1) >= 10.0% AND Viskozite(40°C) <= 20.5 mm²/s",
+    "expected_status": "TRUE",
+    "expected_h": ["H304"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS08"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.10"
+  },
+  {
+    "reg_id": "REG-ASP-002",
+    "hazard_class": "Aspiration",
+    "description": "Aspirasyon Kategori 1: >=%10 H304 ancak yüksek viskozite (> 20.5 mm2/s) nedeniyle baskılanır",
+    "input_components": [
+      {"ad": "Aspirasyon Solventi", "konsantrasyon": "%12", "siniflandirma": "Asp. Tox. 1 H304"}
+    ],
+    "input_context": {"kinematik_viskozite_40c": 35.0},
+    "threshold_condition": "Viskozite(40°C) > 20.5 mm²/s olduğunda aspirasyon zararlılığı oluşmaz",
+    "expected_status": "FALSE",
+    "expected_h": [],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 3.10"
+  },
+  {
+    "reg_id": "REG-ASP-003",
+    "hazard_class": "Aspiration",
+    "description": "Aspirasyon Kategori 1: >=%10 H304 ancak kinematik viskozite test verisi eksik",
+    "input_components": [
+      {"ad": "Aspirasyon Solventi", "konsantrasyon": "%12", "siniflandirma": "Asp. Tox. 1 H304"}
+    ],
+    "input_context": {"kinematik_viskozite_40c": null},
+    "threshold_condition": "Viskozite bilinmediğinde kural durumu INDETERMINATE/INSUFFICIENT_DATA",
+    "expected_status": "INDETERMINATE",
+    "expected_h": [],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 3.10"
+  },
+  {
+    "reg_id": "REG-ASP-004",
+    "hazard_class": "Aspiration",
+    "description": "Aspirasyon Kategori 1: Eşik altı konsantrasyon (<%10)",
+    "input_components": [
+      {"ad": "Düşük Oranlı Hidrokarbon", "konsantrasyon": "%5", "siniflandirma": "Asp. Tox. 1 H304"}
+    ],
+    "input_context": {"kinematik_viskozite_40c": 12.0},
+    "threshold_condition": "Σ(Asp. Tox. 1) < 10.0%",
+    "expected_status": "FALSE",
+    "expected_h": [],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 3.10"
+  },
+  {
+    "reg_id": "REG-FLAM-001",
+    "hazard_class": "Flammable Liquids",
+    "description": "Alevlenir Sıvı Kategori 2: Parlama noktası < 23°C ve kaynama noktası > 35°C",
+    "input_components": [
+      {"ad": "Aseton", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 2 H225"}
+    ],
+    "input_context": {"parlama_noktasi": 15.0, "kaynama_noktasi": 56.0},
+    "threshold_condition": "Parlama Noktası < 23°C AND Kaynama Noktası > 35°C",
+    "expected_status": "TRUE",
+    "expected_h": ["H225"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS02"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 2.6"
+  },
+  {
+    "reg_id": "REG-FLAM-002",
+    "hazard_class": "Flammable Liquids",
+    "description": "Alevlenir Sıvı Kategori 1: Parlama noktası < 23°C ve kaynama noktası <= 35°C",
+    "input_components": [
+      {"ad": "Petrol Eteri", "konsantrasyon": "%60", "siniflandirma": "Flam. Liq. 1 H224"}
+    ],
+    "input_context": {"parlama_noktasi": -10.0, "kaynama_noktasi": 30.0},
+    "threshold_condition": "Parlama Noktası < 23°C AND Kaynama Noktası <= 35°C",
+    "expected_status": "TRUE",
+    "expected_h": ["H224"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS02"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 2.6"
+  },
+  {
+    "reg_id": "REG-FLAM-003",
+    "hazard_class": "Flammable Liquids",
+    "description": "Alevlenir Sıvı Kategori 3: 23°C <= Parlama noktası <= 60°C",
+    "input_components": [
+      {"ad": "Ksilen", "konsantrasyon": "%40", "siniflandirma": "Flam. Liq. 3 H226"}
+    ],
+    "input_context": {"parlama_noktasi": 30.0},
+    "threshold_condition": "23°C <= Parlama Noktası <= 60°C",
+    "expected_status": "TRUE",
+    "expected_h": ["H226"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS02"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 2.6"
+  },
+  {
+    "reg_id": "REG-FLAM-004",
+    "hazard_class": "Flammable Liquids",
+    "description": "Alevlenir Sıvı Değil: Parlama noktası > 60°C",
+    "input_components": [
+      {"ad": "Yüksek Kaynama Noktalı Çözücü", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 3 H226"}
+    ],
+    "input_context": {"parlama_noktasi": 75.0},
+    "threshold_condition": "Parlama Noktası > 60°C",
+    "expected_status": "FALSE",
+    "expected_h": [],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 2.6"
+  },
+  {
+    "reg_id": "REG-FLAM-005",
+    "hazard_class": "Flammable Liquids",
+    "description": "Alevlenir Sıvı: Bileşende H225 var ancak parlama noktası test verisi eksik",
+    "input_components": [
+      {"ad": "Aseton", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 2 H225"}
+    ],
+    "input_context": {"parlama_noktasi": null},
+    "threshold_condition": "Parlama noktası olmadan alevlenir sıvı sınıflandırılamaz",
+    "expected_status": "INSUFFICIENT_DATA",
+    "expected_h": [],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 2.6"
+  },
+  {
+    "reg_id": "REG-SKIN-001",
+    "hazard_class": "Skin Corrosion/Irritation",
+    "description": "Cilt Aşınması Kategori 1A: Genel konsantrasyon eşiği >= %5",
+    "input_components": [
+      {"ad": "Sodyum Hidroksit", "konsantrasyon": "%10", "siniflandirma": "Skin Corr. 1A H314"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Skin Corr. 1A) >= 5.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H314"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS05"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.2 Tablo 3.2.3"
+  },
+  {
+    "reg_id": "REG-SKIN-002",
+    "hazard_class": "Skin Corrosion/Irritation",
+    "description": "Cilt Aşınması Kategori 1B: SCL >= %1 olan asit %2 konsantrasyonda tetiklenir",
+    "input_components": [
+      {"ad": "Aşındırıcı Asit", "konsantrasyon": "%2", "siniflandirma": "Skin Corr. 1B H314 (SCL >= 1%)"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Konsantrasyon (%2.0) >= SCL (%1.0)",
+    "expected_status": "TRUE",
+    "expected_h": ["H314"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS05"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.2.3.2"
+  },
+  {
+    "reg_id": "REG-SKIN-003",
+    "hazard_class": "Skin Corrosion/Irritation",
+    "description": "Cilt Tahrişi Kategori 2: Genel konsantrasyon eşiği >= %10",
+    "input_components": [
+      {"ad": "Tahriş Edici Madde", "konsantrasyon": "%12", "siniflandirma": "Skin Irrit. 2 H315"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Skin Irrit. 2) >= 10.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H315"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS07"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.2 Tablo 3.2.3"
+  },
+  {
+    "reg_id": "REG-SKIN-004",
+    "hazard_class": "Skin Corrosion/Irritation",
+    "description": "Cilt Tahrişi Kategori 2: Toplanabilirlik (10 * %2 Skin Corr 1 + %8 Skin Irrit 2 = %28 >= %10)",
+    "input_components": [
+      {"ad": "Aşındırıcı Katkı", "konsantrasyon": "%2", "siniflandirma": "Skin Corr. 1B H314"},
+      {"ad": "Tahriş Edici Solvent", "konsantrasyon": "%8", "siniflandirma": "Skin Irrit. 2 H315"}
+    ],
+    "input_context": {},
+    "threshold_condition": "(10 * Σ Skin Corr 1) + Σ Skin Irrit 2 >= 10.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H315"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS07"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.2 Tablo 3.2.3"
+  },
+  {
+    "reg_id": "REG-EYE-001",
+    "hazard_class": "Serious Eye Damage/Irritation",
+    "description": "Ciddi Göz Hasarı Kategori 1: Genel eşik >= %3",
+    "input_components": [
+      {"ad": "Göz Hasarı Yapan Madde", "konsantrasyon": "%5", "siniflandirma": "Eye Dam. 1 H318"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Eye Dam. 1) >= 3.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H318"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS05"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.3 Tablo 3.3.3"
+  },
+  {
+    "reg_id": "REG-EYE-002",
+    "hazard_class": "Serious Eye Damage/Irritation",
+    "description": "Göz Tahrişi Kategori 2: Genel eşik >= %10",
+    "input_components": [
+      {"ad": "Göz Tahriş Edici Madde", "konsantrasyon": "%15", "siniflandirma": "Eye Irrit. 2 H319"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Eye Irrit. 2) >= 10.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H319"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS07"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.3 Tablo 3.3.3"
+  },
+  {
+    "reg_id": "REG-CMR-001",
+    "hazard_class": "CMR",
+    "description": "Kanserojenite Kategori 1A: Genel konsantrasyon eşiği >= %0.1",
+    "input_components": [
+      {"ad": "Kanserojen Madde 1A", "konsantrasyon": "%0.2", "siniflandirma": "Carc. 1A H350"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Carc. 1A) >= 0.1%",
+    "expected_status": "TRUE",
+    "expected_h": ["H350"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS08"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.6 Tablo 3.6.2"
+  },
+  {
+    "reg_id": "REG-CMR-002",
+    "hazard_class": "CMR",
+    "description": "Kanserojenite Kategori 2: Genel konsantrasyon eşiği >= %1.0",
+    "input_components": [
+      {"ad": "Kanserojen Madde 2", "konsantrasyon": "%1.5", "siniflandirma": "Carc. 2 H351"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Carc. 2) >= 1.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H351"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS08"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.6 Tablo 3.6.2"
+  },
+  {
+    "reg_id": "REG-CMR-003",
+    "hazard_class": "CMR",
+    "description": "Üreme Toksisitesi Kategori 1B: H360FD kombinasyonu deterministik öncelik çözümlemesi",
+    "input_components": [
+      {"ad": "Boran Türevi", "konsantrasyon": "%0.5", "siniflandirma": "Repr. 1B H360FD"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Repr. 1B) >= 0.3%",
+    "expected_status": "TRUE",
+    "expected_h": ["H360FD"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS08"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.7 Tablo 3.7.2"
+  },
+  {
+    "reg_id": "REG-STOT-001",
+    "hazard_class": "STOT SE",
+    "description": "Belirli Hedef Organ Toksisitesi Tek Maruziyet Kategori 1: Genel eşik >= %10",
+    "input_components": [
+      {"ad": "Metanol", "konsantrasyon": "%12", "siniflandirma": "STOT SE 1 H370"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(STOT SE 1) >= 10.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H370"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS08"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.8 Tablo 3.8.2"
+  },
+  {
+    "reg_id": "REG-STOT-002",
+    "hazard_class": "STOT SE",
+    "description": "Belirli Hedef Organ Toksisitesi Tek Maruziyet Kategori 2: %3 <= C < %10",
+    "input_components": [
+      {"ad": "Organ Toksik Madde", "konsantrasyon": "%5", "siniflandirma": "STOT SE 1 H370"}
+    ],
+    "input_context": {},
+    "threshold_condition": "3.0% <= Σ(STOT SE 1) < 10.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H371"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS08"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.8 Tablo 3.8.2"
+  },
+  {
+    "reg_id": "REG-STOT-003",
+    "hazard_class": "STOT SE",
+    "description": "STOT SE 3 Solunum Yolu Tahrişi (RTI - H335): Genel eşik >= %20",
+    "input_components": [
+      {"ad": "Tahriş Edici Gaz", "konsantrasyon": "%22", "siniflandirma": "STOT SE 3 H335"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(STOT SE 3 RTI) >= 20.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H335"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS07"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.8.3.4.5"
+  },
+  {
+    "reg_id": "REG-STOT-004",
+    "hazard_class": "STOT SE",
+    "description": "STOT SE 3 Bağımsız Mekanizma İzolasyonu: %15 RTI + %15 NE toplanmaz (<%20)",
+    "input_components": [
+      {"ad": "Tahriş Edici Gaz", "konsantrasyon": "%15", "siniflandirma": "STOT SE 3 H335"},
+      {"ad": "Narkotik Solvent", "konsantrasyon": "%15", "siniflandirma": "STOT SE 3 H336"}
+    ],
+    "input_context": {},
+    "threshold_condition": "RTI ve NE bağımsız havuzlardır; ayrı ayrı %20'yi aşmadıkça tetiklenmez",
+    "expected_status": "FALSE",
+    "expected_h": [],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 3.8.3.4.5"
+  },
+  {
+    "reg_id": "REG-AQ-001",
+    "hazard_class": "Aquatic Toxicity",
+    "description": "Sucul Akut Kategori 1: M=10 katsayısıyla %3 konsantrasyonda eşik aşımı",
+    "input_components": [
+      {"ad": "Çok Zehirli Pestisit", "konsantrasyon": "%3", "siniflandirma": "Aquatic Acute 1 H400 (M=10)"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(M * C) = 10 * 3.0% = 30.0% >= 25.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H400"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS09"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 4.1.3.5.5"
+  },
+  {
+    "reg_id": "REG-AQ-002",
+    "hazard_class": "Aquatic Toxicity",
+    "description": "Sucul Kronik Kategori 3: Kümülatif toplanabilirlik >= %25",
+    "input_components": [
+      {"ad": "Zararlı Madde C", "konsantrasyon": "%30", "siniflandirma": "Aquatic Chronic 3 H412"}
+    ],
+    "input_context": {},
+    "threshold_condition": "Σ(Aquatic Chronic 3) >= 25.0%",
+    "expected_status": "TRUE",
+    "expected_h": ["H412"],
+    "expected_euh": [],
+    "expected_pictograms": [],
+    "expected_warning": "Yok",
+    "source": "SEA Ek-1 Bölüm 4.1 Tablo 4.1.2"
+  },
+  {
+    "reg_id": "REG-ACUTE-001",
+    "hazard_class": "Acute Toxicity",
+    "description": "Akut Oral Toksisite Kategori 4: Harmonik toplam 300 < ATE_mix <= 2000",
+    "input_components": [
+      {"ad": "Toksik Madde X", "konsantrasyon": "%50", "siniflandirma": "Acute Tox. 4 H302", "akut_toksisite_oral": 500.0}
+    ],
+    "input_context": {},
+    "threshold_condition": "100 / ATE_mix = 50 / 500 -> ATE_mix = 1000 mg/kg (Cat 4: 300-2000)",
+    "expected_status": "TRUE",
+    "expected_h": ["H302"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS07"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-1 Bölüm 3.1.3.6.1"
+  },
+  {
+    "reg_id": "REG-ACUTE-002",
+    "hazard_class": "Acute Toxicity",
+    "description": "Akut Oral Toksisite Kategori 2: ATE = 20 mg/kg (Ölümcül)",
+    "input_components": [
+      {"ad": "Yüksek Toksik Bileşik", "konsantrasyon": "%100", "siniflandirma": "Acute Tox. 2 H300", "akut_toksisite_oral": 20.0}
+    ],
+    "input_context": {},
+    "threshold_condition": "ATE_mix <= 50 mg/kg (Cat 2: 5 < ATE <= 50)",
+    "expected_status": "TRUE",
+    "expected_h": ["H300"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS06"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Ek-1 Bölüm 3.1 Tablo 3.1.1"
+  },
+  {
+    "reg_id": "REG-SUPP-001",
+    "hazard_class": "Supplemental Hazards",
+    "description": "İzosiyanat Karışımı: >=%0.1 izosiyanat bileşeni varken ve H334 yokken EUH204 tetiklenir",
+    "input_components": [
+      {"ad": "HDI Reçine", "konsantrasyon": "%2", "siniflandirma": "Skin Sens. 1 H317", "is_isocyanate": true}
+    ],
+    "input_context": {},
+    "threshold_condition": "is_isocyanate AND Σ(isocyanate) >= 0.1% AND H334 not present",
+    "expected_status": "TRUE",
+    "expected_h": ["H317"],
+    "expected_euh": ["EUH204"],
+    "expected_pictograms": ["GHS07"],
+    "expected_warning": "Dikkat",
+    "source": "SEA Ek-2 Bölüm 2.4"
+  },
+  {
+    "reg_id": "REG-PREC-001",
+    "hazard_class": "Pictogram Precedence",
+    "description": "GHS06, akut toksisiteden gelen GHS07 piktogramını baskılar",
+    "input_components": [
+      {"ad": "Toksik Madde Kat 3", "konsantrasyon": "%50", "siniflandirma": "Acute Tox. 3 H301", "akut_toksisite_oral": 100.0},
+      {"ad": "Toksik Madde Kat 4", "konsantrasyon": "%50", "siniflandirma": "Acute Tox. 4 H302", "akut_toksisite_oral": 500.0}
+    ],
+    "input_context": {},
+    "threshold_condition": "GHS06 dominant over GHS07 for acute toxicity",
+    "expected_status": "TRUE",
+    "expected_h": ["H301"],
+    "expected_euh": [],
+    "expected_pictograms": ["GHS06"],
+    "expected_warning": "Tehlike",
+    "source": "SEA Madde 26(1)(a)"
+  }
+]

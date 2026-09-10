@@ -1,0 +1,29 @@
+REG_ID,HAZARD_CLASS,INPUT,THRESHOLD,EXPECTED_STATUS,EXPECTED_H,EXPECTED_EUH,EXPECTED_PICTOGRAM,EXPECTED_WARNING,SOURCE
+REG-ASP-001,Aspiration,12% H304 (visk=15.0 mm2/s),20.5 mm2/s,TRUE,H304,-,GHS08,Tehlike,SEA 3.10
+REG-ASP-002,Aspiration,12% H304 (visk=35.0 mm2/s),20.5 mm2/s,FALSE,-,-,-,Yok,SEA 3.10
+REG-ASP-003,Aspiration,12% H304 (visk=UNKNOWN),20.5 mm2/s,INDETERMINATE,-,-,-,Yok,SEA 3.10
+REG-ASP-004,Aspiration,5% H304 (visk=12.0 mm2/s),10.0%,FALSE,-,-,-,Yok,SEA 3.10
+REG-FLAM-001,Flammable Liquids,50% H225 (FP=15C; BP=56C),FP < 23C & BP > 35C,TRUE,H225,-,GHS02,Tehlike,SEA 2.6
+REG-FLAM-002,Flammable Liquids,60% H224 (FP=-10C; BP=30C),FP < 23C & BP <= 35C,TRUE,H224,-,GHS02,Tehlike,SEA 2.6
+REG-FLAM-003,Flammable Liquids,40% H226 (FP=30C),23C <= FP <= 60C,TRUE,H226,-,GHS02,Dikkat,SEA 2.6
+REG-FLAM-004,Flammable Liquids,50% H226 (FP=75C),FP > 60C,FALSE,-,-,-,Yok,SEA 2.6
+REG-FLAM-005,Flammable Liquids,50% H225 (FP=UNKNOWN),Test Data Missing,INSUFFICIENT_DATA,-,-,-,Yok,SEA 2.6
+REG-SKIN-001,Skin Corrosion/Irritation,10% Skin Corr. 1A H314,>= 5.0%,TRUE,H314,-,GHS05,Tehlike,SEA 3.2
+REG-SKIN-002,Skin Corrosion/Irritation,2% Skin Corr. 1B H314 (SCL >= 1%),SCL >= 1.0%,TRUE,H314,-,GHS05,Tehlike,SEA 3.2
+REG-SKIN-003,Skin Corrosion/Irritation,12% Skin Irrit. 2 H315,>= 10.0%,TRUE,H315,-,GHS07,Dikkat,SEA 3.2
+REG-SKIN-004,Skin Corrosion/Irritation,2% Skin Corr. 1B + 8% Skin Irrit. 2,10*C1 + C2 >= 10.0%,TRUE,H315,-,GHS07,Dikkat,SEA 3.2
+REG-EYE-001,Serious Eye Damage/Irritation,5% Eye Dam. 1 H318,>= 3.0%,TRUE,H318,-,GHS05,Tehlike,SEA 3.3
+REG-EYE-002,Serious Eye Damage/Irritation,15% Eye Irrit. 2 H319,>= 10.0%,TRUE,H319,-,GHS07,Dikkat,SEA 3.3
+REG-CMR-001,CMR,0.2% Carc. 1A H350,>= 0.1%,TRUE,H350,-,GHS08,Tehlike,SEA 3.6
+REG-CMR-002,CMR,1.5% Carc. 2 H351,>= 1.0%,TRUE,H351,-,GHS08,Dikkat,SEA 3.6
+REG-CMR-003,CMR,0.5% Repr. 1B H360FD,>= 0.3%,TRUE,H360FD,-,GHS08,Tehlike,SEA 3.7
+REG-STOT-001,STOT SE,12% STOT SE 1 H370,>= 10.0%,TRUE,H370,-,GHS08,Tehlike,SEA 3.8
+REG-STOT-002,STOT SE,5% STOT SE 1 H370,3.0% <= C < 10.0%,TRUE,H371,-,GHS08,Dikkat,SEA 3.8
+REG-STOT-003,STOT SE,22% STOT SE 3 H335,>= 20.0%,TRUE,H335,-,GHS07,Dikkat,SEA 3.8
+REG-STOT-004,STOT SE,15% H335 (RTI) + 15% H336 (NE),Independent Pools >= 20.0%,FALSE,-,-,-,Yok,SEA 3.8
+REG-AQ-001,Aquatic Toxicity,3% Aquatic Acute 1 H400 (M=10),M * C >= 25.0%,TRUE,H400,-,GHS09,Dikkat,SEA 4.1
+REG-AQ-002,Aquatic Toxicity,30% Aquatic Chronic 3 H412,>= 25.0%,TRUE,H412,-,-,Yok,SEA 4.1
+REG-ACUTE-001,Acute Toxicity,50% Acute Tox. 4 (ATE=500 mg/kg),300 < ATE_mix <= 2000,TRUE,H302,-,GHS07,Dikkat,SEA 3.1
+REG-ACUTE-002,Acute Toxicity,100% Acute Tox. 2 (ATE=20 mg/kg),ATE_mix <= 50,TRUE,H300,-,GHS06,Tehlike,SEA 3.1
+REG-SUPP-001,Supplemental Hazards,2% HDI Resin (is_isocyanate=True),is_isocyanate & C >= 0.1%,TRUE,H317,EUH204,GHS07,Dikkat,SEA Ek-2
+REG-PREC-001,Pictogram Precedence,50% Acute 3 (H301) + 50% Acute 4 (H302),GHS06 suppresses GHS07,TRUE,H301,-,GHS06,Tehlike,SEA 26.1.a
