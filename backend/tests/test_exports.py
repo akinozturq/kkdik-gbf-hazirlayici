@@ -165,3 +165,32 @@ def test_export_english_docx_and_pdf(client: TestClient):
 def test_export_404_for_missing_product(client: TestClient):
     res = client.get("/api/products/99999/export/docx")
     assert res.status_code == 404
+
+
+def test_export_docx_with_xml_special_characters(client: TestClient):
+    create_res = client.post("/api/products", json={
+        "urun_adi": "Reçine & Tiner <Özel Formül> 'Aypol & Polchem'",
+        "ticari_kod": "RP-100 & <EXT>",
+        "kategori": "Test",
+        "sds_data": {
+            "meta": {
+                "hazirlama_tarihi": "01.01.2026 & Revision",
+                "revizyon_no": "01 <beta>",
+                "revizyon_tarihi": "02.02.2026 & \"Final\""
+            },
+            "b1_kimlik": {
+                "b1_1": {"madde_karisim_adi": "Reçine & Tiner <Özel Formül>"},
+                "b1_3": {"tedarikci_adi": "A & B Kimya <Sanayi>"},
+                "b1_4": {"acil_telefon": "114 & 112"}
+            }
+        }
+    })
+    assert create_res.status_code == 201
+    prod_id = create_res.json()["id"]
+
+    res = client.get(f"/api/products/{prod_id}/export/docx")
+    assert res.status_code == 200
+    doc = Document(io.BytesIO(res.content))
+    header = doc.sections[0].header.tables[0].rows[0]
+    assert "01.01.2026 & Revision" in header.cells[2].text
+    assert "01 <beta>" in header.cells[2].text

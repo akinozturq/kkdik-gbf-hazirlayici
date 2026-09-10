@@ -2,6 +2,7 @@ import io
 import os
 import zipfile
 import re
+from xml.sax.saxutils import escape as xml_escape
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -66,25 +67,22 @@ class DocxExportService:
         with open(TEMPLATE_PATH, "rb") as f:
             template_bytes = f.read()
 
-        zip_in = zipfile.ZipFile(io.BytesIO(template_bytes), "r")
         zip_buffer = io.BytesIO()
-        zip_out = zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED)
+        with zipfile.ZipFile(io.BytesIO(template_bytes), "r") as zip_in:
+            with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_out:
+                for item in zip_in.infolist():
+                    content = zip_in.read(item.filename)
+                    if item.filename in ("word/header1.xml", "word/header2.xml"):
+                        content = cls._generate_header_xml(
+                            hazirlama_tarihi=hazirlama_tarihi,
+                            revizyon_no=revizyon_no,
+                            revizyon_tarihi=revizyon_tarihi,
+                            lang=lang_clean,
+                        ).encode("utf-8")
+                    elif item.filename in ("word/footer1.xml", "word/footer2.xml"):
+                        content = cls._generate_footer_xml(lang=lang_clean).encode("utf-8")
+                    zip_out.writestr(item, content)
 
-        for item in zip_in.infolist():
-            content = zip_in.read(item.filename)
-            if item.filename in ("word/header1.xml", "word/header2.xml"):
-                content = cls._generate_header_xml(
-                    hazirlama_tarihi=hazirlama_tarihi,
-                    revizyon_no=revizyon_no,
-                    revizyon_tarihi=revizyon_tarihi,
-                    lang=lang_clean,
-                ).encode("utf-8")
-            elif item.filename in ("word/footer1.xml", "word/footer2.xml"):
-                content = cls._generate_footer_xml(lang=lang_clean).encode("utf-8")
-            zip_out.writestr(item, content)
-
-        zip_in.close()
-        zip_out.close()
         zip_buffer.seek(0)
 
         doc = Document(zip_buffer)
@@ -129,19 +127,25 @@ class DocxExportService:
         t = translation_service.get_sections(lang_clean)
         meta_t = t.get("meta", {})
 
-        title = t.get("title") or ("SAFETY DATA SHEET" if lang_clean == "en" else "GÜVENLİK BİLGİ FORMU")
-        subtitle = t.get("subtitle") or (
+        raw_title = t.get("title") or ("SAFETY DATA SHEET" if lang_clean == "en" else "GÜVENLİK BİLGİ FORMU")
+        raw_subtitle = t.get("subtitle") or (
             "According to Regulation (EC) No. 1907/2006 (REACH), Annex II and Regulation (EC) No. 1272/2008 (CLP)"
             if lang_clean == "en"
             else "Bu belge, 23 Haziran 2017 tarihli ve 30105 sayılı Resmi Gazete’de yayımlanan Kimyasalların Kaydı, Değerlendirilmesi, İzni ve Kısıtlanmasına İlişkin Yönetmelik (KKDİK) uyarınca hazırlanmıştır."
         )
-        compilation_label = meta_t.get("compilation_date") or ("Compilation Date" if lang_clean == "en" else "Hazırlama Tarihi")
-        rev_no_label = meta_t.get("revision_no") or ("Revision No" if lang_clean == "en" else "Revizyon No")
-        rev_date_label = meta_t.get("revision_date") or ("Revision Date" if lang_clean == "en" else "Revizyon Tarihi")
+        raw_comp_label = meta_t.get("compilation_date") or ("Compilation Date" if lang_clean == "en" else "Hazırlama Tarihi")
+        raw_rev_no_label = meta_t.get("revision_no") or ("Revision No" if lang_clean == "en" else "Revizyon No")
+        raw_rev_date_label = meta_t.get("revision_date") or ("Revision Date" if lang_clean == "en" else "Revizyon Tarihi")
 
-        h_tarih = hazirlama_tarihi or "01.01.2026"
-        r_no = revizyon_no or "00"
-        r_tarih = revizyon_tarihi or h_tarih
+        title = xml_escape(str(raw_title).strip())
+        subtitle = xml_escape(str(raw_subtitle).strip())
+        compilation_label = xml_escape(str(raw_comp_label).strip())
+        rev_no_label = xml_escape(str(raw_rev_no_label).strip())
+        rev_date_label = xml_escape(str(raw_rev_date_label).strip())
+
+        h_tarih = xml_escape(str(hazirlama_tarihi or "01.01.2026").strip())
+        r_no = xml_escape(str(revizyon_no or "00").strip())
+        r_tarih = xml_escape(str(revizyon_tarihi or hazirlama_tarihi or "01.01.2026").strip())
 
         return (
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
@@ -279,8 +283,10 @@ class DocxExportService:
         lang_clean = (lang or "tr").lower()
         t = translation_service.get_sections(lang_clean)
         meta_t = t.get("meta", {})
-        page_label = meta_t.get("page") or ("Page" if lang_clean == "en" else "Sayfa")
-        of_label = meta_t.get("of") or ("of" if lang_clean == "en" else "/")
+        raw_page_label = meta_t.get("page") or ("Page" if lang_clean == "en" else "Sayfa")
+        raw_of_label = meta_t.get("of") or ("of" if lang_clean == "en" else "/")
+        page_label = xml_escape(str(raw_page_label).strip())
+        of_label = xml_escape(str(raw_of_label).strip())
 
         return (
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'

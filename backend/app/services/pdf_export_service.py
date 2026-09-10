@@ -192,11 +192,10 @@ class PdfExportService:
         t = translation_service.get_sections(lang_clean)
 
         # Load GHS Pictogram images
-        raw_piks = []
-        try:
-            raw_piks = product_dict.get("sds_data", {}).get("b2_zarar_tanimi", {}).get("b2_2", {}).get("piktogramlar", []) or []
-        except Exception:
-            pass
+        sds_dict_for_piks = product_dict.get("sds_data") or {}
+        b2_for_piks = sds_dict_for_piks.get("b2_zarar_tanimi") or {}
+        b2_2_for_piks = b2_for_piks.get("b2_2") or {}
+        raw_piks = b2_2_for_piks.get("piktogramlar") or []
 
         pictogram_images = []
         for pcode in raw_piks:

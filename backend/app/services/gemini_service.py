@@ -132,7 +132,7 @@ class GeminiService:
                     try:
                         err_json = response.json()
                         error_detail = err_json.get("error", {}).get("message", response.text)
-                    except Exception:
+                    except (ValueError, json.JSONDecodeError, AttributeError):
                         pass
 
                     # 429 Prepayment Hatası Açıklaması
