@@ -198,12 +198,84 @@ class DataQualityAssessor:
             )
             total_penalty += 15.0
 
+        # =========================================================================
+        # TOPLAM KONSANTRASYON DENETİMİ (Σ COMPONENT CONCENTRATION)
+        # =========================================================================
+        tot_min = 0.0
+        tot_max = 0.0
+        tot_nominal = 0.0
+        has_range_or_bound = False
+
+        for s in substances:
+            c = s.concentration
+            if c.qualifier == "range":
+                c_min = c.min_val if c.min_val is not None else c.value
+                c_max = c.max_val if c.max_val is not None else c.value
+                tot_min += c_min
+                tot_max += c_max
+                tot_nominal += (c_min + c_max) / 2.0
+                has_range_or_bound = True
+            elif c.qualifier == "less_than":
+                c_max = c.max_val if c.max_val is not None else c.value
+                tot_min += 0.0
+                tot_max += c_max
+                tot_nominal += c.value
+                has_range_or_bound = True
+            elif c.qualifier == "greater_than":
+                tot_min += c.value
+                tot_max += 100.0
+                tot_nominal += c.value
+                has_range_or_bound = True
+            else:
+                tot_min += c.value
+                tot_max += c.value
+                tot_nominal += c.value
+
+        tot_min = round(tot_min, 4)
+        tot_max = round(tot_max, 4)
+        tot_nominal = round(tot_nominal, 4)
+
+        total_conc_error = None
+        if tot_min > 100.0:
+            total_conc_status = "EXCEEDS_100"
+            has_contradictory = True
+            total_penalty += 50.0
+            total_conc_error = (
+                f"Bileşenlerin toplam konsantrasyonu %100'ü aşmaktadır (Σ = %{tot_min:g} > %100.0). "
+                "Bir karışımın bileşenleri toplamı %100'den büyük olamaz. Karışım reçetesini kontrol ediniz."
+            )
+            audit_notes.append(f"❌ [HATA - TOPLAM KONSANTRASYON]: {total_conc_error}")
+        elif has_range_or_bound:
+            total_conc_status = "UNCERTAIN"
+            has_uncertain = True
+            if tot_max > 100.0:
+                total_penalty += 15.0
+                audit_notes.append(
+                    f"⚠️ [BELİRSİZLİK - TOPLAM KONSANTRASYON]: Reçetedeki belirsiz konsantrasyon sınırları (<, >, aralık) "
+                    f"nedeniyle toplam konsantrasyon %{tot_min:g} ile %{tot_max:g} arasındadır. "
+                    f"Üst sınır %100'ü aşabilmektedir (Σ_max = %{tot_max:g}). Bileşen oran aralıklarını gözden geçiriniz."
+                )
+            else:
+                audit_notes.append(
+                    f"ℹ️ [TOPLAM KONSANTRASYON ARALIĞI]: Reçetede konsantrasyon aralıkları bulunmaktadır "
+                    f"(Toplam Konsantrasyon: %{tot_min:g} - %{tot_max:g}, Nominal: %{tot_nominal:g})."
+                )
+        else:
+            total_conc_status = "VALID"
+            if tot_nominal < 100.0:
+                audit_notes.append(
+                    f"Bileşenlerin toplam konsantrasyonu %{tot_nominal:g}'dir "
+                    f"(Kalan %{round(100.0 - tot_nominal, 2):g} beyan zorunluluğu olmayan zararsız bileşenler veya çözücüdür)."
+                )
+            else:
+                audit_notes.append("Bileşenlerin toplam konsantrasyonu tam %100.0'dür.")
+
         # Genel Karışım Kalite Seviyesi
-        if has_contradictory:
+        if has_contradictory or total_conc_status == "EXCEEDS_100":
             overall = "CONTRADICTORY"
         elif missing_physical:
             overall = "INCOMPLETE"
-        elif has_uncertain or has_unresolved:
+        elif has_uncertain or has_unresolved or total_conc_status == "UNCERTAIN":
             overall = "UNCERTAIN"
         else:
             overall = "CONFIRMED"
@@ -218,6 +290,11 @@ class DataQualityAssessor:
             missing_physical_data=missing_physical,
             component_qualities=component_qualities,
             audit_notes=audit_notes,
+            total_concentration_min=tot_min,
+            total_concentration_max=tot_max,
+            total_concentration_nominal=tot_nominal,
+            total_concentration_status=total_conc_status,
+            total_concentration_error=total_conc_error,
         )
 
         context.data_quality = mixture_dq

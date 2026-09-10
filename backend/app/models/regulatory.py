@@ -482,6 +482,27 @@ class MixtureDataQuality(BaseModel):
         default_factory=list,
         description="Veri kalitesi denetim izi notları"
     )
+    # REG-015: Toplam konsantrasyon denetimi (Σ component concentration)
+    total_concentration_min: Optional[float] = Field(
+        None,
+        description="Bileşenlerin minimum toplam konsantrasyonu (%)"
+    )
+    total_concentration_max: Optional[float] = Field(
+        None,
+        description="Bileşenlerin maksimum toplam konsantrasyonu (%)"
+    )
+    total_concentration_nominal: Optional[float] = Field(
+        None,
+        description="Bileşenlerin nominal toplam konsantrasyonu (%)"
+    )
+    total_concentration_status: Literal["VALID", "UNCERTAIN", "EXCEEDS_100"] = Field(
+        "VALID",
+        description="Toplam konsantrasyon uygunluk durumu (VALID, UNCERTAIN, EXCEEDS_100)"
+    )
+    total_concentration_error: Optional[str] = Field(
+        None,
+        description="Toplam konsantrasyon %100'ü aştığında üretilen hata mesajı"
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 

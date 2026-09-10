@@ -278,6 +278,52 @@ class ValidatorService:
                     severity="WARNING"
                 ))
 
+            if karisim_filled:
+                # Toplam konsantrasyon denetimi (Σ component concentration)
+                from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+                tot_min = 0.0
+                tot_max = 0.0
+                has_range_or_bound = False
+
+                for b in bilesenler:
+                    c_raw = b.get("konsantrasyon") if isinstance(b, dict) else getattr(b, "konsantrasyon", None)
+                    c_model = RegulatoryPipeline.parse_concentration_model(c_raw)
+                    if c_model.qualifier == "range":
+                        tot_min += (c_model.min_val if c_model.min_val is not None else c_model.value)
+                        tot_max += (c_model.max_val if c_model.max_val is not None else c_model.value)
+                        has_range_or_bound = True
+                    elif c_model.qualifier == "less_than":
+                        tot_min += 0.0
+                        tot_max += (c_model.max_val if c_model.max_val is not None else c_model.value)
+                        has_range_or_bound = True
+                    elif c_model.qualifier == "greater_than":
+                        tot_min += c_model.value
+                        tot_max += 100.0
+                        has_range_or_bound = True
+                    else:
+                        tot_min += c_model.value
+                        tot_max += c_model.value
+
+                tot_min = round(tot_min, 4)
+                tot_max = round(tot_max, 4)
+
+                if tot_min > 100.0:
+                    errors.append(ValidationItem(
+                        section="B3.2",
+                        field_path="b3_bilesim.karisim.bilesenler",
+                        message=f"Bölüm 3.2 Karışım bileşenlerinin toplam konsantrasyonu %100'ü aşmaktadır (Σ = %{tot_min:g} > %100). Bir karışımın bileşenleri toplamı %100'den büyük olamaz.",
+                        regulation_ref="KKDİK Ek-2 md. 3.2",
+                        severity="ERROR"
+                    ))
+                elif has_range_or_bound and tot_max > 100.0:
+                    warnings.append(ValidationItem(
+                        section="B3.2",
+                        field_path="b3_bilesim.karisim.bilesenler",
+                        message=f"Bölüm 3.2 Karışım bileşenleri aralık ve sınır değerleri (<, >, aralık) nedeniyle üst sınır toplamı %100'ü aşabilmektedir (Σ_min = %{tot_min:g}, Σ_max = %{tot_max:g}). Bileşen oran aralıklarını gözden geçiriniz.",
+                        regulation_ref="KKDİK Ek-2 md. 3.2",
+                        severity="WARNING"
+                    ))
+
         # -------------------------------------------------------------
         # BÖLÜM 4 - 15 ALAN DOLULUK KONTROLLERİ (md. 0.4 Kuralı)
         # -------------------------------------------------------------

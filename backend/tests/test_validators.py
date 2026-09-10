@@ -237,3 +237,51 @@ def test_cross_section_regulatory_validation_rules(sample_valid_sds_dict):
         for w in res7.warnings
     )
 
+
+def test_section3_total_concentration_validation(sample_valid_sds_dict):
+    """
+    Bölüm 3.2 Karışım bileşenleri toplam konsantrasyon (Σ) denetimi:
+    1. 50% + 30% + 25% = 105% > 100% -> ERROR
+    2. <10% + <20% + >30% -> tot_max = 130% > 100% -> WARNING
+    3. 50% + 30% = 80% <= 100% -> No total concentration error
+    """
+    import copy
+    # 1. 105% -> ERROR
+    sds_exceed = copy.deepcopy(sample_valid_sds_dict)
+    sds_exceed["b3_bilesim"]["karisim"]["bilesenler"] = [
+        {"ad": "A", "konsantrasyon": "%50"},
+        {"ad": "B", "konsantrasyon": "%30"},
+        {"ad": "C", "konsantrasyon": "%25"},
+    ]
+    res1 = validator_service.validate_sds(sds_exceed)
+    assert any(
+        e.section == "B3.2" and "toplam konsantrasyonu %100'ü aşmaktadır" in e.message and e.severity == "ERROR"
+        for e in res1.errors
+    )
+
+    # 2. <10% + <20% + >30% -> WARNING
+    sds_warn = copy.deepcopy(sample_valid_sds_dict)
+    sds_warn["b3_bilesim"]["karisim"]["bilesenler"] = [
+        {"ad": "A", "konsantrasyon": "<10%"},
+        {"ad": "B", "konsantrasyon": "<20%"},
+        {"ad": "C", "konsantrasyon": ">30%"},
+    ]
+    res2 = validator_service.validate_sds(sds_warn)
+    assert any(
+        w.section == "B3.2" and "üst sınır toplamı %100'ü aşabilmektedir" in w.message and w.severity == "WARNING"
+        for w in res2.warnings
+    )
+
+    # 3. 80% -> No error
+    sds_ok = copy.deepcopy(sample_valid_sds_dict)
+    sds_ok["b3_bilesim"]["karisim"]["bilesenler"] = [
+        {"ad": "A", "konsantrasyon": "%50"},
+        {"ad": "B", "konsantrasyon": "%30"},
+    ]
+    res3 = validator_service.validate_sds(sds_ok)
+    assert not any(
+        e.section == "B3.2" and "toplam konsantrasyonu" in e.message
+        for e in res3.errors
+    )
+
+

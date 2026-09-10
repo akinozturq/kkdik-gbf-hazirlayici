@@ -1307,6 +1307,118 @@ def test_reg014_greater_than_qualifier_uncertainty_and_indeterminate():
     assert result.data_quality.has_uncertain_components is True
 
 
+def test_reg015_total_concentration_validation_and_quality_check():
+    """
+    REG-015: Toplam konsantrasyon denetimi (Σ component concentration).
+
+    Senaryo 1:
+      Bileşenler %50, %30, %25 -> Σ = %105 > %100 -> HATA (ERROR / CONTRADICTORY)
+      Fiziksel ve mevzuat açısından imkansız.
+
+    Senaryo 2:
+      Bileşenler <10%, <20%, >30% -> Σ_min = %30, Σ_max = %130
+      Belirsizlik profili: UNCERTAIN, üst sınır uyarısı.
+
+    Senaryo 3:
+      Bileşenler %40, %30 -> Σ = %70 <= %100 -> VALID (CONFIRMED)
+    """
+    from app.services.regulatory_engine.data_quality import DataQualityAssessor
+    from app.models.regulatory import (
+        ConcentrationValue, HazardEntry, StructuredSubstance, CalculationContext
+    )
+    from app.services.classification_engine import ClassificationEngine
+
+    context = CalculationContext()
+
+    # Senaryo 1: %50 + %30 + %25 = %105 -> CONTRADICTORY & EXCEEDS_100
+    subs_exceed = [
+        StructuredSubstance(
+            name="Solvent A",
+            concentration=ConcentrationValue(value=50.0, qualifier="exact"),
+            raw_h_codes=["H225"],
+            hazards=[HazardEntry(h_code="H225", hazard_class="Flam. Liq.", category="2")]
+        ),
+        StructuredSubstance(
+            name="Solvent B",
+            concentration=ConcentrationValue(value=30.0, qualifier="exact"),
+            raw_h_codes=["H319"],
+            hazards=[HazardEntry(h_code="H319", hazard_class="Eye Irrit.", category="2")]
+        ),
+        StructuredSubstance(
+            name="Solvent C",
+            concentration=ConcentrationValue(value=25.0, qualifier="exact"),
+            raw_h_codes=["H315"],
+            hazards=[HazardEntry(h_code="H315", hazard_class="Skin Irrit.", category="2")]
+        ),
+    ]
+    dq_exceed = DataQualityAssessor.assess_mixture(subs_exceed, context)
+    assert dq_exceed.total_concentration_status == "EXCEEDS_100"
+    assert dq_exceed.overall_quality == "CONTRADICTORY"
+    assert dq_exceed.total_concentration_min == 105.0
+    assert dq_exceed.total_concentration_error is not None
+    assert "%105" in dq_exceed.total_concentration_error
+    assert any("TOPLAM KONSANTRASYON" in note and "%105" in note for note in dq_exceed.audit_notes)
+
+    # Senaryo 2: <10%, <20%, >30% -> UNCERTAIN & POTENTIALLY EXCEEDS
+    subs_ranges = [
+        StructuredSubstance(
+            name="Katkı 1",
+            concentration=ConcentrationValue(value=10.0, qualifier="less_than", max_val=10.0),
+            raw_h_codes=[],
+            hazards=[]
+        ),
+        StructuredSubstance(
+            name="Katkı 2",
+            concentration=ConcentrationValue(value=20.0, qualifier="less_than", max_val=20.0),
+            raw_h_codes=[],
+            hazards=[]
+        ),
+        StructuredSubstance(
+            name="Ana Madde",
+            concentration=ConcentrationValue(value=30.0, qualifier="greater_than"),
+            raw_h_codes=[],
+            hazards=[]
+        ),
+    ]
+    dq_ranges = DataQualityAssessor.assess_mixture(subs_ranges, context)
+    assert dq_ranges.total_concentration_status == "UNCERTAIN"
+    assert dq_ranges.has_uncertain_components is True
+    assert dq_ranges.total_concentration_min == 30.0
+    assert dq_ranges.total_concentration_max == 130.0
+    assert any("Σ_max = %130" in note for note in dq_ranges.audit_notes)
+
+    # Senaryo 3: %40 + %30 = %70 -> VALID
+    subs_valid = [
+        StructuredSubstance(
+            name="Madde 1",
+            concentration=ConcentrationValue(value=40.0, qualifier="exact"),
+            raw_h_codes=[],
+            hazards=[]
+        ),
+        StructuredSubstance(
+            name="Madde 2",
+            concentration=ConcentrationValue(value=30.0, qualifier="exact"),
+            raw_h_codes=[],
+            hazards=[]
+        ),
+    ]
+    dq_valid = DataQualityAssessor.assess_mixture(subs_valid, context)
+    assert dq_valid.total_concentration_status == "VALID"
+    assert dq_valid.total_concentration_nominal == 70.0
+
+    # Engine entegrasyonu: calculate_mixture_hazards ile uçtan uca kontrol
+    raw_exceed = [
+        {"ad": "Reçine", "konsantrasyon": "%50", "siniflandirma": "Flam. Liq. 2 H225"},
+        {"ad": "Solvent 1", "konsantrasyon": "%30", "siniflandirma": "Eye Irrit. 2 H319"},
+        {"ad": "Solvent 2", "konsantrasyon": "%25", "siniflandirma": "Skin Irrit. 2 H315"},
+    ]
+    res_engine = ClassificationEngine.calculate_mixture_hazards(raw_exceed, parlama_noktasi=15.0)
+    assert res_engine["data_quality"]["total_concentration_status"] == "EXCEEDS_100"
+    assert res_engine["data_quality"]["overall_quality"] == "CONTRADICTORY"
+    assert any("TOPLAM KONSANTRASYON" in step and "%105" in step for step in res_engine["calculation_steps"])
+
+
+
 
 
 
