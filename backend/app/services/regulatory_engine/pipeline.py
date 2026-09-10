@@ -16,7 +16,12 @@ from app.models.regulatory import (
     CalculationContext,
     ClassificationResult,
     RuleResult,
-    ClassifiedHazard
+    ClassifiedHazard,
+    RegulatoryDecision,
+    RegulatoryLabel,
+    TransportClassification,
+    AuditTrailEntry,
+    RegulatoryAuditTrail
 )
 
 logger = logging.getLogger(__name__)
@@ -483,42 +488,33 @@ class RegulatoryPipeline:
             projected.append(sub_copy)
         return projected
 
-    def execute(
+    def evaluate_decision(
         self,
         substances: List[StructuredSubstance],
         context: CalculationContext
-    ) -> ClassificationResult:
+    ) -> RegulatoryDecision:
         """
-        Boru hattındaki tüm kural stratejilerini sırayla çalıştırır ve
-        etiket elemanlarını çözümleyerek ClassificationResult üretir.
-        Konsantrasyon aralıklarını (min vs max) çift yönlü değerlendirerek
-        DEFINITELY_TRUE, DEFINITELY_FALSE ve INDETERMINATE durumlarını belirler.
+        Boru hattındaki kural stratejilerini icra ederek saf ve değişmez bir
+        RegulatoryDecision (Düzenleyici Karar) üretir.
+        Etiket renderleme, P-ifadeleri veya doküman formatlarından bağımsızdır.
         """
         if not substances:
-            return ClassificationResult(
-                siniflandirmalar=[],
-                h_ifadeleri=[],
-                euh_ifadeleri=[],
-                piktogramlar=[],
-                uyari_kelimesi="Yok",
-                p_ifadeleri=[],
-                calculation_steps=["Karışım tablosunda (Bölüm 3.2) bileşen bulunamadı."],
-                rule_results=[]
+            return RegulatoryDecision(
+                hazards=[],
+                indeterminate_hazards=[],
+                evidence_pack=[],
+                h_codes=[],
+                euh_codes=[],
+                has_indeterminate=False,
+                has_classification=False,
+                audit_notes=["Karışım tablosunda (Bölüm 3.2) bileşen bulunamadı."]
             )
 
         has_ranges = any(s.concentration.qualifier in ("range", "less_than", "greater_than") for s in substances)
+        audit_notes: List[str] = []
 
-        all_hazards: List[Dict[str, Any]] = []
-        all_h_codes: Set[str] = set()
-        all_euh_codes: Set[str] = set()
-        all_pictograms: Set[str] = set()
-        warning_words: List[str] = []
-        calculation_steps: List[str] = []
-        rule_results: List[RuleResult] = []
-        indeterminate_hazards: List[Dict[str, Any]] = []
-
-        # Bileşen Özeti Başlığı
-        calculation_steps.append("📋 GİRDİ BİLEŞENLERİ VE KONSANTRASYONLARI:")
+        # 1. Bileşen Girdileri Notu
+        audit_notes.append("📋 GİRDİ BİLEŞENLERİ VE KONSANTRASYONLARI:")
         for s in substances:
             codes_str = ", ".join(s.raw_h_codes) if s.raw_h_codes else "Sınıflandırma yok"
             if s.concentration.qualifier == "range":
@@ -529,9 +525,9 @@ class RegulatoryPipeline:
                 conc_display = f">%{s.concentration.value:g}"
             else:
                 conc_display = f"%{s.concentration.value:g}"
-            calculation_steps.append(f"• {s.name} ({conc_display}): {codes_str}")
+            audit_notes.append(f"• {s.name} ({conc_display}): {codes_str}")
 
-        # REG-013: Girdi Veri Doğrulama ve Mevzuat Denetim İzi (Regulatory Validation Audit)
+        # 2. Girdi Doğrulama ve Uygunluk Denetimi
         validation_warnings = []
         for s in substances:
             for h in s.hazards:
@@ -542,45 +538,47 @@ class RegulatoryPipeline:
                                 f"• [{s.name}] Durum: {h.validation_status} -> {issue.message} (Girdi: '{h.raw_assertion or h.h_code}')"
                             )
         if validation_warnings:
-            calculation_steps.append("\n⚠️ GİRDİ VERİ DOĞRULAMA VE MEVZUAT UYGUNLUK DENETİMİ:")
-            calculation_steps.extend(validation_warnings)
+            audit_notes.append("\n⚠️ GİRDİ VERİ DOĞRULAMA VE MEVZUAT UYGUNLUK DENETİMİ:")
+            audit_notes.extend(validation_warnings)
 
-        # DATA QUALITY KATMANI: Veri Kalitesi ve Regülatif Güvenilirlik Değerlendirmesi
+        # 3. Data Quality Katmanı
         from app.services.regulatory_engine.data_quality import DataQualityAssessor
         data_quality = DataQualityAssessor.assess_mixture(substances, context)
         context.data_quality = data_quality
 
-        # Projeksiyonlar DataQuality'den SONRA oluşturulur — data_quality deep copy ile taşınır
-        substances_max = self.project_substances(substances, "max")
-        substances_min = self.project_substances(substances, "min")
-
-        calculation_steps.append("\n🔬 VERİ KALİTESİ VE BELİRSİZLİK PROFİLİ (DATA QUALITY ASSESSMENT):")
-        calculation_steps.append(
+        audit_notes.append("\n🔬 VERİ KALİTESİ VE BELİRSİZLİK PROFİLİ (DATA QUALITY ASSESSMENT):")
+        audit_notes.append(
             f"• Karışım Genel Veri Kalitesi: {data_quality.overall_quality} (Güvenilirlik Puanı: %{data_quality.quality_score:.1f})"
         )
         if data_quality.has_uncertain_components:
-            calculation_steps.append(
+            audit_notes.append(
                 "• ⚠️ Reçetede konsantrasyon aralığı (UNCERTAIN) içeren bileşenler tespit edildi. Kural motoruna belirsizlik bilgisi aktarıldı."
             )
         if data_quality.missing_physical_data:
-            calculation_steps.append(
+            audit_notes.append(
                 f"• ⚠️ Eksik Test Verileri (INCOMPLETE DATA): {', '.join(data_quality.missing_physical_data)}"
             )
         for note in data_quality.audit_notes:
-            calculation_steps.append(f"  - {note}")
+            audit_notes.append(f"  - {note}")
 
         if has_ranges:
-            calculation_steps.append("\n🔍 KONSANTRASYON ARALIĞI ÇİFT YÖNLÜ DENETİMİ (MIN / MAX BOUND CHECK):")
-            calculation_steps.append("• Reçetede konsantrasyon aralığı tespit edildi. ECHA karışım rehberine uygun olarak kurallar hem minimum (en iyi durum) hem maksimum (en kötü durum) senaryolarıyla karşılaştırmalı değerlendirildi.")
+            audit_notes.append("\n🔍 KONSANTRASYON ARALIĞI ÇİFT YÖNLÜ DENETİMİ (MIN / MAX BOUND CHECK):")
+            audit_notes.append("• Reçetede konsantrasyon aralığı tespit edildi. ECHA karışım rehberine uygun olarak kurallar hem minimum (en iyi durum) hem maksimum (en kötü durum) senaryolarıyla karşılaştırmalı değerlendirildi.")
 
-        calculation_steps.append("\n⚖️ SEA EK-1 TOPLANABİLİRLİK VE EŞİK DEĞER DEĞERLENDİRMESİ:")
+        audit_notes.append("\n⚖️ SEA EK-1 TOPLANABİLİRLİK VE EŞİK DEĞER DEĞERLENDİRMESİ:")
 
-        # Kuralları İcra Et
+        substances_max = self.project_substances(substances, "max")
+        substances_min = self.project_substances(substances, "min")
+
+        rule_results: List[RuleResult] = []
+        classified_hazards: List[ClassifiedHazard] = []
+        indeterminate_hazards: List[ClassifiedHazard] = []
+        all_h_codes: Set[str] = set()
+        all_euh_codes: Set[str] = set()
+
         for rule in self.rules:
-            # 1. Üst sınır değerlendirmesi (Worst-case)
             res_max: RuleResult = rule.evaluate(context, substances_max)
 
-            # 2. Alt sınır değerlendirmesi (Best-case)
             if has_ranges:
                 res_min: RuleResult = rule.evaluate(context, substances_min)
                 min_keys = {(h.zararlilik_sinifi, h.kategori, h.h_kodu) for h in res_min.hazards}
@@ -601,13 +599,6 @@ class RegulatoryPipeline:
                     status_lbl = "Belirsiz (Aralık Eşiği)"
                     range_det = "Konsantrasyon aralığı eşik değeri kapsıyor; minimum konsantrasyonda eşik aşılmazken maksimum konsantrasyonda aşılmaktadır."
                     has_rule_indeterminate = True
-                    indeterminate_hazards.append({
-                        "zararlilik_sinifi": h.zararlilik_sinifi,
-                        "kategori": h.kategori,
-                        "h_kodu": h.h_kodu,
-                        "rule_name": rule.rule_name,
-                        "details": range_det
-                    })
 
                 classified_h = ClassifiedHazard(
                     zararlilik_sinifi=h.zararlilik_sinifi,
@@ -618,15 +609,11 @@ class RegulatoryPipeline:
                     range_details=range_det
                 )
                 evaluated_hazards.append(classified_h)
+                classified_hazards.append(classified_h)
 
-                all_hazards.append({
-                    "zararlilik_sinifi": h.zararlilik_sinifi,
-                    "kategori": h.kategori,
-                    "h_kodu": h.h_kodu,
-                    "status": h_status,
-                    "status_label": status_lbl,
-                    "range_details": range_det
-                })
+                if h_status == "INDETERMINATE":
+                    indeterminate_hazards.append(classified_h)
+
                 all_h_codes.add(h.h_kodu)
 
             res_max.hazards = evaluated_hazards
@@ -638,52 +625,205 @@ class RegulatoryPipeline:
             for euh in res_max.euh_codes:
                 all_euh_codes.add(euh)
 
-            for pic in res_max.piktogramlar:
-                all_pictograms.add(pic)
-
-            if res_max.uyari_kelimesi:
-                warning_words.append(res_max.uyari_kelimesi)
-
             for note in res_max.calculation_notes:
-                calculation_steps.append(note)
+                audit_notes.append(note)
 
             if has_rule_indeterminate:
-                calculation_steps.append(
+                audit_notes.append(
                     f"⚠️ [ARALIK BELİRSİZLİĞİ / INDETERMINATE] {rule.rule_name}: "
                     "Bileşenin konsantrasyon aralığı eşiği kapsadığı için minimum konsantrasyonda bu sınıflandırma oluşmamakta, "
                     "ancak maksimum konsantrasyonda oluşmaktadır. ECHA rehberi uyarınca GBF'de en güvenli (worst-case) yaklaşım olarak listelenmiştir."
                 )
 
-        # Etiket Elemanlarını Çözümle
-        resolved_labels = LabelGenerator.resolve_label_elements(
-            raw_hazards=all_hazards,
-            raw_h_codes=all_h_codes,
-            raw_euh_codes=all_euh_codes,
-            raw_pictograms=all_pictograms,
-            rule_warning_words=warning_words
+        sorted_h = sorted(list(all_h_codes))
+        sorted_euh = sorted(list(all_euh_codes))
+
+        return RegulatoryDecision(
+            data_quality=data_quality,
+            hazards=classified_hazards,
+            indeterminate_hazards=indeterminate_hazards,
+            evidence_pack=rule_results,
+            h_codes=sorted_h,
+            euh_codes=sorted_euh,
+            has_indeterminate=bool(indeterminate_hazards),
+            has_classification=bool(classified_hazards),
+            audit_notes=audit_notes
         )
 
-        prec_log = resolved_labels.get("precedence_audit_log", [])
-        if prec_log:
+    def build_audit_trail(
+        self,
+        decision: RegulatoryDecision,
+        label: RegulatoryLabel,
+        transport: Optional[TransportClassification],
+        substances: List[StructuredSubstance],
+        context: CalculationContext
+    ) -> RegulatoryAuditTrail:
+        """
+        Bakanlık veya KDU denetiminde incelenebilir uçtan uca denetim izi üretir.
+        """
+        entries: List[AuditTrailEntry] = []
+
+        # 1. INPUT
+        entries.append(AuditTrailEntry(
+            stage="INPUT",
+            action="Bileşenler ve Fiziksel Test Parametreleri Alındı",
+            details={
+                "component_count": len(substances),
+                "components": [
+                    {
+                        "name": s.name,
+                        "concentration": s.concentration.model_dump(),
+                        "raw_h_codes": s.raw_h_codes
+                    }
+                    for s in substances
+                ],
+                "physical_context": {
+                    "parlama_noktasi": context.parlama_noktasi,
+                    "kaynama_noktasi": context.kaynama_noktasi,
+                    "kinematik_viskozite_40c": context.kinematik_viskozite_40c,
+                    "ph": context.ph
+                }
+            },
+            legislative_reference="SEA Madde 11 (Karışımların Sınıflandırılması için Bilgi Edinme)"
+        ))
+
+        # 2. DATA QUALITY
+        if decision.data_quality:
+            entries.append(AuditTrailEntry(
+                stage="DATA_QUALITY",
+                action="Veri Kalitesi ve Belirsizlik Değerlendirmesi Yapıldı",
+                details=decision.data_quality.model_dump(),
+                legislative_reference="CLP Madde 9 & ECHA Karışım Sınıflandırma Rehberi (Data Reliability)"
+            ))
+
+        # 3. RULE EXECUTION
+        for r in decision.evidence_pack:
+            if r.hazards or r.status != "NOT_APPLICABLE":
+                entries.append(AuditTrailEntry(
+                    stage="RULE_EXECUTION",
+                    action=f"Kural İcra Edildi: {r.rule_name}",
+                    details={
+                        "status": r.status,
+                        "decision": r.decision,
+                        "reason": r.reason,
+                        "evidence": r.evidence,
+                        "calculations": r.calculations,
+                        "assumptions": r.assumptions,
+                        "hazards": [h.model_dump() for h in r.hazards]
+                    },
+                    legislative_reference=", ".join(r.source_references) if r.source_references else "SEA Ek-1"
+                ))
+
+        # 4. DECISION
+        entries.append(AuditTrailEntry(
+            stage="DECISION",
+            action="Düzenleyici Sınıflandırma Kararı Kesinleşti",
+            details={
+                "decision_id": decision.decision_id,
+                "has_classification": decision.has_classification,
+                "has_indeterminate": decision.has_indeterminate,
+                "h_codes": decision.h_codes,
+                "euh_codes": decision.euh_codes,
+                "hazard_count": len(decision.hazards)
+            },
+            legislative_reference="SEA Ek-1 & CLP Annex I"
+        ))
+
+        # 5. LABEL
+        entries.append(AuditTrailEntry(
+            stage="LABEL",
+            action="Etiket Projeksiyonu ve Piktogram Önceliklendirmesi Yapıldı",
+            details={
+                "signal_word": label.signal_word,
+                "pictograms": label.pictograms,
+                "p_codes_count": len(label.precautionary_statements),
+                "tactile_warning": label.tactile_warning_required,
+                "child_resistant": label.child_resistant_fastening_required,
+                "precedence_suppressions": label.precedence_audit_log
+            },
+            legislative_reference="SEA Madde 19, 26, 28, 30(1), 33"
+        ))
+
+        # 6. TRANSPORT
+        if transport:
+            entries.append(AuditTrailEntry(
+                stage="TRANSPORT",
+                action="ADR Taşımacılık Sınıflandırma Projeksiyonu Türetildi",
+                details=transport.model_dump(),
+                legislative_reference="ADR Bölüm 2.2 & Bölüm 3.2 Tablo A"
+            ))
+
+        return RegulatoryAuditTrail(
+            decision_id=decision.decision_id,
+            entries=entries,
+            summary=f"Toplam {len(entries)} denetim adımı icra edildi. Karar: {len(decision.hazards)} tehlike sınıfı."
+        )
+
+    def execute(
+        self,
+        substances: List[StructuredSubstance],
+        context: CalculationContext
+    ) -> ClassificationResult:
+        """
+        Boru hattındaki tüm aşamaları (Decision -> Label -> Transport -> Audit Trail)
+        sırayla çalıştırır ve geriye dönük tam uyumlu ClassificationResult üretir.
+        """
+        decision = self.evaluate_decision(substances, context)
+        label = LabelGenerator.generate_label(decision)
+
+        from app.services.transport_engine import TransportSuggestionEngine
+        transport = TransportSuggestionEngine.classify_from_decision(decision, context)
+
+        audit_trail = self.build_audit_trail(decision, label, transport, substances, context)
+
+        calculation_steps = list(decision.audit_notes)
+        if label.precedence_audit_log:
             calculation_steps.append("\n🏷️ PİKTOGRAM ÖNCELİK VE BASKILAMA DENETİM İZİ (SEA MADDE 26 / CLP ART. 26):")
-            for entry in prec_log:
+            for entry in label.precedence_audit_log:
                 calculation_steps.append(
                     f"• [{entry['legal_reference']}] {entry['dominant_pictogram']} önceliği nedeniyle "
                     f"{entry['suppressed_pictogram']} elendi ({entry['reason']})"
                 )
 
+        raw_hazards = [
+            {
+                "zararlilik_sinifi": h.zararlilik_sinifi,
+                "kategori": h.kategori,
+                "h_kodu": h.h_kodu,
+                "status": h.status,
+                "status_label": h.status_label,
+                "range_details": h.range_details
+            }
+            for h in decision.hazards
+        ]
+        raw_indeterminate = [
+            {
+                "zararlilik_sinifi": h.zararlilik_sinifi,
+                "kategori": h.kategori,
+                "h_kodu": h.h_kodu,
+                "rule_name": getattr(h, "rule_name", ""),
+                "details": h.range_details
+            }
+            for h in decision.indeterminate_hazards
+        ]
+
         return ClassificationResult(
-            siniflandirmalar=resolved_labels["siniflandirmalar"],
-            h_ifadeleri=resolved_labels["h_ifadeleri"],
-            euh_ifadeleri=resolved_labels["euh_ifadeleri"],
-            piktogramlar=resolved_labels["piktogramlar"],
-            uyari_kelimesi=resolved_labels["uyari_kelimesi"],
-            p_ifadeleri=resolved_labels["p_ifadeleri"],
+            siniflandirmalar=raw_hazards,
+            h_ifadeleri=label.hazard_statements,
+            euh_ifadeleri=label.supplemental_statements,
+            piktogramlar=label.pictograms,
+            uyari_kelimesi=label.signal_word,
+            p_ifadeleri=label.precautionary_statements,
             calculation_steps=calculation_steps,
-            rule_results=rule_results,
-            has_indeterminate=bool(indeterminate_hazards),
-            indeterminate_hazards=indeterminate_hazards,
-            data_quality=data_quality,
-            precedence_audit_log=prec_log
+            rule_results=decision.evidence_pack,
+            has_indeterminate=decision.has_indeterminate,
+            indeterminate_hazards=raw_indeterminate,
+            data_quality=decision.data_quality,
+            precedence_audit_log=label.precedence_audit_log,
+            decision=decision,
+            label=label,
+            transport=transport,
+            audit_trail=audit_trail
         )
+
 

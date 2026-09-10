@@ -7,7 +7,12 @@ import os
 import json
 from typing import List, Dict, Any, Optional, Set
 
-from app.models.regulatory import CalculationContext
+from app.models.regulatory import (
+    CalculationContext,
+    RegulatoryDecision,
+    RegulatoryLabel,
+    TransportClassification
+)
 from app.services.regulatory_engine.pipeline import RegulatoryPipeline
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -123,5 +128,71 @@ class ClassificationEngine:
             "data_status_summary": {r.rule_name: r.data_status for r in result.rule_results},
             "has_indeterminate": result.has_indeterminate,
             "indeterminate_hazards": result.indeterminate_hazards,
-            "data_quality": result.data_quality.model_dump() if result.data_quality else None
+            "data_quality": result.data_quality.model_dump() if result.data_quality else None,
+            "precedence_audit_log": result.precedence_audit_log,
+            "decision": result.decision.model_dump() if result.decision else None,
+            "label": result.label.model_dump() if result.label else None,
+            "transport": result.transport.model_dump() if result.transport else None,
+            "audit_trail": result.audit_trail.model_dump() if result.audit_trail else None
         }
+
+    @classmethod
+    def evaluate_decision(
+        cls,
+        bilesenler: List[Dict[str, Any]],
+        parlama_noktasi: Optional[float] = None,
+        kaynama_noktasi: Optional[float] = None,
+        kinematik_viskozite: Optional[float] = None,
+        ph: Optional[float] = None,
+        kinematik_viskozite_40c: Optional[float] = None,
+        fiziksel_hal: Optional[str] = "Sıvı"
+    ) -> RegulatoryDecision:
+        """
+        SDS veya etiket üretiminden bağımsız olarak, sadece saf Düzenleyici Karar (RegulatoryDecision) üretir.
+        """
+        visk = kinematik_viskozite_40c if kinematik_viskozite_40c is not None else kinematik_viskozite
+        pipeline = cls.get_pipeline()
+        substances = pipeline.adapt_raw_components(bilesenler)
+        context = CalculationContext(
+            parlama_noktasi=parlama_noktasi,
+            kaynama_noktasi=kaynama_noktasi,
+            kinematik_viskozite_40c=visk,
+            ph=ph,
+            fiziksel_hal=fiziksel_hal
+        )
+        return pipeline.evaluate_decision(substances, context)
+
+    @classmethod
+    def generate_label(cls, decision: RegulatoryDecision) -> RegulatoryLabel:
+        """
+        Düzenleyici karardan bağımsız etiket projeksiyonu üretir.
+        """
+        from app.services.regulatory_engine.label_generator import LabelGenerator
+        return LabelGenerator.generate_label(decision)
+
+    @classmethod
+    def generate_transport(
+        cls,
+        decision: RegulatoryDecision,
+        context: Optional[CalculationContext] = None,
+        product_name: str = ""
+    ) -> TransportClassification:
+        """
+        Düzenleyici karardan bağımsız taşımacılık (ADR) projeksiyonu üretir.
+        """
+        from app.services.transport_engine import TransportSuggestionEngine
+        return TransportSuggestionEngine.classify_from_decision(decision, context, product_name)
+
+    @classmethod
+    def project_to_sds(
+        cls,
+        decision: RegulatoryDecision,
+        label: RegulatoryLabel,
+        transport: Optional[TransportClassification] = None,
+        base_sds: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Karar, etiket ve taşımacılık nesnelerini 16 bölümlük SDS şemasına haritalar.
+        """
+        from app.services.regulatory_engine.sds_generator import SDSGenerator
+        return SDSGenerator.project_to_sds_sections(decision, label, transport, base_sds)

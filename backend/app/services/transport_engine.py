@@ -306,6 +306,148 @@ class TransportSuggestionEngine:
             "adr_table_a_reference": "ADR Kapsamı Dışı"
         }
 
+    @classmethod
+    def classify_from_decision(
+        cls,
+        decision: Any,
+        context: Optional[Any] = None,
+        product_name: str = ""
+    ) -> Any:
+        """
+        Saf RegulatoryDecision ve CalculationContext nesnelerini doğrudan tüketerek
+        tip-güvenli TransportClassification üretir. SDS'e olan bağımlılığı ortadan kaldırır.
+        """
+        from app.models.regulatory import TransportClassification
+
+        h_codes = set(getattr(decision, "h_codes", []))
+        fp_val = getattr(context, "parlama_noktasi", None) if context else None
+        bp_val = getattr(context, "kaynama_noktasi", None) if context else None
+        siniflandirmalar = [
+            h.model_dump() if hasattr(h, "model_dump") else h
+            for h in getattr(decision, "hazards", [])
+        ]
+
+        is_marine_pollutant = any(h in ("H400", "H410", "H411") for h in h_codes)
+        env_hazards_tr = "Evet (Deniz Kirletici)" if is_marine_pollutant else "Hayır"
+        env_hazards_en = "Yes (Marine Pollutant)" if is_marine_pollutant else "No"
+
+        # Sınıf 3 Alevlenir Sıvılar
+        if fp_val is not None and fp_val <= 60.0:
+            if fp_val < 23.0:
+                if bp_val is not None and bp_val <= 35.0:
+                    pg = "PG I"
+                    pg_label = "PG I (Yüksek Tehlike)"
+                else:
+                    pg = "PG II"
+                    pg_label = "PG II (Orta Tehlike)"
+            else:
+                pg = "PG III"
+                pg_label = "PG III (Düşük Tehlike)"
+
+            un_no = "UN 1263" if any(kw in (product_name or "").lower() for kw in ["tiner", "boya", "vernik", "astar"]) else "UN 1993"
+            db_entry = UN_DATABASE.get(un_no, {})
+            tunnel = "(D/E)"
+
+            return TransportClassification(
+                un_number=un_no,
+                proper_shipping_name_tr=db_entry.get("proper_shipping_name_tr", "ALEVLENİR SIVI, B.B.B."),
+                proper_shipping_name_en=db_entry.get("proper_shipping_name_en", "FLAMMABLE LIQUID, N.O.S."),
+                class_code="3",
+                class_label="3 (Alevlenir Sıvılar)",
+                packing_group=pg,
+                packing_group_label=pg_label,
+                environmental_hazards=is_marine_pollutant,
+                environmental_hazards_tr=env_hazards_tr,
+                environmental_hazards_en=env_hazards_en,
+                tunnel_restriction_code=tunnel,
+                special_provisions=db_entry.get("special_provisions", []),
+                user_special_precautions=f"ADR / RID kurallarına uygun kapalı ve havalandırmalı araçlarda taşınmalıdır. Ateş ve kıvılcım kaynaklarından uzak tutunuz. Tünel Kısıtlama Kodu: {tunnel}",
+                status="SUGGESTION",
+                status_label="⚠️ Taslak Öneri (TMGD Doğrulaması Gerekir)",
+                disclaimer=DEFAULT_DISCLAIMER,
+                adr_table_a_reference=f"ADR Bölüm 3.2 Tablo A ({un_no})",
+                audit_note=f"Parlama Noktası: {fp_val}°C, Kaynama Noktası: {bp_val}°C gereği Sınıf 3 / {un_no} olarak sınıflandırıldı."
+            )
+
+        # Sınıf 8 Aşındırıcılar
+        if "H314" in h_codes:
+            pg = "PG II"
+            for s in siniflandirmalar:
+                cat = str(s.get("kategori") or "")
+                if "1A" in cat:
+                    pg = "PG I"
+                    break
+                elif "1C" in cat:
+                    pg = "PG III"
+
+            db_entry = UN_DATABASE.get("UN 1760", {})
+            return TransportClassification(
+                un_number="UN 1760",
+                proper_shipping_name_tr="AŞINDIRICI SIVI, B.B.B.",
+                proper_shipping_name_en="CORROSIVE LIQUID, N.O.S.",
+                class_code="8",
+                class_label="8 (Aşındırıcı Maddeler)",
+                packing_group=pg,
+                packing_group_label=f"{pg} (Aşındırıcı)",
+                environmental_hazards=is_marine_pollutant,
+                environmental_hazards_tr=env_hazards_tr,
+                environmental_hazards_en=env_hazards_en,
+                tunnel_restriction_code="(E)",
+                special_provisions=db_entry.get("special_provisions", ["SP 274"]),
+                user_special_precautions="Aşındırıcıya dayanıklı ambalajlarda taşınmalıdır. Cilt ve göz temasından koruyunuz. Tünel Kısıtlama Kodu: (E)",
+                status="SUGGESTION",
+                status_label="⚠️ Taslak Öneri (TMGD Doğrulaması Gerekir)",
+                disclaimer=DEFAULT_DISCLAIMER,
+                adr_table_a_reference="ADR Bölüm 3.2 Tablo A (UN 1760)",
+                audit_note="Cilt aşınması (H314) kriterleri gereğince Sınıf 8 / UN 1760 önerildi."
+            )
+
+        # Sınıf 9 Çevre İçin Tehlikeli
+        if is_marine_pollutant:
+            db_entry = UN_DATABASE.get("UN 3082", {})
+            return TransportClassification(
+                un_number="UN 3082",
+                proper_shipping_name_tr="ÇEVRE İÇİN TEHLİKELİ MADDE, SIVI, B.B.B.",
+                proper_shipping_name_en="ENVIRONMENTALLY HAZARDOUS SUBSTANCE, LIQUID, N.O.S.",
+                class_code="9",
+                class_label="9 (Muhtelif Tehlikeli Maddeler ve Nesneler)",
+                packing_group="PG III",
+                packing_group_label="PG III (Düşük Tehlike)",
+                environmental_hazards=True,
+                environmental_hazards_tr="Evet (Deniz Kirletici)",
+                environmental_hazards_en="Yes (Marine Pollutant)",
+                tunnel_restriction_code="(-)",
+                special_provisions=db_entry.get("special_provisions", ["SP 274", "SP 375"]),
+                user_special_precautions="Dökülmelere karşı sızdırmaz ambalajlama ve çevre koruma tedbirleri alınmalıdır. Tünel Kısıtlama Kodu: (-)",
+                status="SUGGESTION",
+                status_label="⚠️ Taslak Öneri (TMGD Doğrulaması Gerekir)",
+                disclaimer=DEFAULT_DISCLAIMER,
+                adr_table_a_reference="ADR Bölüm 3.2 Tablo A (UN 3082)",
+                audit_note="Sucul çevre zararları (H400/H410/H411) gereğince Sınıf 9 / UN 3082 önerildi."
+            )
+
+        # Tehlikesiz / Sınıflandırılmamış
+        return TransportClassification(
+            un_number="YOK",
+            proper_shipping_name_tr="ADR / RID / IMDG / ICAO Kapsamında Tehlikeli Madde Olarak Sınıflandırılmamıştır.",
+            proper_shipping_name_en="Not classified as dangerous goods according to transport regulations.",
+            class_code="Yok",
+            class_label="Tehlikeli Madde Değil",
+            packing_group="Yok",
+            packing_group_label="Yok",
+            environmental_hazards=False,
+            environmental_hazards_tr="Hayır",
+            environmental_hazards_en="No",
+            tunnel_restriction_code="Yok",
+            special_provisions=[],
+            user_special_precautions="Özel bir taşıma tedbiri gerekmemektedir. Genel taşıma ve depolama kurallarına uyunuz.",
+            status="NOT_REGULATED",
+            status_label="Tehlikesiz Madde",
+            disclaimer=DEFAULT_DISCLAIMER,
+            adr_table_a_reference="ADR Bölüm 2 Kriterleri Karşılanmıyor",
+            audit_note="Mevzuat zararlılıkları ve test verilerine göre tehlikeli madde kapsamında değildir."
+        )
+
 
 # Geriye dönük uyumluluk için alias tanımları
 TransportDecisionEngine = TransportSuggestionEngine

@@ -3,6 +3,8 @@ KKDİK ve SEA Yönetmeliği v2.0 Yapısal Regülatif Veri Modelleri
 (Structured Regulatory Substance & Calculation Context Models)
 """
 
+import uuid
+from datetime import datetime, timezone
 from typing import List, Optional, Literal, Dict, Any, Set, Union
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
@@ -630,9 +632,115 @@ class RuleResult(BaseModel):
             super().__setattr__("rule_name", value)
 
 
+class RegulatoryDecision(BaseModel):
+    """
+    Otoriter ve Değişmez Düzenleyici Karar (Regulatory Decision).
+    Mevzuat kural motorunun (SEA / CLP) formülasyon ve test verilerine göre
+    aldığı saf sınıflandırma ve yasal durum kararıdır.
+    SDS dokümanı, etiket grafiği veya dilden bağımsızdır.
+    """
+    decision_id: str = Field(default_factory=lambda: f"DEC-{uuid.uuid4().hex[:8].upper()}", description="Benzersiz karar kimliği")
+    product_identifier: Optional[str] = Field(None, description="Varsa ürün/karışım adı veya ticari kodu")
+    data_quality: Optional[MixtureDataQuality] = Field(None, description="Karışım veri kalitesi profili")
+    hazards: List[ClassifiedHazard] = Field(default_factory=list, description="Kesinleşen zararlılık sınıfları")
+    indeterminate_hazards: List[ClassifiedHazard] = Field(
+        default_factory=list, description="Aralık eşiğinde kalan (belirsiz) zararlılıklar"
+    )
+    evidence_pack: List[RuleResult] = Field(default_factory=list, description="Kural bazlı kanıt modelleri paketi")
+    h_codes: List[str] = Field(default_factory=list, description="Karar verilen H-kodları listesi")
+    euh_codes: List[str] = Field(default_factory=list, description="Karar verilen EUH-kodları listesi")
+    has_indeterminate: bool = Field(False, description="Aralığa bağlı belirsizlik var mı?")
+    has_classification: bool = Field(False, description="En az bir zararlılık sınıfı oluştu mu?")
+    regulatory_frameworks: List[str] = Field(
+        default_factory=lambda: ["SEA (Mükerrer RG: 28848)", "CLP (EC 1272/2008)"],
+        description="Dayanak alınan mevzuat çerçeveleri"
+    )
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), description="Karar zaman damgası")
+    audit_notes: List[str] = Field(default_factory=list, description="Karar mekanizması özet notları")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class RegulatoryLabel(BaseModel):
+    """
+    Düzenleyici Kararın Fiziksel / Ambalaj Etiket Projeksiyonu (Label Projection).
+    SEA Madde 19-33 ve CLP Madde 17-33 uyarınca etiket elemanlarını modeller.
+    """
+    signal_word: str = Field("Yok", description="Uyarı kelimesi ('Tehlike', 'Dikkat' veya 'Yok')")
+    pictograms: List[str] = Field(default_factory=list, description="GHS Piktogramları (GHS01 - GHS09)")
+    hazard_statements: List[str] = Field(default_factory=list, description="H-kodları")
+    supplemental_statements: List[str] = Field(default_factory=list, description="EUH-kodları")
+    precautionary_statements: List[str] = Field(default_factory=list, description="SEA Ek-4 P-kodları")
+    precedence_audit_log: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Piktogram eleme denetim izi"
+    )
+    tactile_warning_required: bool = Field(
+        False, description="Dokunulabilir Tehlike İşareti zorunlu mu? (SEA Md. 33 / CLP Ek-II)"
+    )
+    child_resistant_fastening_required: bool = Field(
+        False, description="Çocuk Emniyetli Kapak zorunlu mu? (SEA Md. 33 / CLP Ek-II)"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TransportClassification(BaseModel):
+    """
+    Düzenleyici Kararın ADR / RID / IMDG Taşımacılık Projeksiyonu (Transport Projection).
+    """
+    un_number: Optional[str] = Field(None, description="UN Numarası (örn. 'UN 1263')")
+    proper_shipping_name_tr: Optional[str] = Field(None, description="Uygun Taşıma Adı (Türkçe)")
+    proper_shipping_name_en: Optional[str] = Field(None, description="Proper Shipping Name (İngilizce)")
+    class_code: Optional[str] = Field(None, description="ADR Sınıf Kodu ('3', '8', '9', '6.1' vb.)")
+    class_label: Optional[str] = Field(None, description="ADR Sınıf Tanımı (örn. '3 (Alevlenir Sıvılar)')")
+    packing_group: Optional[str] = Field(None, description="Paketleme Grubu ('PG I', 'PG II', 'PG III')")
+    packing_group_label: Optional[str] = Field(None, description="PG Etiketi")
+    environmental_hazards: bool = Field(False, description="Çevre için tehlikeli madde (Marine Pollutant) mi?")
+    environmental_hazards_tr: Optional[str] = Field(None, description="Çevresel zararlar Türkçe açıklaması")
+    environmental_hazards_en: Optional[str] = Field(None, description="Çevresel zararlar İngilizce açıklaması")
+    tunnel_restriction_code: Optional[str] = Field(None, description="Tünel Kısıtlama Kodu (örn. '(D/E)', '(E)')")
+    special_provisions: List[str] = Field(default_factory=list, description="ADR Özel Hükümleri (örn. SP 163, SP 274)")
+    user_special_precautions: Optional[str] = Field(None, description="Kullanıcı için özel önlemler (Bölüm 14.6)")
+    status: str = Field("SUGGESTION", description="Durum ('SUGGESTION', 'CONFIRMED')")
+    status_label: str = Field("⚠️ Taslak Öneri (TMGD Doğrulaması Gerekir)", description="Durum etiketi")
+    disclaimer: Optional[str] = Field(None, description="Yasal sorumluluk reddi beyanı")
+    adr_table_a_reference: Optional[str] = Field(None, description="ADR Tablo A referansı")
+    audit_note: Optional[str] = Field(None, description="Sınıflandırma gerekçesi ve notlar")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AuditTrailEntry(BaseModel):
+    """
+    Tekil Denetim İzi Kaydı (Audit Trail Entry).
+    """
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    stage: Literal[
+        "INPUT", "NORMALIZATION", "DATA_QUALITY",
+        "RULE_EXECUTION", "DECISION", "LABEL", "TRANSPORT", "SDS"
+    ] = Field(..., description="Boru hattı aşaması")
+    action: str = Field(..., description="Yapılan işlem özeti")
+    details: Dict[str, Any] = Field(default_factory=dict, description="İşlem detayları ve sayısal veriler")
+    legislative_reference: Optional[str] = Field(None, description="Mevzuat maddesi / yasal dayanak")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class RegulatoryAuditTrail(BaseModel):
+    """
+    Uçtan Uca Birleşik Regülatif Denetim İzi (Unified Audit Trail).
+    """
+    decision_id: str = Field(..., description="İlgili karar kimliği")
+    entries: List[AuditTrailEntry] = Field(default_factory=list, description="Kronolojik denetim kayıtları")
+    summary: Optional[str] = Field(None, description="Genel denetim özeti")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class ClassificationResult(BaseModel):
     """
     Tüm kuralların birleşimi ve etiket önceliklendirmesi sonrası nihai karışım çıktısı.
+    Regulatory Decision, Regulatory Label, Transport ve Audit Trail'i bir arada sunan kompozit Facade.
     """
     siniflandirmalar: List[Dict[str, Any]] = Field(default_factory=list)
     h_ifadeleri: List[str] = Field(default_factory=list)
@@ -650,6 +758,20 @@ class ClassificationResult(BaseModel):
     precedence_audit_log: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Piktogram öncelik ve eleme denetim izi (PictogramPrecedenceMatrix)"
+    )
+
+    # Kurumsal Regülasyon Karar Mimarisi Projeksiyonları:
+    decision: Optional[RegulatoryDecision] = Field(
+        None, description="Saf Düzenleyici Karar Nesnesi (Regulatory Decision)"
+    )
+    label: Optional[RegulatoryLabel] = Field(
+        None, description="Etiket Projeksiyonu (Label Projection)"
+    )
+    transport: Optional[TransportClassification] = Field(
+        None, description="Taşımacılık Projeksiyonu (Transport Projection)"
+    )
+    audit_trail: Optional[RegulatoryAuditTrail] = Field(
+        None, description="Uçtan Uca Denetim İzi (Regulatory Audit Trail)"
     )
 
 
