@@ -58,22 +58,38 @@ class RegulatoryPipeline:
     def parse_concentration_model(cls, conc_str: Any) -> ConcentrationValue:
         """
         Ham konsantrasyon metnini nitelikli ConcentrationValue nesnesine dönüştürür.
+        Fiziksel/regülatif kısıt: %0 <= konsantrasyon <= %100. Negatif değerler reddedilir.
         """
         if isinstance(conc_str, (int, float)):
-            return ConcentrationValue(value=float(conc_str), qualifier="exact", raw_text=str(conc_str))
+            val = float(conc_str)
+            if val < 0.0:
+                raise ValueError(f"Konsantrasyon değeri negatif olamaz (Girilen: %{val:g}).")
+            if val > 100.0:
+                raise ValueError(f"Konsantrasyon %100'den büyük olamaz (Girilen: %{val:g}).")
+            return ConcentrationValue(value=val, qualifier="exact", raw_text=str(conc_str))
         if not conc_str or not isinstance(conc_str, str):
             return ConcentrationValue(value=0.0, qualifier="exact", raw_text="")
 
         clean = conc_str.replace("%", "").replace(",", ".").strip()
+
+        # Negatif değer tespiti (örn. "-5", "-5%", "< -2")
+        # Eğer "10 - 25" gibi iki pozitif sayı arasındaki aralık değilse:
+        range_match = re.findall(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)", clean)
+        if not range_match and re.search(r"(?:^|[\s<>=])-\s*\d+", clean):
+            raise ValueError(f"Konsantrasyon değeri negatif olamaz (Girilen: '{conc_str}').")
+
         is_strict_less = bool(re.search(r"<\s*(\d+(?:\.\d+)?)", clean) and "<=" not in clean)
         is_greater = bool(">" in clean or ">=" in clean)
 
         # Aralık kontrolü (örn. "10 - 25")
-        range_match = re.findall(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)", clean)
         if range_match:
             try:
                 min_v = float(range_match[0][0])
                 max_v = float(range_match[0][1])
+                if min_v < 0.0 or max_v < 0.0 or min_v > 100.0 or max_v > 100.0:
+                    raise ValueError(f"Konsantrasyon aralığı %0 ile %100 arasında olmalıdır (Girilen: '{conc_str}').")
+                if min_v > max_v:
+                    raise ValueError(f"Konsantrasyon alt sınırı (%{min_v:g}), üst sınırından (%{max_v:g}) büyük olamaz.")
                 return ConcentrationValue(
                     value=max_v,
                     min_val=min_v,
@@ -81,43 +97,67 @@ class RegulatoryPipeline:
                     qualifier="range",
                     raw_text=conc_str
                 )
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                if "Konsantrasyon" in str(e):
+                    raise
 
         # Tekil sayı kontrolü
         num_matches = re.findall(r"\d+(?:\.\d+)?", clean)
         if num_matches:
             try:
                 val = float(num_matches[-1])
+                if val < 0.0 or val > 100.0:
+                    raise ValueError(f"Konsantrasyon %0 ile %100 arasında olmalıdır (Girilen: '{conc_str}').")
                 if is_strict_less:
                     return ConcentrationValue(
-                        value=max(0.0, val - 0.0001),
+                        value=max(0.0, min(100.0, val - 0.0001)),
                         max_val=val,
                         qualifier="less_than",
                         raw_text=conc_str
                     )
                 qual = "greater_than" if is_greater else "exact"
                 return ConcentrationValue(value=val, qualifier=qual, raw_text=conc_str)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                if "Konsantrasyon" in str(e):
+                    raise
 
         return ConcentrationValue(value=0.0, qualifier="exact", raw_text=conc_str)
 
     @classmethod
-    def parse_float_safe(cls, val: Any, default: Optional[float] = None) -> Optional[float]:
+    def parse_float_safe(
+        cls,
+        val: Any,
+        default: Optional[float] = None,
+        min_val: Optional[float] = None,
+        max_val: Optional[float] = None
+    ) -> Optional[float]:
+        """
+        Güvenli float dönüştürücü. İsteğe bağlı min_val ve max_val sınır denetimi yapar.
+        Geçersiz veya sınır dışı değerlerde default döner.
+        """
         if val is None or val == "":
             return default
+        parsed = None
         if isinstance(val, (int, float)):
-            return float(val)
-        if isinstance(val, str):
+            parsed = float(val)
+        elif isinstance(val, str):
             clean = val.replace(",", ".").strip()
             matches = re.findall(r"[-+]?\d+(?:\.\d+)?", clean)
             if matches:
                 try:
-                    return float(matches[0])
+                    parsed = float(matches[0])
                 except (ValueError, TypeError):
-                    pass
-        return default
+                    parsed = None
+
+        if parsed is None:
+            return default
+
+        if min_val is not None and parsed < min_val:
+            return default
+        if max_val is not None and parsed > max_val:
+            return default
+
+        return parsed
 
     @classmethod
     def extract_h_codes(cls, text: str) -> List[str]:
@@ -173,7 +213,7 @@ class RegulatoryPipeline:
                 targeted_scls.append(scl_source)
             else:
                 for k, v in scl_source.items():
-                    val = cls.parse_float_safe(v)
+                    val = cls.parse_float_safe(v, min_val=0.0001, max_val=100.0)
                     if val is not None:
                         is_code = k.upper().startswith(("H", "EUH"))
                         targeted_scls.append({
@@ -187,7 +227,7 @@ class RegulatoryPipeline:
             t_hcode = (target.get("h_code") or "").strip().upper()
             t_class = (target.get("hazard_class") or "").strip().lower()
             t_cat = (target.get("category") or "").strip().upper()
-            t_val = cls.parse_float_safe(target.get("scl"))
+            t_val = cls.parse_float_safe(target.get("scl"), min_val=0.0001, max_val=100.0)
             if t_val is None:
                 continue
 
@@ -220,7 +260,7 @@ class RegulatoryPipeline:
         # 2. Skaler 'scl' durumu (örn: comp["scl"] = 2.0)
         # Sadece hedeflenmemiş ve skaler bir değer verilmişse çalışır:
         if not targeted_scls and raw_scl is not None and not isinstance(raw_scl, (list, dict)):
-            scalar_scl = cls.parse_float_safe(raw_scl)
+            scalar_scl = cls.parse_float_safe(raw_scl, min_val=0.0001, max_val=100.0)
             if scalar_scl is not None:
                 if len(parsed_hazards) == 1:
                     # Tek bir zararlılık varsa belirsizlik yoktur; geriye dönük uyumluluk adına atanır
@@ -275,7 +315,7 @@ class RegulatoryPipeline:
                 ate_oral_prov = raw_oral
                 ate_oral = raw_oral.ate
             else:
-                ate_oral = cls.parse_float_safe(raw_oral)
+                ate_oral = cls.parse_float_safe(raw_oral, min_val=0.0001)
                 if ate_oral is not None and ate_oral > 0:
                     ate_oral_prov = ATEProvenance.create_experimental(ate_oral, route="oral", unit="mg/kg")
 
@@ -289,7 +329,7 @@ class RegulatoryPipeline:
                 ate_dermal_prov = raw_dermal
                 ate_dermal = raw_dermal.ate
             else:
-                ate_dermal = cls.parse_float_safe(raw_dermal)
+                ate_dermal = cls.parse_float_safe(raw_dermal, min_val=0.0001)
                 if ate_dermal is not None and ate_dermal > 0:
                     ate_dermal_prov = ATEProvenance.create_experimental(ate_dermal, route="dermal", unit="mg/kg")
 
@@ -309,7 +349,7 @@ class RegulatoryPipeline:
                 ate_inhal_prov = raw_inhal
                 ate_inhal = raw_inhal.ate
             else:
-                ate_inhal = cls.parse_float_safe(raw_inhal)
+                ate_inhal = cls.parse_float_safe(raw_inhal, min_val=0.0001)
                 if ate_inhal is not None and ate_inhal > 0:
                     ate_inhal_prov = ATEProvenance.create_experimental(
                         ate_inhal, route=f"inhalation_{norm_form}", unit=norm_unit
@@ -329,8 +369,8 @@ class RegulatoryPipeline:
                 comp.get("is_isocyanate") or
                 any(x in name.lower() or x in sinif_str.lower() for x in ["izosiyanat", "isocyanate", "mdi", "tdi", "hdi", "ipdi"])
             )
-            m_akut = cls.parse_float_safe(comp.get("m_faktoru_akut"))
-            m_kronik = cls.parse_float_safe(comp.get("m_faktoru_kronik"))
+            m_akut = cls.parse_float_safe(comp.get("m_faktoru_akut"), min_val=1.0)
+            m_kronik = cls.parse_float_safe(comp.get("m_faktoru_kronik"), min_val=1.0)
 
             # Parsed hazard içinden M-factor desteği
             if m_akut is None:

@@ -10,13 +10,14 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 class ConcentrationValue(BaseModel):
     """
     Nitelikli konsantrasyon modeli.
+    Fiziksel ve regülatif kısıt: 0 <= konsantrasyon <= 100
     Örn: 15% -> value=15.0, qualifier='exact'
     < 0.1% -> value=0.0999, qualifier='less_than'
     10 - 25% -> value=25.0, min_val=10.0, max_val=25.0, qualifier='range'
     """
-    value: float = Field(..., description="Hesaplamada kullanılan sayısal üst sınır veya tam konsantrasyon")
-    min_val: Optional[float] = Field(None, description="Aralık belirtilmişse alt sınır")
-    max_val: Optional[float] = Field(None, description="Aralık belirtilmişse üst sınır")
+    value: float = Field(..., ge=0.0, le=100.0, description="Hesaplamada kullanılan sayısal üst sınır veya tam konsantrasyon (%0-%100)")
+    min_val: Optional[float] = Field(None, ge=0.0, le=100.0, description="Aralık belirtilmişse alt sınır (%0-%100)")
+    max_val: Optional[float] = Field(None, ge=0.0, le=100.0, description="Aralık belirtilmişse üst sınır (%0-%100)")
     qualifier: Literal["exact", "less_than", "greater_than", "range"] = Field(
         "exact", description="Konsantrasyon niteleyicisi"
     )
@@ -24,23 +25,25 @@ class ConcentrationValue(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    @model_validator(mode="after")
+    def validate_range_bounds(self) -> "ConcentrationValue":
+        if self.min_val is not None and self.max_val is not None:
+            if self.min_val > self.max_val:
+                raise ValueError(
+                    f"Konsantrasyon alt sınırı (%{self.min_val}), üst sınırından (%{self.max_val}) büyük olamaz."
+                )
+        return self
+
 
 class SpecificConcentrationLimit(BaseModel):
     """
     CLP / SEA Spesifik Konsantrasyon Sınırı (SCL) hedefli veri yapısı.
-    Zararlılık sınıfı, kategori ve/veya H-kodu ile tam hedeflenmiş eşleştirme sağlar.
-    Örn:
-    {
-      "hazard_class": "Skin Corr.",
-      "category": "1B",
-      "h_code": "H314",
-      "scl": 2.0
-    }
+    Fiziksel kısıt: 0 < SCL <= 100
     """
     hazard_class: Optional[str] = Field(None, description="Zararlılık sınıfı adı (örn. 'Skin Corr.')")
     category: Optional[str] = Field(None, description="Kategori veya alt kategori (örn. '1B')")
     h_code: Optional[str] = Field(None, description="H-kodu veya EUH-kodu (örn. 'H314')")
-    scl: float = Field(..., description="Spesifik Konsantrasyon Sınırı (SCL - %)")
+    scl: float = Field(..., gt=0.0, le=100.0, description="Spesifik Konsantrasyon Sınırı (SCL - %0-%100 arası)")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -48,12 +51,10 @@ class SpecificConcentrationLimit(BaseModel):
 class MFactor(BaseModel):
     """
     Sucul toksisite M-Faktörü (Çarpan Katsayısı) ve denetim izi (audit trail) veri yapısı.
-    CLP / SEA Ek-1 uyarınca M-faktörü belirtilmemişse hesaplama için varsayılan (effective_value=1.0)
-    kullanılır, ancak denetim izinde kaynak 'DEFAULT' (value=None) olarak işaretlenir.
-    Açıkça M=1 girilmişse value=1.0, effective_value=1.0, source='EXPLICIT' olur.
+    CLP / SEA Ek-1 uyarınca M-faktörü daima >= 1.0 tamsayı/katsayıdır.
     """
-    value: Optional[float] = Field(None, description="Bileşenin bilinen gerçek M-faktörü (belirtilmemişse None)")
-    effective_value: float = Field(1.0, description="Hesaplamada fiilen kullanılan katsayı (varsayılan 1.0)")
+    value: Optional[float] = Field(None, ge=1.0, description="Bileşenin bilinen gerçek M-faktörü (CLP/SEA uyarınca M >= 1.0)")
+    effective_value: float = Field(1.0, ge=1.0, description="Hesaplamada fiilen kullanılan katsayı (varsayılan 1.0, M >= 1.0)")
     source: Literal["EXPLICIT", "ANNEX_VI", "DEFAULT"] = Field(
         "DEFAULT", description="M-faktörü kaynağı: EXPLICIT | ANNEX_VI | DEFAULT"
     )
@@ -66,7 +67,7 @@ class MFactor(BaseModel):
         val: Optional[float] = None,
         source: Optional[Literal["EXPLICIT", "ANNEX_VI", "DEFAULT"]] = None
     ) -> "MFactor":
-        if val is not None and float(val) > 0:
+        if val is not None and float(val) >= 1.0:
             return cls(
                 value=float(val),
                 effective_value=float(val),
@@ -164,9 +165,9 @@ class HazardEntry(BaseModel):
     hazard_class: str = Field(..., description="Zararlılık sınıfı adı (örn. 'Skin Corr.', 'Flam. Liq.')")
     category: str = Field(..., description="Kategori veya alt kategori (örn. '1A', '1B', 'Kat 2')")
     h_code: str = Field(..., description="H-kodu veya EUH-kodu (örn. 'H314', 'H225', 'EUH066')")
-    scl: Optional[float] = Field(None, description="Varsa Spesifik Konsantrasyon Sınırı (SCL - %)")
-    m_factor_acute: Optional[float] = Field(None, description="Sucul Akut 1 M-faktörü")
-    m_factor_chronic: Optional[float] = Field(None, description="Sucul Kronik 1 M-faktörü")
+    scl: Optional[float] = Field(None, gt=0.0, le=100.0, description="Varsa Spesifik Konsantrasyon Sınırı (SCL - %0-%100)")
+    m_factor_acute: Optional[float] = Field(None, ge=1.0, description="Sucul Akut 1 M-faktörü (>= 1.0)")
+    m_factor_chronic: Optional[float] = Field(None, ge=1.0, description="Sucul Kronik 1 M-faktörü (>= 1.0)")
     m_acute_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Akut M-faktörü ve denetim izi")
     m_chronic_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Kronik M-faktörü ve denetim izi")
     has_euh066: bool = Field(False, description="Bu zararlılık veya bileşen açıkça EUH066 taşıyor mu?")
@@ -294,7 +295,7 @@ class ATEProvenance(BaseModel):
       "unit": "mg/kg"
     }
     """
-    ate: float = Field(..., description="Sayısal ATE değeri")
+    ate: float = Field(..., gt=0.0, description="Sayısal ATE değeri (ATE > 0 olmalıdır)")
     value_source: str = Field(..., description="Değer kaynağı (örn. 'EXPLICIT_TEST_DATA', 'H302_CONVERSION', 'SUPPLIER_SDS')")
     source_type: Literal["EXPERIMENTAL", "DERIVED", "DEFAULT", "ESTIMATED"] = Field(
         "DERIVED", description="Kaynak tipi: EXPERIMENTAL (Deneysel) | DERIVED (Dönüştürülmüş) | DEFAULT | ESTIMATED"
@@ -347,7 +348,7 @@ class InhalationExposure(BaseModel):
     """
     Soluma yolu akut toksisite fiziksel maruziyet formu, birimi ve ATE menşei.
     """
-    ate_val: Optional[float] = Field(None, description="Bileşenin bilinen soluma ATE değeri")
+    ate_val: Optional[float] = Field(None, gt=0.0, description="Bileşenin bilinen soluma ATE değeri (> 0)")
     form: Literal["buhar", "gaz", "toz_sis"] = Field("buhar", description="Fiziksel maruziyet formu")
     unit: str = Field("mg/L", description="Birim (Gaz için ppmV, buhar ve toz için mg/L)")
     provenance: Optional[ATEProvenance] = Field(None, description="Soluma ATE menşei / denetim izi")
@@ -396,7 +397,7 @@ class StructuredSubstance(BaseModel):
     name: str = Field(..., description="Bileşen adı")
     cas_no: Optional[str] = Field(None, description="CAS Numarası")
     ec_no: Optional[str] = Field(None, description="EC Numarası")
-    concentration: ConcentrationValue = Field(..., description="Nitelikli konsantrasyon nesnesi")
+    concentration: ConcentrationValue = Field(..., description="Nitelikli konsantrasyon nesnesi (%0-%100)")
     hazards: List[HazardEntry] = Field(default_factory=list, description="Ayrıştırılmış zararlılık listesi")
     raw_h_codes: List[str] = Field(default_factory=list, description="H-kodları listesi")
     has_euh066: bool = Field(False, description="Bileşen açıkça EUH066 taşıyor mu?")
@@ -406,9 +407,9 @@ class StructuredSubstance(BaseModel):
         description="Bileşen veri kalitesi ve güvenilirlik değerlendirmesi"
     )
     
-    # Akut toksisite değerleri
-    ate_oral: Optional[float] = Field(None, description="Oral ATE (mg/kg)")
-    ate_dermal: Optional[float] = Field(None, description="Dermal ATE (mg/kg)")
+    # Akut toksisite değerleri (Fiziksel kısıt: ATE > 0)
+    ate_oral: Optional[float] = Field(None, gt=0.0, description="Oral ATE (mg/kg, > 0)")
+    ate_dermal: Optional[float] = Field(None, gt=0.0, description="Dermal ATE (mg/kg, > 0)")
     inhalation: Optional[InhalationExposure] = Field(None, description="Soluma ATE ve maruziyet formu")
     ate_oral_provenance: Optional[ATEProvenance] = Field(None, description="Oral ATE kaynak ve denetim izi")
     ate_dermal_provenance: Optional[ATEProvenance] = Field(None, description="Dermal ATE kaynak ve denetim izi")
@@ -429,10 +430,10 @@ class StructuredSubstance(BaseModel):
             return ATEProvenance.create_experimental(self.ate_dermal, route="dermal", unit="mg/kg")
         return None
     
-    # Özel kimyasal özellikler
+    # Özel kimyasal özellikler (CLP kısıtı: M >= 1.0)
     is_isocyanate: bool = Field(False, description="İzosiyanat türevi mi?")
-    m_factor_acute: Optional[float] = Field(None, description="Sucul Akut 1 M-faktörü")
-    m_factor_chronic: Optional[float] = Field(None, description="Sucul Kronik 1 M-faktörü")
+    m_factor_acute: Optional[float] = Field(None, ge=1.0, description="Sucul Akut 1 M-faktörü (>= 1.0)")
+    m_factor_chronic: Optional[float] = Field(None, ge=1.0, description="Sucul Kronik 1 M-faktörü (>= 1.0)")
     m_acute_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Akut M-faktörü ve denetim izi")
     m_chronic_factor: Optional[MFactor] = Field(None, description="Yapılandırılmış Kronik M-faktörü ve denetim izi")
 
@@ -513,7 +514,7 @@ class CalculationContext(BaseModel):
     """
     parlama_noktasi: Optional[float] = Field(None, description="Karışımın ölçülmüş parlama noktası (°C)")
     kaynama_noktasi: Optional[float] = Field(None, description="Karışımın kaynama noktası (°C)")
-    kinematik_viskozite_40c: Optional[float] = Field(None, description="Karışımın 40°C'deki kinematik viskozitesi (mm²/s)")
+    kinematik_viskozite_40c: Optional[float] = Field(None, gt=0.0, description="Karışımın 40°C'deki kinematik viskozitesi (mm²/s, > 0)")
     ph: Optional[float] = Field(None, description="Ölçülmüş pH değeri")
     fiziksel_hal: Optional[str] = Field("Sıvı", description="Karışımın fiziksel hali (Sıvı, Katı, Gaz)")
     data_quality: Optional[MixtureDataQuality] = Field(

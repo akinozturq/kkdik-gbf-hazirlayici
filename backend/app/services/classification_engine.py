@@ -41,11 +41,18 @@ class ClassificationEngine:
         return RegulatoryPipeline.parse_concentration_model(conc_str).value
 
     @classmethod
-    def parse_float_safe(cls, val: Any, default: Optional[float] = None) -> Optional[float]:
+    def parse_float_safe(
+        cls,
+        val: Any,
+        default: Optional[float] = None,
+        min_val: Optional[float] = None,
+        max_val: Optional[float] = None
+    ) -> Optional[float]:
         """
         Sayısal olmayan veya kirli metinlerden güvenli float çeker.
+        İsteğe bağlı min_val ve max_val sınırlarını denetler.
         """
-        return RegulatoryPipeline.parse_float_safe(val, default)
+        return RegulatoryPipeline.parse_float_safe(val, default, min_val=min_val, max_val=max_val)
 
     @classmethod
     def resolve_repro_h_code(cls, found_codes: Set[str], prefix: str = "H360") -> str:

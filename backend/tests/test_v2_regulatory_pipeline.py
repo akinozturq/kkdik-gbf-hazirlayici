@@ -1418,6 +1418,103 @@ def test_reg015_total_concentration_validation_and_quality_check():
     assert any("TOPLAM KONSANTRASYON" in step and "%105" in step for step in res_engine["calculation_steps"])
 
 
+def test_reg016_domain_constraints_and_non_negative_validation():
+    """
+    REG-016: Negatif ve Fiziksel Olarak İmkânsız Değerler / Domain Constraints.
+
+    1. ConcentrationValue: 0 <= konsantrasyon <= 100
+       - Negatif veya >100 konsantrasyon ValidationError fırlatmalı
+       - min_val > max_val olduğunda ValidationError fırlatmalı
+    2. SCL (Spesifik Konsantrasyon Sınırı): 0 < SCL <= 100
+    3. MFactor: M >= 1.0
+    4. ATE (Akut Toksisite): ATE > 0
+    5. parse_concentration_model: "-5" veya "-5%" gibi negatif girdileri reddeder
+    6. parse_float_safe: min_val ve max_val sınırlarını denetler
+    """
+    import pytest
+    from pydantic import ValidationError
+    from app.models.regulatory import (
+        ConcentrationValue, SpecificConcentrationLimit, MFactor,
+        ATEProvenance, CalculationContext
+    )
+    from app.services.regulatory_engine.pipeline import RegulatoryPipeline
+
+    # 1. ConcentrationValue sınırları (ge=0.0, le=100.0)
+    with pytest.raises(ValidationError):
+        ConcentrationValue(value=-5.0)
+
+    with pytest.raises(ValidationError):
+        ConcentrationValue(value=105.0)
+
+    with pytest.raises(ValidationError):
+        # min_val > max_val
+        ConcentrationValue(value=25.0, min_val=30.0, max_val=10.0, qualifier="range")
+
+    # Geçerli konsantrasyon
+    cv = ConcentrationValue(value=25.0, min_val=10.0, max_val=25.0, qualifier="range")
+    assert cv.value == 25.0
+
+    # 2. SCL (gt=0.0, le=100.0)
+    with pytest.raises(ValidationError):
+        SpecificConcentrationLimit(scl=0.0)
+
+    with pytest.raises(ValidationError):
+        SpecificConcentrationLimit(scl=-1.0)
+
+    with pytest.raises(ValidationError):
+        SpecificConcentrationLimit(scl=150.0)
+
+    scl_valid = SpecificConcentrationLimit(scl=2.5)
+    assert scl_valid.scl == 2.5
+
+    # 3. MFactor (ge=1.0)
+    with pytest.raises(ValidationError):
+        MFactor(value=0.5)
+
+    mf = MFactor(value=10.0)
+    assert mf.value == 10.0
+
+    # 4. ATEProvenance (gt=0.0)
+    with pytest.raises(ValidationError):
+        ATEProvenance(ate=0.0, value_source="TEST")
+
+    with pytest.raises(ValidationError):
+        ATEProvenance(ate=-500.0, value_source="TEST")
+
+    ate_valid = ATEProvenance(ate=500.0, value_source="TEST")
+    assert ate_valid.ate == 500.0
+
+    # 5. CalculationContext (kinematik_viskozite_40c > 0)
+    with pytest.raises(ValidationError):
+        CalculationContext(kinematik_viskozite_40c=-5.0)
+
+    with pytest.raises(ValidationError):
+        CalculationContext(kinematik_viskozite_40c=0.0)
+
+    ctx_valid = CalculationContext(kinematik_viskozite_40c=15.0)
+    assert ctx_valid.kinematik_viskozite_40c == 15.0
+
+    # 6. parse_concentration_model: negatif metinleri reddeder
+    with pytest.raises(ValueError, match="negatif"):
+        RegulatoryPipeline.parse_concentration_model("-5%")
+
+    with pytest.raises(ValueError, match="negatif"):
+        RegulatoryPipeline.parse_concentration_model(-5)
+
+    with pytest.raises(ValueError, match="Konsantrasyon"):
+        RegulatoryPipeline.parse_concentration_model("120%")
+
+    with pytest.raises(ValueError, match="büyük olamaz"):
+        RegulatoryPipeline.parse_concentration_model("40 - 20%")
+
+    # 7. parse_float_safe sınır denetimi
+    assert RegulatoryPipeline.parse_float_safe("-5", min_val=0.0001) is None
+    assert RegulatoryPipeline.parse_float_safe("150", max_val=100.0) is None
+    assert RegulatoryPipeline.parse_float_safe("25", min_val=0.0, max_val=100.0) == 25.0
+    assert RegulatoryPipeline.parse_float_safe("500 mg/kg", min_val=0.0001) == 500.0
+
+
+
 
 
 
